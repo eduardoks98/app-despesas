@@ -1,28 +1,40 @@
 {
   "expo": {
-    "name": "Controle Financeiro",
-    "slug": "controle-financeiro",
+    "name": "App Despesas",
+    "slug": "app-despesas",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#6B46C1"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.controlefinanceiro.app"
+      "bundleIdentifier": "com.appdespesas.app",
+      "icon": "./assets/icon.png"
     },
     "android": {
-      "package": "com.controlefinanceiro.app",
+      "package": "com.appdespesas.app",
       "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6B46C1"
+      },
       "permissions": [
         "WRITE_EXTERNAL_STORAGE",
-        "READ_EXTERNAL_STORAGE"
+        "READ_EXTERNAL_STORAGE",
+        "VIBRATE"
       ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "extra": {
       "eas": {
