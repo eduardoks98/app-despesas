@@ -334,10 +334,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const expenseDate = new Date(e.date);
           if (expenseDate >= currentDate) {
             console.log('Modo future - atualizando:', e.title);
-            const updatedRelatedExpense = {
+            const updatedRelatedExpense: Expense = {
               ...e,
               ...expense,
-              id: e.id,
+              id: e.id!,
+              amount: e.amount, // Manter o valor original da parcela
               date: e.date,
               createdAt: e.createdAt,
               updatedAt: new Date().toISOString(),
@@ -350,10 +351,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } else if (mode === 'all') {
           // Atualiza todas as despesas relacionadas
           console.log('Modo all - atualizando:', e.title);
-          const updatedRelatedExpense = {
+          const updatedRelatedExpense: Expense = {
             ...e,
             ...expense,
-            id: e.id,
+            id: e.id!,
+            amount: e.amount, // Manter o valor original da parcela
             date: e.date,
             createdAt: e.createdAt,
             updatedAt: new Date().toISOString(),
@@ -362,10 +364,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } else if (mode === 'all_including_past') {
           // Atualiza todas as despesas relacionadas, incluindo passadas
           console.log('Modo all_including_past - atualizando:', e.title);
-          const updatedRelatedExpense = {
+          const updatedRelatedExpense: Expense = {
             ...e,
             ...expense,
-            id: e.id,
+            id: e.id!,
+            amount: e.amount, // Manter o valor original da parcela
             date: e.date,
             createdAt: e.createdAt,
             updatedAt: new Date().toISOString(),
@@ -384,12 +387,31 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const markAsPaid = async (id: string, isPaid: boolean, paidDate?: string) => {
+    // Se está marcando como pago, verificar se é uma parcela e se a anterior foi paga
+    if (isPaid) {
+      const expense = state.expenses.find(e => e.id === id);
+      if (expense && expense.installments && expense.installments > 1 && expense.currentInstallment && expense.currentInstallment > 1) {
+        // É uma parcela que não é a primeira, verificar se a anterior foi paga
+        const baseTitle = expense.title.replace(/\s*\(\d+\/\d+\)$/, '');
+        const previousInstallment = expense.currentInstallment - 1;
+        const previousExpense = state.expenses.find(e => 
+          e.title.replace(/\s*\(\d+\/\d+\)$/, '') === baseTitle &&
+          e.currentInstallment === previousInstallment &&
+          e.installments === expense.installments
+        );
+        
+        if (previousExpense && !previousExpense.isPaid) {
+          throw new Error(`Não é possível marcar esta parcela como paga. A parcela anterior (${previousInstallment}/${expense.installments}) ainda não foi paga.`);
+        }
+      }
+    }
+
     const updatedExpenses = state.expenses.map(expense =>
       expense.id === id ? { 
         ...expense, 
         isPaid, 
         paidAt: isPaid ? (paidDate || new Date().toISOString()) : undefined 
-      } : expense
+      } as Expense : expense
     );
     dispatch({ type: 'SET_EXPENSES', payload: updatedExpenses });
     await saveExpenses(updatedExpenses);

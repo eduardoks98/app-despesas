@@ -55,10 +55,6 @@ const EditExpenseScreen: React.FC = () => {
   const expense = (route.params as any)?.expense as Expense;
   const editMode = (route.params as any)?.editMode as 'single' | 'future' | 'all' | 'all_including_past' | undefined;
   
-  console.log('EditExpenseScreen carregada');
-  console.log('Expense:', expense);
-  console.log('EditMode:', editMode);
-  
   // Estados básicos
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -92,7 +88,9 @@ const EditExpenseScreen: React.FC = () => {
   useEffect(() => {
     if (expense) {
       setTitle(expense.title);
-      setAmount((expense.amount * 100).toString()); // Converter para centavos
+      // Converter de centavos para reais para exibição
+      const amountInReais = expense.amount / 100;
+      setAmount(amountInReais.toString());
       setDate(new Date(expense.date));
       setDateText(formatDate(new Date(expense.date)));
       setCategory(expense.category);
@@ -139,14 +137,26 @@ const EditExpenseScreen: React.FC = () => {
     }).format(floatValue);
   };
 
-  const parseCurrency = (value: string) => {
-    // Remove tudo exceto números
-    const cleanValue = value.replace(/[^\d]/g, '');
+  const formatCurrencyFromReais = (value: string) => {
+    const numericValue = value.replace(/[^\d,.]/g, '').replace(',', '.');
+    if (numericValue === '') return '';
     
-    // Converte para número (já está em centavos)
+    // Tratar como reais (não dividir por 100)
+    const floatValue = parseFloat(numericValue);
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(floatValue);
+  };
+
+  const parseCurrency = (value: string) => {
+    // Remove tudo exceto números e vírgula/ponto
+    const cleanValue = value.replace(/[^\d,.]/g, '').replace(',', '.');
+    
+    // Converte para número (está em reais, precisa converter para centavos)
     const number = parseFloat(cleanValue);
     
-    return isNaN(number) ? 0 : number;
+    return isNaN(number) ? 0 : Math.round(number * 100);
   };
 
   const formatDate = (date: Date) => {
@@ -199,39 +209,83 @@ const EditExpenseScreen: React.FC = () => {
       return;
     }
 
-    console.log('Salvando despesa:', { title, amount: amountValue, editMode });
     setLoading(true);
 
     try {
-      const updatedExpense: Expense = {
-        ...expense,
-        title: title.trim(),
-        amount: amountValue,
-        date: date.toISOString(),
-        category,
-        description: description.trim(),
-        isPaid,
-        isRecurring,
-        ...(isRecurring && { recurrenceType }),
-        ...(isInstallmentExpense && { installments: parseInt(installments) }),
-        ...(isInstallmentExpense && { currentInstallment: parseInt(currentInstallment) }),
-        isFinancing: isFinancing || false,
-        ...(interestRate && { interestRate: parseFloat(interestRate) }),
-        ...(monthlyAdjustment && { monthlyAdjustment: parseFloat(monthlyAdjustment) }),
-        updatedAt: new Date().toISOString(),
-      };
-
-      if (editMode && editMode !== 'single') {
-        console.log('Chamando updateRelatedExpenses com modo:', editMode);
-        await updateRelatedExpenses(updatedExpense, editMode);
+      if (isRecurring && isInstallmentExpense && installments && parseInt(installments) > 1) {
+        // Remover todas as parcelas antigas
+        const baseTitle = title.replace(/\s*\(\d+\/\d+\)$/, '');
+        const { state, deleteExpense, addInstallmentExpenses, markAsPaid } = useFinance();
+        const oldInstallments = state.expenses.filter(e => e.title.replace(/\s*\(\d+\/\d+\)$/, '') === baseTitle);
+        // Mapear status de pagamento das antigas
+        const oldStatusMap = new Map();
+        oldInstallments.forEach(e => {
+          const match = e.title.match(/\((\d+)\/(\d+)\)$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            oldStatusMap.set(num, { isPaid: e.isPaid, paidAt: e.paidAt });
+          }
+        });
+        for (const old of oldInstallments) {
+          await deleteExpense(old.id!);
+        }
+        // Criar novas parcelas
+        await addInstallmentExpenses({
+          title: baseTitle,
+          amount: amountValue,
+          date: date.toISOString(),
+          category,
+          description: description.trim(),
+          isRecurring,
+          recurrenceType: isRecurring ? recurrenceType : 'monthly',
+          installments: parseInt(installments),
+          currentInstallment: parseInt(currentInstallment),
+          isFinancing,
+          isPaid,
+          ...(interestRate && { interestRate: parseFloat(interestRate) }),
+          ...(monthlyAdjustment && { monthlyAdjustment: parseFloat(monthlyAdjustment) }),
+        });
+        // Buscar as novas parcelas criadas
+        const { state: stateAfter } = useFinance();
+        const newInstallments = stateAfter.expenses.filter(e => e.title.replace(/\s*\(\d+\/\d+\)$/, '') === baseTitle);
+        // Marcar como pagas as parcelas que estavam pagas
+        for (const newParc of newInstallments) {
+          const match = newParc.title.match(/\((\d+)\/(\d+)\)$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            const oldStatus = oldStatusMap.get(num);
+            if (oldStatus?.isPaid) {
+              await markAsPaid(newParc.id!, true, oldStatus.paidAt);
+            }
+          }
+        }
+        Alert.alert('Sucesso', 'Parcelas atualizadas com sucesso!', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
       } else {
-        console.log('Chamando updateExpense (modo single)');
+        // Despesa normal ou recorrente (não parcelada)
+        const updatedExpense: Expense = {
+          ...expense,
+          title: title.trim(),
+          amount: amountValue,
+          date: date.toISOString(),
+          category,
+          description: description.trim(),
+          isPaid,
+          isRecurring,
+          ...(isRecurring && { recurrenceType }),
+          ...(isInstallmentExpense && { installments: parseInt(installments) }),
+          ...(isInstallmentExpense && { currentInstallment: parseInt(currentInstallment) }),
+          isFinancing: isFinancing || false,
+          ...(interestRate && { interestRate: parseFloat(interestRate) }),
+          ...(monthlyAdjustment && { monthlyAdjustment: parseFloat(monthlyAdjustment) }),
+          updatedAt: new Date().toISOString(),
+        };
         await updateExpense(updatedExpense);
+        Alert.alert('Sucesso', 'Despesa atualizada com sucesso!', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
       }
-
-      Alert.alert('Sucesso', 'Despesa atualizada com sucesso!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
     } catch (error) {
       console.error('Erro ao salvar:', error);
       Alert.alert('Erro', 'Erro ao atualizar despesa. Tente novamente.');
@@ -329,7 +383,7 @@ const EditExpenseScreen: React.FC = () => {
 
               <TextInput
                 label="Valor Total *"
-                value={amount ? formatCurrency(amount) : ''}
+                value={amount ? formatCurrencyFromReais(amount) : ''}
                 onChangeText={(text) => {
                   // Remove formatação e mantém apenas números
                   const numericValue = text.replace(/[^\d]/g, '');
@@ -346,7 +400,7 @@ const EditExpenseScreen: React.FC = () => {
                 <View style={styles.valueInfoContainer}>
                   <Ionicons name="calculator" size={16} color="#2196F3" />
                   <Text style={styles.valueInfoText}>
-                    Valor por parcela: R$ {formatCurrency((parseCurrency(amount) / parseInt(installments)).toString())}
+                    Valor por parcela: R$ {formatCurrencyFromReais((parseFloat(amount || '0') / parseInt(installments)).toString())}
                   </Text>
                 </View>
               )}

@@ -14,10 +14,12 @@ import {
   Paragraph,
   Chip,
   SegmentedButtons,
+  ActivityIndicator,
 } from 'react-native-paper';
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
+import { formatCurrency, formatDate, CATEGORIES, getCategoryIcon, getCategoryColor } from '../utils/formatters';
 
 const { width } = Dimensions.get('window');
 
@@ -26,18 +28,6 @@ const ReportsScreen: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('current');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return `${date.getDate()} de ${['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][date.getMonth()]} de ${date.getFullYear()}`;
-  };
 
   const getExpensesByCategory = useMemo(() => {
     const categoryMap: { [key: string]: number } = {};
@@ -199,429 +189,203 @@ const ReportsScreen: React.FC = () => {
       borderRadius: 16,
     },
     propsForDots: {
-      r: '8',
-      strokeWidth: '3',
+      r: '6',
+      strokeWidth: '2',
       stroke: '#2196F3',
-      fill: '#ffffff',
     },
-    propsForBackgroundLines: {
-      strokeDasharray: '',
-      stroke: '#e0e0e0',
-      strokeWidth: 1,
-    },
-    fillShadowGradient: '#2196F3',
-    fillShadowGradientOpacity: 0.1,
   };
 
   const pieChartData = getExpensesByCategory.map(([category, amount], index) => ({
     name: category,
     amount,
-    color: [
-      '#FF6384',
-      '#36A2EB',
-      '#FFCE56',
-      '#4BC0C0',
-      '#9966FF',
-      '#FF9F40',
-      '#FF6384',
-      '#C9CBCF',
-      '#4BC0C0',
-    ][index % 9],
+    color: getCategoryColor(category),
     legendFontColor: '#7F7F7F',
     legendFontSize: 12,
   }));
 
+  if (state.loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2196F3" />
+        <Paragraph style={styles.loadingText}>Carregando relatórios...</Paragraph>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <Title style={styles.headerTitle}>Relatórios</Title>
+        <Paragraph style={styles.headerSubtitle}>
+          Análise detalhada dos seus gastos
+        </Paragraph>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Controles de Período */}
-        <Card style={styles.card}>
+        {/* Seletor de Período */}
+        <Card style={styles.periodCard}>
           <Card.Content>
-            <Title style={styles.cardTitle}>Período do Relatório</Title>
-            
+            <Title style={styles.cardTitle}>Período de Análise</Title>
             <SegmentedButtons
               value={selectedPeriod}
-              onValueChange={setSelectedPeriod}
+              onValueChange={setSelectedPeriod as any}
               buttons={[
                 { value: 'current', label: 'Mês Atual' },
                 { value: 'custom', label: 'Personalizado' },
               ]}
-              style={styles.periodSelector}
+              style={styles.segmentedButtons}
             />
-
-            {selectedPeriod === 'custom' && (
-              <View style={styles.customPeriodContainer}>
-                <View style={styles.periodRow}>
-                  <Paragraph style={styles.periodLabel}>Ano:</Paragraph>
-                  <View style={styles.yearButtonsContainer}>
-                    {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
-                      <TouchableOpacity
-                        key={year}
-                        style={[
-                          styles.yearButton,
-                          selectedYear === year && styles.selectedYearButton
-                        ]}
-                        onPress={() => setSelectedYear(year)}
-                      >
-                        <Paragraph style={[
-                          styles.yearButtonText,
-                          selectedYear === year && styles.selectedYearButtonText
-                        ]}>
-                          {year}
-                        </Paragraph>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-                
-                <View style={styles.periodRow}>
-                  <Paragraph style={styles.periodLabel}>Mês:</Paragraph>
-                  <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.monthScrollContainer}
-                    contentContainerStyle={styles.monthScrollContent}
-                  >
-                    {[
-                      { value: 0, label: 'Jan' },
-                      { value: 1, label: 'Fev' },
-                      { value: 2, label: 'Mar' },
-                      { value: 3, label: 'Abr' },
-                      { value: 4, label: 'Mai' },
-                      { value: 5, label: 'Jun' },
-                      { value: 6, label: 'Jul' },
-                      { value: 7, label: 'Ago' },
-                      { value: 8, label: 'Set' },
-                      { value: 9, label: 'Out' },
-                      { value: 10, label: 'Nov' },
-                      { value: 11, label: 'Dez' }
-                    ].map((month) => (
-                      <TouchableOpacity
-                        key={month.value}
-                        style={[
-                          styles.monthButton,
-                          selectedMonth === month.value && styles.selectedMonthButton
-                        ]}
-                        onPress={() => setSelectedMonth(month.value)}
-                      >
-                        <Paragraph style={[
-                          styles.monthButtonText,
-                          selectedMonth === month.value && styles.selectedMonthButtonText
-                        ]}>
-                          {month.label}
-                        </Paragraph>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              </View>
-            )}
-          </Card.Content>
-        </Card>
-
-        {/* Obrigações do Mês */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>
-              Despesas Pendentes do Mês
-              {selectedPeriod === 'custom' && (
-                <Paragraph style={styles.periodInfo}>
-                  {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][selectedMonth]} {selectedYear}
-                </Paragraph>
-              )}
-            </Title>
-            <View style={styles.obligationsHeader}>
-              <Ionicons name="alert-circle" size={24} color="#d32f2f" />
-              <Title style={styles.obligationsTotal}>
-                {formatCurrency(getCurrentMonthObligations.totalObligations)}
-              </Title>
-            </View>
-            <Paragraph style={styles.obligationsSubtitle}>
-              Total de despesas pendentes para este mês
-            </Paragraph>
-            
-            {getCurrentMonthObligations.obligations.length > 0 ? (
-              getCurrentMonthObligations.obligations.map((obligation, index) => (
-                <View key={index} style={styles.obligationItem}>
-                  <View style={styles.obligationInfo}>
-                    <Ionicons 
-                      name={
-                        obligation.type === 'recurring' ? 'refresh' : 
-                        obligation.type === 'financing' ? 'trending-down' : 
-                        'card'
-                      } 
-                      size={20} 
-                      color={
-                        obligation.type === 'recurring' ? '#FF9800' : 
-                        obligation.type === 'financing' ? '#9C27B0' : 
-                        '#2196F3'
-                      } 
-                    />
-                    <View style={styles.obligationDetails}>
-                      <Paragraph style={styles.obligationTitle}>{obligation.title}</Paragraph>
-                      <Paragraph style={styles.obligationCategory}>{obligation.category}</Paragraph>
-                    </View>
-                  </View>
-                  <View style={styles.obligationAmount}>
-                    <Title style={styles.obligationValue}>
-                      {formatCurrency(obligation.amount)}
-                    </Title>
-                    <Chip style={styles.obligationChip}>
-                      {obligation.type === 'recurring' ? 'Recorrente' : 
-                       obligation.type === 'financing' ? 'Financiamento' : 
-                       'Regular'}
-                    </Chip>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
-                <Paragraph style={styles.emptyText}>
-                  Nenhuma despesa pendente para este mês! 🎉
-                </Paragraph>
-              </View>
-            )}
           </Card.Content>
         </Card>
 
         {/* Resumo Geral */}
-        <Card style={styles.card}>
+        <Card style={styles.summaryCard}>
           <Card.Content>
             <Title style={styles.cardTitle}>Resumo Geral</Title>
             <View style={styles.summaryGrid}>
               <View style={styles.summaryItem}>
                 <Ionicons name="wallet" size={24} color="#2196F3" />
-                <Paragraph style={styles.summaryLabel}>Total Geral</Paragraph>
+                <Text style={styles.summaryLabel}>Total Pendente</Text>
                 <Title style={styles.summaryValue}>
                   {formatCurrency(state.totalExpenses)}
                 </Title>
               </View>
-              <View style={styles.summaryItem}>
-                <Ionicons name="calendar" size={24} color="#4CAF50" />
-                <Paragraph style={styles.summaryLabel}>Este Mês</Paragraph>
-                <Title style={styles.summaryValue}>
-                  {formatCurrency(state.monthlyExpenses)}
-                </Title>
-              </View>
+              
               <View style={styles.summaryItem}>
                 <Ionicons name="refresh" size={24} color="#FF9800" />
-                <Paragraph style={styles.summaryLabel}>Recorrentes</Paragraph>
+                <Text style={styles.summaryLabel}>Recorrentes</Text>
                 <Title style={styles.summaryValue}>
                   {formatCurrency(getTotalRecurring)}
                 </Title>
               </View>
+              
               <View style={styles.summaryItem}>
                 <Ionicons name="trending-down" size={24} color="#9C27B0" />
-                <Paragraph style={styles.summaryLabel}>Financiamentos</Paragraph>
+                <Text style={styles.summaryLabel}>Financiamentos</Text>
                 <Title style={styles.summaryValue}>
                   {formatCurrency(getTotalFinancing)}
+                </Title>
+              </View>
+              
+              <View style={styles.summaryItem}>
+                <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                <Text style={styles.summaryLabel}>Pagas Este Mês</Text>
+                <Title style={styles.summaryValue}>
+                  {formatCurrency(paidExpenses.reduce((sum, exp) => sum + exp.amount, 0))}
                 </Title>
               </View>
             </View>
           </Card.Content>
         </Card>
 
-        {/* Gráfico de Despesas por Mês */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>
-              Despesas Pendentes por Mês - {selectedYear}
-              {getMonthlyExpenses.totalYear > 0 && (
-                <Paragraph style={styles.chartSubtitle}>
-                  Total pendente do ano: {formatCurrency(getMonthlyExpenses.totalYear)}
-                </Paragraph>
-              )}
-            </Title>
-            
-            {getMonthlyExpenses.maxValue > 0 ? (
-              <>
-                <LineChart
-                  data={getMonthlyExpenses}
-                  width={width - 64}
-                  height={220}
-                  chartConfig={chartConfig}
-                  bezier
-                  style={styles.chart}
-                />
-                
-                <View style={styles.chartStats}>
-                  <View style={styles.statItem}>
-                    <Ionicons name="trending-up" size={16} color="#4CAF50" />
-                    <Paragraph style={styles.statLabel}>Maior:</Paragraph>
-                    <Paragraph style={styles.statValue}>
-                      {formatCurrency(getMonthlyExpenses.maxValue)}
-                    </Paragraph>
+        {/* Gráfico de Gastos por Categoria */}
+        {getExpensesByCategory.length > 0 && (
+          <Card style={styles.chartCard}>
+            <Card.Content>
+              <Title style={styles.cardTitle}>Gastos por Categoria</Title>
+              <PieChart
+                data={pieChartData}
+                width={width - 64}
+                height={220}
+                chartConfig={chartConfig}
+                accessor="amount"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                absolute
+              />
+              <View style={styles.categoryLegend}>
+                {getExpensesByCategory.slice(0, 5).map(([category, amount]) => (
+                  <View key={category} style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: getCategoryColor(category) }]} />
+                    <Text style={styles.legendText}>{category}</Text>
+                    <Text style={styles.legendAmount}>{formatCurrency(amount)}</Text>
                   </View>
-                  <View style={styles.statItem}>
-                    <Ionicons name="trending-down" size={16} color="#d32f2f" />
-                    <Paragraph style={styles.statLabel}>Menor:</Paragraph>
-                    <Paragraph style={styles.statValue}>
-                      {formatCurrency(getMonthlyExpenses.minValue)}
-                    </Paragraph>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons name="analytics" size={16} color="#2196F3" />
-                    <Paragraph style={styles.statLabel}>Média:</Paragraph>
-                    <Paragraph style={styles.statValue}>
-                      {formatCurrency(getMonthlyExpenses.totalYear / 12)}
-                    </Paragraph>
-                  </View>
-                </View>
-              </>
-            ) : (
-              <View style={styles.emptyChart}>
-                <Ionicons name="bar-chart-outline" size={64} color="#ccc" />
-                <Paragraph style={styles.emptyChartText}>
-                  Nenhuma despesa pendente registrada em {selectedYear}
-                </Paragraph>
+                ))}
               </View>
-            )}
-          </Card.Content>
-        </Card>
+            </Card.Content>
+          </Card>
+        )}
 
-        {/* Gráfico de Pizza - Despesas por Categoria */}
-        <Card style={styles.card}>
+        {/* Gráfico de Gastos Mensais */}
+        <Card style={styles.chartCard}>
           <Card.Content>
-            <Title style={styles.cardTitle}>Despesas Pendentes por Categoria</Title>
-            <PieChart
-              data={pieChartData}
+            <Title style={styles.cardTitle}>Evolução Mensal ({selectedYear})</Title>
+            <LineChart
+              data={getMonthlyExpenses}
               width={width - 64}
               height={220}
               chartConfig={chartConfig}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute
+              bezier
+              style={styles.chart}
             />
+            <View style={styles.chartStats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Total do Ano</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(getMonthlyExpenses.totalYear)}
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Média Mensal</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(getMonthlyExpenses.totalYear / 12)}
+                </Text>
+              </View>
+            </View>
           </Card.Content>
         </Card>
 
-        {/* Top Categorias */}
-        <Card style={styles.card}>
+        {/* Obrigações do Mês */}
+        <Card style={styles.obligationsCard}>
           <Card.Content>
-            <Title style={styles.cardTitle}>Top Categorias Pendentes</Title>
-            {getExpensesByCategory.slice(0, 5).map(([category, amount], index) => (
-              <View key={category} style={styles.categoryItem}>
-                <View style={styles.categoryInfo}>
-                  <View style={[styles.categoryColor, { backgroundColor: pieChartData[index]?.color }]} />
-                  <Paragraph style={styles.categoryName}>{category}</Paragraph>
+            <Title style={styles.cardTitle}>Obrigações do Mês</Title>
+            <Title style={styles.totalObligations}>
+              {formatCurrency(getCurrentMonthObligations.totalObligations)}
+            </Title>
+            
+            {getCurrentMonthObligations.obligations.map((obligation, index) => (
+              <View key={index} style={styles.obligationItem}>
+                <View style={styles.obligationInfo}>
+                  <Ionicons 
+                    name={getCategoryIcon(obligation.category) as any} 
+                    size={20} 
+                    color={getCategoryColor(obligation.category)} 
+                  />
+                  <View style={styles.obligationDetails}>
+                    <Text style={styles.obligationTitle}>{obligation.title}</Text>
+                    <Text style={styles.obligationCategory}>{obligation.category}</Text>
+                  </View>
                 </View>
-                <View style={styles.categoryAmount}>
-                  <Title style={styles.categoryValue}>
-                    {formatCurrency(amount)}
-                  </Title>
-                  <Paragraph style={styles.categoryPercentage}>
-                    {((amount / state.totalExpenses) * 100).toFixed(1)}%
-                  </Paragraph>
+                <View style={styles.obligationAmount}>
+                  <Text style={styles.obligationValue}>
+                    {formatCurrency(obligation.amount)}
+                  </Text>
+                  <Chip 
+                    mode="outlined" 
+                    style={[
+                      styles.obligationType,
+                      { 
+                        borderColor: obligation.type === 'recurring' ? '#FF9800' : 
+                                    obligation.type === 'financing' ? '#9C27B0' : '#2196F3' 
+                      }
+                    ]}
+                    textStyle={{ 
+                      color: obligation.type === 'recurring' ? '#FF9800' : 
+                             obligation.type === 'financing' ? '#9C27B0' : '#2196F3' 
+                    }}
+                  >
+                    {obligation.type === 'recurring' ? 'Recorrente' : 
+                     obligation.type === 'financing' ? 'Financiamento' : 'Regular'}
+                  </Chip>
                 </View>
               </View>
             ))}
-          </Card.Content>
-        </Card>
-
-        {/* Despesas Recorrentes */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>Despesas Recorrentes Pendentes</Title>
-            {getRecurringExpenses.length > 0 ? (
-              getRecurringExpenses.map((expense) => (
-                <View key={expense.id} style={styles.recurringItem}>
-                  <View style={styles.recurringInfo}>
-                    <Ionicons name="refresh" size={20} color="#FF9800" />
-                    <Paragraph style={styles.recurringTitle}>{expense.title}</Paragraph>
-                  </View>
-                  <View style={styles.recurringDetails}>
-                    <Paragraph style={styles.recurringAmount}>
-                      {formatCurrency(expense.amount)}
-                    </Paragraph>
-                    <Chip style={styles.recurringChip}>
-                      {expense.recurrenceType === 'monthly' ? 'Mensal' :
-                       expense.recurrenceType === 'weekly' ? 'Semanal' : 'Anual'}
-                    </Chip>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="refresh-outline" size={48} color="#ccc" />
-                <Paragraph style={styles.emptyText}>
-                  Nenhuma despesa recorrente registrada
-                </Paragraph>
-              </View>
-            )}
-          </Card.Content>
-        </Card>
-
-        {/* Financiamentos */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>Financiamentos</Title>
-            {getFinancingExpenses.length > 0 ? (
-              getFinancingExpenses.map((expense) => (
-                <View key={expense.id} style={styles.financingItem}>
-                  <View style={styles.financingInfo}>
-                    <Ionicons name="trending-down" size={20} color="#9C27B0" />
-                    <Paragraph style={styles.financingTitle}>{expense.title}</Paragraph>
-                  </View>
-                  <View style={styles.financingDetails}>
-                    <Paragraph style={styles.financingAmount}>
-                      {formatCurrency(expense.amount)}
-                    </Paragraph>
-                    <Chip style={styles.financingChip}>
-                      {expense.interestRate}% juros
-                    </Chip>
-                  </View>
-                  {expense.monthlyAdjustment && (
-                    <Paragraph style={styles.adjustmentText}>
-                      Reajuste: {expense.monthlyAdjustment}% ao mês
-                    </Paragraph>
-                  )}
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="trending-down-outline" size={48} color="#ccc" />
-                <Paragraph style={styles.emptyText}>
-                  Nenhum financiamento registrado
-                </Paragraph>
-              </View>
-            )}
-          </Card.Content>
-        </Card>
-
-        {/* Histórico de Pagamentos */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>📅 Histórico de Pagamentos</Title>
-            <Paragraph style={styles.cardSubtitle}>
-              Despesas pagas no período selecionado
-            </Paragraph>
             
-            {paidExpenses.length > 0 ? (
-              <View style={styles.paymentHistory}>
-                {paidExpenses.slice(0, 5).map((expense) => (
-                  <View key={expense.id} style={styles.paymentItem}>
-                    <View style={styles.paymentInfo}>
-                      <Text style={styles.paymentTitle}>{expense.title}</Text>
-                      <Text style={styles.paymentDate}>
-                        Pago em: {formatDate(expense.paidAt || '')}
-                      </Text>
-                    </View>
-                    <Text style={styles.paymentAmount}>
-                      {formatCurrency(expense.amount)}
-                    </Text>
-                  </View>
-                ))}
-                {paidExpenses.length > 5 && (
-                  <Text style={styles.moreItems}>
-                    +{paidExpenses.length - 5} pagamentos adicionais
-                  </Text>
-                )}
+            {getCurrentMonthObligations.obligations.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
+                <Text style={styles.emptyText}>Nenhuma obrigação pendente!</Text>
               </View>
-            ) : (
-              <Text style={styles.noData}>Nenhum pagamento registrado no período</Text>
             )}
           </Card.Content>
         </Card>
@@ -636,14 +400,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     paddingBottom: 90,
   },
-  card: {
+  header: {
+    padding: 16,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    paddingTop: 50, // Adjust for safe area
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  headerSubtitle: {
+    color: '#fff',
+    fontSize: 16,
+    marginTop: 4,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#333',
+  },
+  periodCard: {
     margin: 16,
     marginTop: 8,
     elevation: 4,
   },
-  cardTitle: {
-    fontSize: 18,
-    marginBottom: 16,
+  segmentedButtons: {
+    marginTop: 16,
+  },
+  summaryCard: {
+    margin: 16,
+    marginTop: 8,
+    elevation: 4,
   },
   summaryGrid: {
     flexDirection: 'row',
@@ -658,143 +448,65 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 4,
+  },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     marginTop: 8,
+    textAlign: 'center',
   },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 4,
+  chartCard: {
+    margin: 16,
+    marginTop: 8,
+    elevation: 4,
   },
   chart: {
     marginVertical: 8,
     borderRadius: 16,
   },
-  categoryItem: {
+  categoryLegend: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    marginTop: 16,
   },
-  categoryInfo: {
+  legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    marginVertical: 4,
   },
-  categoryColor: {
+  legendColor: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: 12,
+    marginRight: 8,
   },
-  categoryName: {
-    fontSize: 16,
-    fontWeight: '500',
+  legendText: {
+    fontSize: 14,
+    color: '#333',
+    marginRight: 8,
   },
-  categoryAmount: {
-    alignItems: 'flex-end',
-  },
-  categoryValue: {
-    fontSize: 16,
+  legendAmount: {
+    fontSize: 14,
     fontWeight: 'bold',
+    color: '#2196F3',
   },
-  categoryPercentage: {
-    fontSize: 12,
-    color: '#666',
+  obligationsCard: {
+    margin: 16,
+    marginTop: 8,
+    elevation: 4,
   },
-  recurringItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  recurringInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  recurringTitle: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  recurringDetails: {
-    alignItems: 'flex-end',
-  },
-  recurringAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#d32f2f',
-  },
-  recurringChip: {
-    marginTop: 4,
-  },
-  financingItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  financingInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  financingTitle: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  financingDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  financingAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#9C27B0',
-  },
-  financingChip: {
-    marginLeft: 8,
-  },
-  adjustmentText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  obligationsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  obligationsTotal: {
+  totalObligations: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#d32f2f',
-    marginLeft: 8,
-  },
-  obligationsSubtitle: {
-    textAlign: 'center',
-    color: '#666',
     marginBottom: 16,
+    textAlign: 'center',
   },
   obligationItem: {
     flexDirection: 'row',
@@ -810,16 +522,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   obligationDetails: {
-    marginLeft: 8,
+    marginLeft: 12,
     flex: 1,
   },
   obligationTitle: {
     fontSize: 16,
     fontWeight: '500',
+    color: '#333',
   },
   obligationCategory: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
+    marginTop: 2,
   },
   obligationAmount: {
     alignItems: 'flex-end',
@@ -829,94 +543,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#d32f2f',
   },
-  obligationChip: {
+  obligationType: {
     marginTop: 4,
   },
-  periodSelector: {
-    marginBottom: 16,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  customPeriodContainer: {
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
     marginTop: 16,
-  },
-  periodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  periodLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginRight: 12,
-    minWidth: 50,
-  },
-  yearButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    flex: 1,
-  },
-  yearButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  yearButtonText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  selectedYearButton: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
-  },
-  selectedYearButtonText: {
-    color: '#fff',
-  },
-  monthButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    flex: 1,
-  },
-  monthButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginHorizontal: 4,
-    minWidth: 50,
-    alignItems: 'center',
-  },
-  monthButtonText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  selectedMonthButton: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
-  },
-  selectedMonthButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  monthScrollContainer: {
-    flex: 1,
-    height: 40,
-  },
-  monthScrollContent: {
-    paddingHorizontal: 8,
-    alignItems: 'center',
-  },
-  periodInfo: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  chartSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
+    textAlign: 'center',
   },
   chartStats: {
     flexDirection: 'row',
@@ -936,56 +584,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#2196F3',
-  },
-  emptyChart: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyChartText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  paymentHistory: {
-    marginTop: 16,
-  },
-  paymentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  paymentInfo: {
-    flex: 1,
-  },
-  paymentTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  paymentDate: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  paymentAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-  moreItems: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  noData: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    paddingVertical: 20,
   },
 });
 

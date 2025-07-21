@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -20,40 +21,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useFinance } from '../context/FinanceContext';
+import { formatCurrency, formatDate, getCategoryIcon, getCategoryColor } from '../utils/formatters';
+import ExpenseCard from '../components/ExpenseCard';
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation();
   const { state } = useFinance();
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  const getCategoryIcon = (category: string) => {
-    const icons: { [key: string]: string } = {
-      'Alimentação': 'food-fork-drink',
-      'Transporte': 'car',
-      'Moradia': 'home',
-      'Saúde': 'medical-bag',
-      'Educação': 'school',
-      'Lazer': 'gamepad-variant',
-      'Vestuário': 'tshirt-crew',
-      'Financiamento': 'credit-card',
-      'Outros': 'dots-horizontal',
-    };
-    return icons[category] || 'dots-horizontal';
-  };
 
   const getRecentExpenses = () => {
     return state.expenses
@@ -105,104 +78,131 @@ const HomeScreen: React.FC = () => {
           </View>
         </LinearGradient>
 
-        {/* Categorias principais */}
+        {/* Ações rápidas */}
+        <Card style={styles.quickActionsCard}>
+          <Card.Content>
+            <Title style={styles.cardTitle}>Ações Rápidas</Title>
+            <View style={styles.quickActions}>
+              <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => navigation.navigate('AddExpense' as never)}
+              >
+                <Ionicons name="add-circle" size={32} color="#2196F3" />
+                <Text style={styles.quickActionText}>Nova Despesa</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => navigation.navigate('Expenses' as never)}
+              >
+                <Ionicons name="list" size={32} color="#4CAF50" />
+                <Text style={styles.quickActionText}>Ver Todas</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => navigation.navigate('Reports' as never)}
+              >
+                <Ionicons name="analytics" size={32} color="#FF9800" />
+                <Text style={styles.quickActionText}>Relatórios</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => navigation.navigate('MasterRecords' as never)}
+              >
+                <Ionicons name="layers" size={32} color="#9C27B0" />
+                <Text style={styles.quickActionText}>Registros Mestres</Text>
+              </TouchableOpacity>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Top categorias */}
         <Card style={styles.card}>
           <Card.Content>
-            <Title style={styles.cardTitle}>Principais Categorias</Title>
-            <View style={styles.categoriesContainer}>
-              {getCategoryTotals().map(([category, total]) => (
-                <Chip
-                  key={category}
-                  icon={() => (
-                    <Ionicons
-                      name={getCategoryIcon(category) as any}
-                      size={16}
-                      color="#2196F3"
-                    />
-                  )}
-                  style={styles.categoryChip}
-                >
-                  {category}: {formatCurrency(total)}
-                </Chip>
-              ))}
-            </View>
+            <Title style={styles.cardTitle}>Top Categorias</Title>
+            {getCategoryTotals().map(([category, total]) => (
+              <View key={category} style={styles.categoryItem}>
+                <View style={styles.categoryInfo}>
+                  <Ionicons 
+                    name={getCategoryIcon(category) as any} 
+                    size={24} 
+                    color={getCategoryColor(category)} 
+                  />
+                  <Text style={styles.categoryName}>{category}</Text>
+                </View>
+                <Title style={styles.categoryAmount}>
+                  {formatCurrency(total)}
+                </Title>
+              </View>
+            ))}
+            {getCategoryTotals().length === 0 && (
+              <Paragraph style={styles.emptyText}>
+                Nenhuma despesa registrada ainda
+              </Paragraph>
+            )}
           </Card.Content>
         </Card>
 
         {/* Despesas recentes */}
         <Card style={styles.card}>
           <Card.Content>
-            <Title style={styles.cardTitle}>Despesas Recentes</Title>
-            {getRecentExpenses().length > 0 ? (
-              getRecentExpenses().map((expense) => (
-                <TouchableOpacity
-                  key={expense.id}
-                  style={styles.expenseItem}
-                  onPress={() => {
-                    Alert.alert(
-                      expense.title,
-                      `${expense.description || 'Sem descrição'}\n\nValor: ${formatCurrency(expense.amount)}\nData: ${formatDate(expense.date)}\nCategoria: ${expense.category}${expense.isRecurring ? '\nRecorrente: Sim' : ''}${expense.isFinancing ? '\nFinanciamento: Sim' : ''}`,
-                      [
-                        { text: 'OK', style: 'default' },
-                        { text: 'Editar', onPress: () => {/* TODO: Implementar edição */} },
-                      ]
-                    );
-                  }}
-                >
-                  <View style={styles.expenseInfo}>
-                    <Ionicons
-                      name={getCategoryIcon(expense.category) as any}
-                      size={24}
-                      color="#2196F3"
-                    />
-                    <View style={styles.expenseDetails}>
-                      <Paragraph style={styles.expenseTitle}>
-                        {expense.title}
-                      </Paragraph>
-                      <Paragraph style={styles.expenseCategory}>
-                        {expense.category}
-                      </Paragraph>
-                    </View>
-                  </View>
-                  <View style={styles.expenseAmount}>
-                    <Paragraph style={styles.amountText}>
-                      {formatCurrency(expense.amount)}
-                    </Paragraph>
-                    {expense.isRecurring && (
-                      <Ionicons name="refresh" size={16} color="#FF9800" />
-                    )}
-                    {expense.isFinancing && (
-                      <Ionicons name="trending-down" size={16} color="#4CAF50" />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
-            ) : (
+            <View style={styles.recentHeader}>
+              <Title style={styles.cardTitle}>Despesas Recentes</Title>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Expenses' as never)}
+              >
+                <Text style={styles.seeAllText}>Ver todas</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {getRecentExpenses().map((expense) => (
+              <ExpenseCard
+                key={expense.id}
+                expense={expense}
+                variant="compact"
+                showActions={false}
+                onPress={() => navigation.navigate('EditExpense' as never, { expense } as any)}
+              />
+            ))}
+            
+            {getRecentExpenses().length === 0 && (
               <View style={styles.emptyState}>
-                <Ionicons name="wallet-outline" size={48} color="#ccc" />
-                <Paragraph style={styles.emptyText}>
-                  Nenhuma despesa registrada ainda
-                </Paragraph>
-                <Button
-                  mode="contained"
-                  onPress={() => navigation.navigate('AddExpense' as never)}
-                  style={styles.addFirstButton}
-                >
-                  Adicionar Primeira Despesa
-                </Button>
+                <Ionicons name="receipt-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>
+                  Nenhuma despesa recente
+                </Text>
               </View>
             )}
           </Card.Content>
         </Card>
-      </ScrollView>
 
-      {/* FAB para adicionar despesa */}
-      <FAB
-        style={styles.fab}
-        icon="plus"
-        onPress={() => navigation.navigate('AddExpense' as never)}
-        color="white"
-      />
+        {/* Resumo de status */}
+        <Card style={styles.card}>
+          <Card.Content>
+            <Title style={styles.cardTitle}>Status das Despesas</Title>
+            <View style={styles.statusContainer}>
+              <View style={styles.statusItem}>
+                <Chip icon="clock" style={styles.pendingChip}>
+                  Pendentes
+                </Chip>
+                <Title style={styles.statusCount}>
+                  {state.expenses.filter(e => !e.isPaid).length}
+                </Title>
+              </View>
+              <View style={styles.statusItem}>
+                <Chip icon="checkmark-circle" style={styles.paidChip}>
+                  Pagas
+                </Chip>
+                <Title style={styles.statusCount}>
+                  {state.expenses.filter(e => e.isPaid).length}
+                </Title>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -211,7 +211,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    paddingBottom: 90,
   },
   loadingContainer: {
     flex: 1,
@@ -220,52 +219,79 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
+    color: '#666',
   },
   header: {
-    padding: 20,
+    padding: 16,
+    alignItems: 'center',
+    paddingTop: 50,
   },
   headerTitle: {
-    color: 'white',
+    color: '#fff',
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
   },
   summaryContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 16,
   },
   summaryItem: {
-    flex: 1,
     alignItems: 'center',
   },
   summaryLabel: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#fff',
     fontSize: 14,
+    opacity: 0.9,
   },
   summaryValue: {
-    color: 'white',
+    color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
+    marginTop: 4,
   },
-  card: {
+  quickActionsCard: {
     margin: 16,
     marginTop: 8,
     elevation: 4,
   },
   cardTitle: {
     fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#333',
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  quickActionButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  quickActionText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#333',
+  },
+  card: {
+    margin: 16,
+    marginTop: 8,
+    elevation: 4,
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  seeAllText: {
+    fontSize: 14,
+    color: '#2196F3',
+    textDecorationLine: 'underline',
   },
-  categoryChip: {
-    marginBottom: 8,
-  },
-  expenseItem: {
+  categoryItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -273,30 +299,40 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  expenseInfo: {
+  categoryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
-  expenseDetails: {
+  categoryName: {
     marginLeft: 12,
-    flex: 1,
-  },
-  expenseTitle: {
     fontSize: 16,
     fontWeight: '500',
   },
-  expenseCategory: {
-    fontSize: 14,
-    color: '#666',
-  },
-  expenseAmount: {
-    alignItems: 'flex-end',
-  },
-  amountText: {
-    fontSize: 16,
+  categoryAmount: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#d32f2f',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+  },
+  statusItem: {
+    alignItems: 'center',
+  },
+  pendingChip: {
+    backgroundColor: '#FFEB3B',
+    color: '#333',
+  },
+  paidChip: {
+    backgroundColor: '#4CAF50',
+    color: 'white',
+  },
+  statusCount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 8,
   },
   emptyState: {
     alignItems: 'center',
@@ -306,19 +342,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 16,
-    marginBottom: 24,
-  },
-  addFirstButton: {
-    marginTop: 8,
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 90,
-    backgroundColor: '#2196F3',
-    elevation: 8,
-    zIndex: 1000,
+    textAlign: 'center',
   },
 });
 

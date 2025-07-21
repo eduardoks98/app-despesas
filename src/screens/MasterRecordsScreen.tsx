@@ -27,6 +27,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useFinance, Expense } from '../context/FinanceContext';
+import { formatCurrencyFromReais, getCategoryIcon, getCategoryColor } from '../utils/formatters';
 
 const MasterRecordsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -36,28 +37,6 @@ const MasterRecordsScreen: React.FC = () => {
   const [selectedType, setSelectedType] = useState<'all' | 'recurring' | 'installments'>('all');
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
-
-  const getCategoryIcon = (category: string) => {
-    const icons: { [key: string]: string } = {
-      'Alimentação': 'food-fork-drink',
-      'Transporte': 'car',
-      'Moradia': 'home',
-      'Saúde': 'medical-bag',
-      'Educação': 'school',
-      'Lazer': 'gamepad-variant',
-      'Vestuário': 'tshirt-crew',
-      'Financiamento': 'credit-card',
-      'Outros': 'dots-horizontal',
-    };
-    return icons[category] || 'dots-horizontal';
-  };
 
   // Agrupar despesas por título base (removendo sufixos de parcela)
   const masterRecords = useMemo(() => {
@@ -82,16 +61,34 @@ const MasterRecordsScreen: React.FC = () => {
     console.log('Registros mestres encontrados:', Object.keys(records));
 
     // Converter para array e filtrar
-    let result = Object.entries(records).map(([title, expenses]) => ({
-      title,
-      expenses,
-      totalAmount: expenses.reduce((sum, exp) => sum + exp.amount, 0),
-      isRecurring: expenses[0].isRecurring,
-      isInstallment: !!expenses[0].installments,
-      category: expenses[0].category,
-      recurrenceType: expenses[0].recurrenceType,
-      installments: expenses[0].installments,
-    }));
+    let result = Object.entries(records).map(([title, expenses]) => {
+      const firstExpense = expenses[0];
+      if (!firstExpense) return null;
+      
+      let totalAmount: number;
+      
+      if (firstExpense.installments && firstExpense.installments > 1) {
+        // Para despesas parceladas: valor total = valor de uma parcela × número de parcelas
+        const installmentAmount = firstExpense.amount; // Valor já está em centavos
+        totalAmount = (installmentAmount * firstExpense.installments) / 100; // Converter para reais
+        console.log(`Despesa parcelada "${title}": valor parcela=${installmentAmount}, parcelas=${firstExpense.installments}, total=${totalAmount}`);
+      } else {
+        // Para despesas recorrentes: valor total = valor de cada parcela
+        totalAmount = firstExpense.amount / 100; // Converter de centavos para reais
+        console.log(`Despesa recorrente "${title}": valor=${totalAmount}`);
+      }
+      
+      return {
+        title,
+        expenses,
+        totalAmount,
+        isRecurring: firstExpense.isRecurring,
+        isInstallment: !!firstExpense.installments,
+        category: firstExpense.category,
+        recurrenceType: firstExpense.recurrenceType,
+        installments: firstExpense.installments,
+      };
+    }).filter((record): record is NonNullable<typeof record> => record !== null); // Remove entradas null
 
     // Filtrar por tipo
     if (selectedType === 'recurring') {
@@ -142,15 +139,82 @@ const MasterRecordsScreen: React.FC = () => {
     setShowEditModal(true);
   };
 
+  const getEditOptions = (record: any) => {
+    if (!record) return [];
+    
+    const totalExpenses = record.expenses.length;
+    const currentDate = new Date();
+    
+    // Encontrar a parcela atual (baseada na data)
+    const currentExpenseIndex = record.expenses.findIndex((expense: any) => 
+      new Date(expense.date) >= currentDate
+    );
+    
+    const futureExpenses = currentExpenseIndex >= 0 
+      ? totalExpenses - currentExpenseIndex 
+      : 0;
+    
+    const pastExpenses = currentExpenseIndex >= 0 
+      ? currentExpenseIndex 
+      : totalExpenses;
+
+    return [
+      {
+        id: 'single',
+        title: 'Editar apenas esta parcela',
+        description: `Modificar apenas a parcela selecionada (1 ${record.isInstallment ? 'parcela' : 'registro'})`,
+        icon: 'pencil',
+        count: 1
+      },
+      {
+        id: 'future',
+        title: 'Editar parcelas futuras',
+        description: `Modificar esta e todas as parcelas futuras (${futureExpenses} ${record.isInstallment ? 'parcelas' : 'registros'})`,
+        icon: 'calendar',
+        count: futureExpenses
+      },
+      {
+        id: 'all',
+        title: 'Editar todas as parcelas',
+        description: `Modificar todas as parcelas (${totalExpenses} ${record.isInstallment ? 'parcelas' : 'registros'})`,
+        icon: 'layers',
+        count: totalExpenses
+      },
+      {
+        id: 'all_including_past',
+        title: 'Recrear todas as parcelas',
+        description: `Excluir todas e criar novas parcelas (${totalExpenses} ${record.isInstallment ? 'parcelas' : 'registros'})`,
+        icon: 'refresh',
+        count: totalExpenses
+      }
+    ];
+  };
+
   const handleEditOption = (editMode: string) => {
     if (!selectedRecord) return;
     
     console.log('Navegando para edição com modo:', editMode);
     
+    // Criar um objeto que representa a despesa mestre com o valor total
+    const firstExpense = selectedRecord.expenses[0];
+    const masterExpense = {
+      ...firstExpense,
+      // Para despesas parceladas, usar o valor total em vez do valor da parcela
+      amount: selectedRecord.isInstallment 
+        ? Math.round(selectedRecord.totalAmount * 100) // Converter de volta para centavos
+        : firstExpense.amount,
+    };
+    
+    console.log('Master expense para edição:', {
+      originalAmount: firstExpense.amount,
+      totalAmount: selectedRecord.totalAmount,
+      masterAmount: masterExpense.amount
+    });
+    
     navigation.navigate('EditExpense' as never, { 
-      expense: selectedRecord.expenses[0],
+      expense: masterExpense,
       editMode: editMode
-    } as never);
+    } as any);
     
     setShowEditModal(false);
     setSelectedRecord(null);
@@ -164,13 +228,13 @@ const MasterRecordsScreen: React.FC = () => {
             <Ionicons
               name={getCategoryIcon(item.category) as any}
               size={24}
-              color="#2196F3"
+              color={getCategoryColor(item.category)}
             />
             <View style={styles.recordDetails}>
               <Title style={styles.recordTitle}>{item.title}</Title>
-              <Paragraph style={styles.recordCategory}>
+              <Text style={styles.recordCategory}>
                 {item.category}
-              </Paragraph>
+              </Text>
               <View style={styles.recordTags}>
                 {item.isInstallment ? (
                   <Chip icon="layers" style={styles.tag}>
@@ -190,11 +254,15 @@ const MasterRecordsScreen: React.FC = () => {
           </View>
           <View style={styles.recordAmount}>
             <Title style={styles.amountText}>
-              {formatCurrency(item.totalAmount)}
+              {formatCurrencyFromReais(item.totalAmount)}
             </Title>
-            <Paragraph style={styles.amountPerUnit}>
-              {formatCurrency(item.totalAmount / item.expenses.length)} cada
-            </Paragraph>
+            <Text style={styles.amountPerUnit}>
+              {item.isInstallment 
+                ? `${formatCurrencyFromReais(item.totalAmount / (item.installments || 1))} por parcela`
+                : `${formatCurrencyFromReais(item.totalAmount)} por ${item.recurrenceType === 'monthly' ? 'mês' : 
+                   item.recurrenceType === 'weekly' ? 'semana' : 'ano'}`
+              }
+            </Text>
           </View>
         </View>
 
@@ -204,7 +272,7 @@ const MasterRecordsScreen: React.FC = () => {
             onPress={() => handleEditMasterRecord(item)}
           >
             <Ionicons name="pencil" size={20} color="#2196F3" />
-            <Paragraph style={styles.actionText}>Editar</Paragraph>
+            <Text style={styles.actionText}>Editar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -212,9 +280,9 @@ const MasterRecordsScreen: React.FC = () => {
             onPress={() => handleDeleteMasterRecord(item)}
           >
             <Ionicons name="trash" size={20} color="#d32f2f" />
-            <Paragraph style={[styles.actionText, { color: '#d32f2f' }]}>
+            <Text style={[styles.actionText, { color: '#d32f2f' }]}>
               Excluir Todas
-            </Paragraph>
+            </Text>
           </TouchableOpacity>
         </View>
       </Card.Content>
@@ -225,11 +293,11 @@ const MasterRecordsScreen: React.FC = () => {
     <View style={styles.emptyState}>
       <Ionicons name="list-outline" size={64} color="#ccc" />
       <Title style={styles.emptyTitle}>Nenhum registro mestre encontrado</Title>
-      <Paragraph style={styles.emptyText}>
+      <Text style={styles.emptyText}>
         {searchQuery || selectedType !== 'all'
           ? 'Tente ajustar os filtros de busca'
           : 'Adicione despesas recorrentes ou parceladas para começar'}
-      </Paragraph>
+      </Text>
     </View>
   );
 
@@ -237,7 +305,7 @@ const MasterRecordsScreen: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
-        <Paragraph style={styles.loadingText}>Carregando...</Paragraph>
+        <Text style={styles.loadingText}>Carregando...</Text>
       </View>
     );
   }
@@ -246,9 +314,9 @@ const MasterRecordsScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Title style={styles.headerTitle}>Registros Mestres</Title>
-        <Paragraph style={styles.headerSubtitle}>
+        <Text style={styles.headerSubtitle}>
           Gerencie despesas recorrentes e parceladas
-        </Paragraph>
+        </Text>
       </View>
 
       <Searchbar
@@ -258,100 +326,63 @@ const MasterRecordsScreen: React.FC = () => {
         style={styles.searchbar}
       />
 
-      <View style={styles.filtersContainer}>
-        <Chip
-          selected={selectedType === 'all'}
-          onPress={() => setSelectedType('all')}
-          style={styles.filterChip}
-          mode={selectedType === 'all' ? 'flat' : 'outlined'}
-        >
-          Todas
-        </Chip>
-        <Chip
-          selected={selectedType === 'recurring'}
-          onPress={() => setSelectedType('recurring')}
-          style={styles.filterChip}
-          mode={selectedType === 'recurring' ? 'flat' : 'outlined'}
-        >
-          Recorrentes
-        </Chip>
-        <Chip
-          selected={selectedType === 'installments'}
-          onPress={() => setSelectedType('installments')}
-          style={styles.filterChip}
-          mode={selectedType === 'installments' ? 'flat' : 'outlined'}
-        >
-          Parceladas
-        </Chip>
-      </View>
+      <Card style={styles.filtersCard}>
+        <Card.Content>
+          <SegmentedButtons
+            value={selectedType}
+            onValueChange={setSelectedType as any}
+            buttons={[
+              { value: 'all', label: 'Todas' },
+              { value: 'recurring', label: 'Recorrentes' },
+              { value: 'installments', label: 'Parceladas' },
+            ]}
+            style={styles.segmentedButtons}
+          />
+        </Card.Content>
+      </Card>
 
       <FlatList
         data={masterRecords}
         renderItem={renderMasterRecord}
         keyExtractor={(item) => item.title}
-        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContainer}
         ListEmptyComponent={renderEmptyState}
       />
 
-      {/* Modal de Opções de Edição */}
       <Portal>
         <Modal
           visible={showEditModal}
-          onDismiss={() => {
-            setShowEditModal(false);
-            setSelectedRecord(null);
-          }}
+          onDismiss={() => setShowEditModal(false)}
           contentContainerStyle={styles.modalContainer}
         >
-          <Title style={styles.modalTitle}>
-            Editar "{selectedRecord?.title}"
-          </Title>
+          <Title style={styles.modalTitle}>Editar Registro Mestre</Title>
+          <Text style={styles.modalSubtitle}>
+            Como você gostaria de editar "{selectedRecord?.title}"?
+          </Text>
           
-          <Paragraph style={styles.modalDescription}>
-            Como deseja editar este registro?
-          </Paragraph>
-
-          <List.Item
-            title="Apenas esta"
-            description="Edita apenas a despesa selecionada"
-            left={(props) => <List.Icon {...props} icon="file-document" />}
-            onPress={() => handleEditOption('single')}
-            style={styles.modalItem}
-          />
-
-          <List.Item
-            title={`Próximas (${selectedRecord?.expenses ? selectedRecord.expenses.filter((exp: Expense) => 
-              new Date(exp.date) >= new Date()
-            ).length : 0})`}
-            description="Edita despesas futuras (a partir de hoje)"
-            left={(props) => <List.Icon {...props} icon="calendar-arrow-right" />}
-            onPress={() => handleEditOption('future')}
-            style={styles.modalItem}
-          />
-
-          <List.Item
-            title={`Todas as parcelas (${selectedRecord?.expenses.length || 0})`}
-            description="Edita TODAS as parcelas (passadas, atuais e futuras)"
-            left={(props) => <List.Icon {...props} icon="layers" />}
-            onPress={() => handleEditOption('all_including_past')}
-            style={styles.modalItem}
-          />
-
-          <View style={styles.modalButtons}>
-            <Button
-              mode="outlined"
-              onPress={() => {
-                setShowEditModal(false);
-                setSelectedRecord(null);
-              }}
-              style={styles.modalButton}
-            >
-              Cancelar
-            </Button>
+          {getEditOptions(selectedRecord).map((option: any) => (
+            <List.Item
+              key={option.id}
+              title={option.title}
+              description={option.description}
+              left={(props) => <List.Icon {...props} icon={option.icon as any} />}
+              onPress={() => handleEditOption(option.id)}
+              style={styles.modalItem}
+            />
+          ))}
+          
+          <View style={styles.modalActions}>
+            <Button onPress={() => setShowEditModal(false)}>Cancelar</Button>
           </View>
         </Modal>
       </Portal>
+
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        onPress={() => navigation.navigate('AddExpense' as never)}
+      />
     </SafeAreaView>
   );
 };
@@ -369,34 +400,35 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
+    color: '#666',
   },
   header: {
-    padding: 20,
+    padding: 16,
     backgroundColor: '#2196F3',
+    alignItems: 'center',
+    paddingTop: 50,
   },
   headerTitle: {
-    color: 'white',
+    color: '#fff',
     fontSize: 24,
     fontWeight: 'bold',
   },
   headerSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
+    color: '#fff',
+    fontSize: 16,
     marginTop: 4,
   },
   searchbar: {
-    margin: 16,
+    marginBottom: 16,
+  },
+  filtersCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
     elevation: 4,
   },
-  filtersContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
+  segmentedButtons: {
+    marginHorizontal: 16,
     marginBottom: 16,
-    gap: 8,
-  },
-  filterChip: {
-    marginRight: 8,
   },
   listContainer: {
     padding: 16,
@@ -421,6 +453,7 @@ const styles = StyleSheet.create({
   recordTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 4,
   },
   recordCategory: {
     fontSize: 14,
@@ -434,6 +467,7 @@ const styles = StyleSheet.create({
   },
   tag: {
     marginRight: 8,
+    marginBottom: 4,
   },
   recordAmount: {
     alignItems: 'flex-end',
@@ -454,40 +488,44 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#eee',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   actionText: {
     marginLeft: 4,
     fontSize: 14,
   },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+  },
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 60,
   },
   emptyTitle: {
-    fontSize: 20,
-    color: '#666',
     marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   emptyText: {
-    fontSize: 16,
-    color: '#999',
     textAlign: 'center',
-    marginTop: 8,
+    color: '#666',
+    marginBottom: 24,
   },
   modalContainer: {
-    padding: 20,
     backgroundColor: 'white',
-    borderRadius: 10,
-    width: '90%',
-    alignSelf: 'center',
+    padding: 20,
+    margin: 20,
+    borderRadius: 8,
   },
   modalTitle: {
     fontSize: 20,
@@ -495,22 +533,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
-  modalDescription: {
+  modalSubtitle: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
   modalItem: {
     marginBottom: 10,
   },
-  modalButtons: {
+  modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 20,
-  },
-  modalButton: {
-    width: '45%',
+    marginTop: 16,
   },
 });
 

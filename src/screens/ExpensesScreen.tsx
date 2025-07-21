@@ -14,7 +14,6 @@ import {
   Card,
   Title,
   Paragraph,
-  Searchbar,
   Chip,
   FAB,
   ActivityIndicator,
@@ -28,25 +27,14 @@ import {
   Portal,
   Dialog,
   List,
+  Searchbar,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useFinance } from '../context/FinanceContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { formatCurrency, formatDate } from '../utils/formatters';
-
-const CATEGORIES = [
-  'Todas',
-  'Alimentação',
-  'Transporte',
-  'Moradia',
-  'Saúde',
-  'Educação',
-  'Lazer',
-  'Vestuário',
-  'Financiamento',
-  'Outros',
-];
+import { formatCurrency, formatDate, CATEGORIES, getCategoryIcon, getCategoryColor } from '../utils/formatters';
+import ExpenseCard from '../components/ExpenseCard';
 
 const ExpensesScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -61,36 +49,7 @@ const ExpensesScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<any>(null);
   const [paymentDate, setPaymentDate] = useState<Date | null>(null);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  const getCategoryIcon = (category: string) => {
-    const icons: { [key: string]: string } = {
-      'Alimentação': 'food-fork-drink',
-      'Transporte': 'car',
-      'Moradia': 'home',
-      'Saúde': 'medical-bag',
-      'Educação': 'school',
-      'Lazer': 'gamepad-variant',
-      'Vestuário': 'tshirt-crew',
-      'Financiamento': 'credit-card',
-      'Outros': 'dots-horizontal',
-    };
-    return icons[category] || 'dots-horizontal';
-  };
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
 
   const filteredAndSortedExpenses = useMemo(() => {
     let filtered = state.expenses;
@@ -100,7 +59,7 @@ const ExpensesScreen: React.FC = () => {
       filtered = filtered.filter(expense => expense.category === selectedCategory);
     }
 
-    // Filtro por status de pagamento
+    // Filtro por status
     if (filterByStatus === 'paid') {
       filtered = filtered.filter(expense => expense.isPaid);
     } else if (filterByStatus === 'unpaid') {
@@ -111,8 +70,8 @@ const ExpensesScreen: React.FC = () => {
     if (searchQuery) {
       filtered = filtered.filter(expense =>
         expense.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        expense.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        expense.category.toLowerCase().includes(searchQuery.toLowerCase())
+        expense.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (expense.description && expense.description.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
@@ -131,7 +90,7 @@ const ExpensesScreen: React.FC = () => {
           comparison = a.title.localeCompare(b.title);
           break;
       }
-
+      
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
@@ -153,354 +112,300 @@ const ExpensesScreen: React.FC = () => {
     );
   };
 
-  const handleTogglePaid = (expenseId: string, expenseTitle: string, isPaid: boolean) => {
-    if (!isPaid) {
-      // Se está marcando como pago, mostrar modal para escolher data
+  const handleTogglePaid = async (expenseId: string, expenseTitle: string, isPaid: boolean) => {
+    if (isPaid) {
+      // Se não está pago, perguntar se quer marcar como pago
       setSelectedExpense({ id: expenseId, title: expenseTitle });
-      setPaymentDate(new Date());
       setModalVisible(true);
     } else {
-      // Se está desmarcando como pago, confirmar
+      // Se já está pago, perguntar se quer marcar como não pago
       Alert.alert(
-        'Marcar como Pendente',
-        `Deseja marcar "${expenseTitle}" como pendente?`,
+        'Alterar Status',
+        `Deseja marcar "${expenseTitle}" como não pago?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
-            text: 'Confirmar',
-            onPress: () => markAsPaid(expenseId, false),
+            text: 'Sim',
+            onPress: async () => {
+              try {
+                await markAsPaid(expenseId, false);
+              } catch (error) {
+                Alert.alert('Erro', error instanceof Error ? error.message : 'Erro ao alterar status');
+              }
+            },
           },
         ]
       );
     }
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (selectedExpense && paymentDate) {
-      markAsPaid(selectedExpense.id, true, paymentDate.toISOString());
-      setModalVisible(false);
-      setSelectedExpense(null);
-      setPaymentDate(null);
+      try {
+        await markAsPaid(selectedExpense.id, true, paymentDate.toISOString());
+        setModalVisible(false);
+        setSelectedExpense(null);
+        setPaymentDate(null);
+      } catch (error) {
+        Alert.alert('Erro', error instanceof Error ? error.message : 'Erro ao marcar como pago');
+      }
     }
   };
 
-  const renderExpenseItem = ({ item }: { item: any }) => (
-    <Card style={[
-      styles.expenseCard,
-      item.isPaid && styles.paidExpenseCard
-    ]}>
-      <Card.Content>
-        <View style={styles.expenseHeader}>
-          <View style={styles.expenseInfo}>
-            <Ionicons
-              name={getCategoryIcon(item.category) as any}
-              size={24}
-              color={item.isPaid ? "#4CAF50" : "#2196F3"}
-            />
-            <View style={styles.expenseDetails}>
-              <Title style={[
-                styles.expenseTitle,
-                item.isPaid && styles.paidExpenseTitle
-              ]}>
-                {item.title}
-              </Title>
-              <Paragraph style={styles.expenseCategory}>
-                {item.category}
-              </Paragraph>
-              <Paragraph style={styles.expenseDate}>
-                {formatDate(item.date)}
-              </Paragraph>
-              {item.isPaid && item.paidAt && (
-                <Paragraph style={styles.paidDate}>
-                  Pago em: {formatDate(item.paidAt)}
-                </Paragraph>
-              )}
-            </View>
-          </View>
-          <View style={styles.expenseAmount}>
-            <Title style={[
-              styles.amountText,
-              item.isPaid && styles.paidAmountText
-            ]}>
-              {formatCurrency(item.amount)}
-            </Title>
-            <View style={styles.expenseIcons}>
-              {item.isRecurring && (
-                <Ionicons name="refresh" size={16} color="#FF9800" />
-              )}
-              {item.isFinancing && (
-                <Ionicons name="trending-down" size={16} color="#9C27B0" />
-              )}
-              {item.isPaid && (
-                <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-              )}
-            </View>
-          </View>
-        </View>
+  const canMarkInstallmentAsPaid = (expense: any): { canMark: boolean; warning?: string } => {
+    if (!expense.installments || expense.installments <= 1 || !expense.currentInstallment || expense.currentInstallment <= 1) {
+      return { canMark: true };
+    }
 
-        {item.description && (
-          <Paragraph style={styles.expenseDescription}>
-            {item.description}
-          </Paragraph>
-        )}
+    // Verificar se a parcela anterior foi paga
+    const baseTitle = expense.title.replace(/\s*\(\d+\/\d+\)$/, '');
+    const previousInstallment = expense.currentInstallment - 1;
+    const previousExpense = state.expenses.find(e => 
+      e.title.replace(/\s*\(\d+\/\d+\)$/, '') === baseTitle &&
+      e.currentInstallment === previousInstallment &&
+      e.installments === expense.installments
+    );
+    
+    if (previousExpense && !previousExpense.isPaid) {
+      return { 
+        canMark: false, 
+        warning: `Parcela anterior (${previousInstallment}/${expense.installments}) não foi paga` 
+      };
+    }
+    
+    return { canMark: true };
+  };
 
-        <View style={styles.expenseTags}>
-          {item.isRecurring && (
-            <Chip icon="refresh" style={styles.tag}>
-              {item.recurrenceType === 'monthly' ? 'Mensal' :
-               item.recurrenceType === 'weekly' ? 'Semanal' : 'Anual'}
-            </Chip>
-          )}
-          {item.installments && (
-            <Chip icon="layers" style={styles.tag}>
-              {item.currentInstallment}/{item.installments}
-            </Chip>
-          )}
-          {item.isFinancing && (
-            <Chip icon="percent" style={styles.tag}>
-              {item.interestRate}% juros
-            </Chip>
-          )}
-          <Chip 
-            icon={item.isPaid ? "checkmark-circle" : "time"} 
-            style={[
-              styles.tag,
-              item.isPaid ? styles.paidTag : styles.unpaidTag
-            ]}
-          >
-            {item.isPaid ? 'Pago' : 'Pendente'}
-          </Chip>
-        </View>
-
-        <View style={styles.expenseActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleTogglePaid(item.id!, item.title, item.isPaid || false)}
-          >
-            <Ionicons 
-              name={item.isPaid ? "close-circle" : "checkmark-circle"} 
-              size={20} 
-              color={item.isPaid ? "#d32f2f" : "#4CAF50"} 
-            />
-            <Paragraph style={[
-              styles.actionText,
-              { color: item.isPaid ? "#d32f2f" : "#4CAF50" }
-            ]}>
-              {item.isPaid ? 'Marcar Não Pago' : 'Marcar Pago'}
-            </Paragraph>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('EditExpense' as never, { expense: item } as never)}
-          >
-            <Ionicons name="pencil" size={20} color="#2196F3" />
-            <Paragraph style={styles.actionText}>Editar</Paragraph>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleDeleteExpense(item.id!, item.title)}
-          >
-            <Ionicons name="trash" size={20} color="#d32f2f" />
-            <Paragraph style={[styles.actionText, { color: '#d32f2f' }]}>
-              Excluir
-            </Paragraph>
-          </TouchableOpacity>
-        </View>
-      </Card.Content>
-    </Card>
-  );
+  const renderExpenseItem = ({ item }: { item: any }) => {
+    const installmentCheck = canMarkInstallmentAsPaid(item);
+    
+    return (
+      <ExpenseCard
+        expense={item}
+        onEdit={() => navigation.navigate('EditExpense' as never, { expense: item } as any)}
+        onDelete={() => handleDeleteExpense(item.id!, item.title)}
+        onTogglePaid={() => handleTogglePaid(item.id!, item.title, item.isPaid || false)}
+        variant="default"
+        canMarkAsPaid={installmentCheck.canMark}
+        installmentWarning={installmentCheck.warning || undefined}
+      />
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="list-outline" size={64} color="#ccc" />
+      <Ionicons name="receipt-outline" size={64} color="#ccc" />
       <Title style={styles.emptyTitle}>Nenhuma despesa encontrada</Title>
       <Paragraph style={styles.emptyText}>
-        {searchQuery || selectedCategory !== 'Todas'
+        {searchQuery || selectedCategory !== 'Todas' || filterByStatus !== 'all'
           ? 'Tente ajustar os filtros de busca'
           : 'Adicione sua primeira despesa para começar'}
       </Paragraph>
-      {!searchQuery && selectedCategory === 'Todas' && (
-        <TouchableOpacity
-          style={styles.addFirstButton}
-          onPress={() => navigation.navigate('AddExpense' as never)}
-        >
-          <Ionicons name="add" size={24} color="white" />
-          <Paragraph style={styles.addFirstButtonText}>
-            Adicionar Despesa
-          </Paragraph>
-        </TouchableOpacity>
-      )}
     </View>
   );
+
+  const renderActiveFilters = () => {
+    const activeFilters = [];
+    
+    if (selectedCategory !== 'Todas') {
+      activeFilters.push(selectedCategory);
+    }
+    if (filterByStatus !== 'all') {
+      activeFilters.push(filterByStatus === 'paid' ? 'Pagas' : 'Pendentes');
+    }
+    if (searchQuery) {
+      activeFilters.push(`"${searchQuery}"`);
+    }
+    
+    return activeFilters;
+  };
+
+  const renderFiltersSummary = () => {
+    const activeFilters = renderActiveFilters();
+    
+    return (
+      <Card style={styles.filtersCard}>
+        <Card.Content>
+          <View style={styles.filtersSummary}>
+            <View style={styles.filtersSummaryContent}>
+              <Ionicons name="funnel" size={20} color="#2196F3" />
+              <Text style={styles.filtersSummaryText}>
+                {activeFilters.length > 0 
+                  ? `Filtros: ${activeFilters.join(', ')}`
+                  : 'Todos os filtros'
+                }
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.filterActionButton}
+              onPress={() => setShowFiltersModal(true)}
+            >
+              <Ionicons name="options" size={20} color="#2196F3" />
+            </TouchableOpacity>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
 
   if (state.loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
-        <Paragraph style={styles.loadingText}>Carregando despesas...</Paragraph>
+        <Paragraph style={styles.loadingText}>Carregando...</Paragraph>
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header com busca e filtros */}
       <View style={styles.header}>
         <Title style={styles.headerTitle}>Despesas</Title>
-        <TouchableOpacity
-          style={styles.masterRecordsButton}
-          onPress={() => navigation.navigate('MasterRecords' as never)}
-        >
-          <Ionicons name="layers" size={20} color="white" />
-          <Paragraph style={styles.masterRecordsText}>Registros Mestres</Paragraph>
-        </TouchableOpacity>
-        <Searchbar
-          placeholder="Buscar despesas..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchbar}
-        />
-
-        <View style={styles.filtersContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {CATEGORIES.map((cat) => (
-              <Chip
-                key={cat}
-                selected={selectedCategory === cat}
-                onPress={() => setSelectedCategory(cat)}
-                style={styles.filterChip}
-                mode={selectedCategory === cat ? 'flat' : 'outlined'}
-              >
-                {cat}
-              </Chip>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.statusFiltersContainer}>
-          <Chip
-            selected={filterByStatus === 'all'}
-            onPress={() => setFilterByStatus('all')}
-            style={styles.statusFilterChip}
-            mode={filterByStatus === 'all' ? 'flat' : 'outlined'}
-            icon="format-list-bulleted"
-          >
-            Todas
-          </Chip>
-          <Chip
-            selected={filterByStatus === 'unpaid'}
-            onPress={() => setFilterByStatus('unpaid')}
-            style={styles.statusFilterChip}
-            mode={filterByStatus === 'unpaid' ? 'flat' : 'outlined'}
-            icon="clock-outline"
-          >
-            Pendentes
-          </Chip>
-          <Chip
-            selected={filterByStatus === 'paid'}
-            onPress={() => setFilterByStatus('paid')}
-            style={styles.statusFilterChip}
-            mode={filterByStatus === 'paid' ? 'flat' : 'outlined'}
-            icon="check-circle"
-          >
-            Pagas
-          </Chip>
-        </View>
-
-        <View style={styles.sortContainer}>
-          <Menu
-            visible={menuVisible}
-            onDismiss={() => setMenuVisible(false)}
-            anchor={
-              <TouchableOpacity
-                style={styles.sortButton}
-                onPress={() => setMenuVisible(true)}
-              >
-                <Ionicons name="funnel" size={20} color="#2196F3" />
-                <Paragraph style={styles.sortButtonText}>
-                  Ordenar: {sortBy === 'date' ? 'Data' : sortBy === 'amount' ? 'Valor' : 'Título'}
-                </Paragraph>
-                <Ionicons
-                  name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'}
-                  size={16}
-                  color="#2196F3"
-                />
-              </TouchableOpacity>
-            }
-          >
-            <Menu.Item
-              onPress={() => {
-                setSortBy('date');
-                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                setMenuVisible(false);
-              }}
-              title="Por Data"
-              leadingIcon="calendar"
-            />
-            <Menu.Item
-              onPress={() => {
-                setSortBy('amount');
-                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                setMenuVisible(false);
-              }}
-              title="Por Valor"
-              leadingIcon="currency-brl"
-            />
-            <Menu.Item
-              onPress={() => {
-                setSortBy('title');
-                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                setMenuVisible(false);
-              }}
-              title="Por Título"
-              leadingIcon="text"
-            />
-          </Menu>
-        </View>
+        <Paragraph style={styles.headerSubtitle}>
+          Gerencie todas as suas despesas
+        </Paragraph>
       </View>
 
-      {/* Lista de despesas */}
+      <Searchbar
+        placeholder="Buscar despesas..."
+        onChangeText={setSearchQuery}
+        value={searchQuery}
+        style={styles.searchbar}
+      />
+
+      {renderFiltersSummary()}
+
       <FlatList
         data={filteredAndSortedExpenses}
         renderItem={renderExpenseItem}
         keyExtractor={(item) => item.id!}
-        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContainer}
         ListEmptyComponent={renderEmptyState}
       />
 
-      {/* FAB para adicionar despesa */}
-      <FAB
-        style={styles.fab}
-        icon="plus"
-        onPress={() => navigation.navigate('AddExpense' as never)}
-        color="white"
-      />
+      {/* Modal de filtros avançados */}
+      <Portal>
+        <Dialog visible={showFiltersModal} onDismiss={() => setShowFiltersModal(false)}>
+          <Dialog.Title>Filtros Avançados</Dialog.Title>
+          <Dialog.Content>
+            <View style={styles.modalFilterSection}>
+              <Text style={styles.modalFilterLabel}>Categoria</Text>
+              <ScrollView style={styles.categoryModalList}>
+                <TouchableOpacity
+                  style={styles.categoryModalItem}
+                  onPress={() => {
+                    setSelectedCategory('Todas');
+                    setShowFiltersModal(false);
+                  }}
+                >
+                  <Ionicons name="list" size={24} color="#666" />
+                  <Text style={styles.categoryModalText}>Todas as Categorias</Text>
+                  {selectedCategory === 'Todas' && (
+                    <Ionicons name="checkmark" size={20} color="#2196F3" />
+                  )}
+                </TouchableOpacity>
+                
+                {CATEGORIES.map(category => (
+                  <TouchableOpacity
+                    key={category}
+                    style={styles.categoryModalItem}
+                    onPress={() => {
+                      setSelectedCategory(category);
+                      setShowFiltersModal(false);
+                    }}
+                  >
+                    <Ionicons 
+                      name={getCategoryIcon(category) as any} 
+                      size={24} 
+                      color={getCategoryColor(category)} 
+                    />
+                    <Text style={styles.categoryModalText}>{category}</Text>
+                    {selectedCategory === category && (
+                      <Ionicons name="checkmark" size={20} color="#2196F3" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
 
-      {/* Modal para escolher data de pagamento */}
+            <View style={styles.modalFilterSection}>
+              <Text style={styles.modalFilterLabel}>Status</Text>
+              <SegmentedButtons
+                value={filterByStatus}
+                onValueChange={setFilterByStatus as any}
+                buttons={[
+                  { value: 'all', label: 'Todas' },
+                  { value: 'unpaid', label: 'Pendentes' },
+                  { value: 'paid', label: 'Pagas' },
+                ]}
+                style={styles.modalSegmentedButtons}
+              />
+            </View>
+
+            <View style={styles.modalFilterSection}>
+              <Text style={styles.modalFilterLabel}>Ordenação</Text>
+              <SegmentedButtons
+                value={sortBy}
+                onValueChange={setSortBy as any}
+                buttons={[
+                  { value: 'date', label: 'Data' },
+                  { value: 'amount', label: 'Valor' },
+                  { value: 'title', label: 'Nome' },
+                ]}
+                style={styles.modalSegmentedButtons}
+              />
+              <View style={styles.modalSortOrder}>
+                <Text style={styles.modalFilterLabel}>Ordem:</Text>
+                <TouchableOpacity
+                  style={styles.sortOrderButton}
+                  onPress={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                >
+                  <Ionicons 
+                    name={sortOrder === 'desc' ? 'arrow-down' : 'arrow-up'} 
+                    size={20} 
+                    color="#2196F3" 
+                  />
+                  <Text style={styles.sortOrderText}>
+                    {sortOrder === 'desc' ? 'Decrescente' : 'Crescente'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => {
+              setSelectedCategory('Todas');
+              setFilterByStatus('all');
+              setSortBy('date');
+              setSortOrder('desc');
+              setSearchQuery('');
+            }}>Limpar</Button>
+            <Button onPress={() => setShowFiltersModal(false)}>Aplicar</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Modal de confirmação de pagamento */}
       <Portal>
         <Dialog visible={modalVisible} onDismiss={() => setModalVisible(false)}>
-          <Dialog.Title>Data do Pagamento</Dialog.Title>
+          <Dialog.Title>Confirmar Pagamento</Dialog.Title>
           <Dialog.Content>
-            <Text style={styles.modalText}>
-              Quando você pagou "{selectedExpense?.title}"?
-            </Text>
-            {paymentDate && (
-              <View style={styles.datePickerContainer}>
-                <DateTimePicker
-                  value={paymentDate}
-                  mode="date"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    if (selectedDate) {
-                      setPaymentDate(selectedDate);
-                    }
-                  }}
-                />
-              </View>
-            )}
+            <Paragraph>
+              Deseja marcar "{selectedExpense?.title}" como pago?
+            </Paragraph>
+            <TextInput
+              label="Data do pagamento (opcional)"
+              value={paymentDate ? formatDate(paymentDate.toISOString()) : ''}
+              mode="outlined"
+              style={styles.dateInput}
+              right={<TextInput.Icon icon="calendar" />}
+              onPressIn={() => {
+                // Abrir date picker
+                const now = new Date();
+                setPaymentDate(now);
+              }}
+            />
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setModalVisible(false)}>Cancelar</Button>
@@ -508,6 +413,12 @@ const ExpensesScreen: React.FC = () => {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        onPress={() => navigation.navigate('AddExpense' as never)}
+      />
     </SafeAreaView>
   );
 };
@@ -528,195 +439,72 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
-    backgroundColor: 'white',
     padding: 16,
-    elevation: 4,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    paddingTop: 50,
   },
   headerTitle: {
+    color: '#fff',
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 16,
   },
-  masterRecordsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  masterRecordsText: {
-    color: 'white',
-    marginLeft: 8,
+  headerSubtitle: {
+    color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    marginTop: 4,
   },
   searchbar: {
     marginBottom: 16,
   },
-  filtersContainer: {
+  filtersCard: {
     marginBottom: 16,
+    backgroundColor: '#fff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  filterChip: {
-    marginRight: 8,
-  },
-  statusFiltersContainer: {
+  filtersSummary: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    marginBottom: 16,
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  statusFilterChip: {
-    backgroundColor: '#e0e0e0',
-    borderColor: '#bdbdbd',
-    borderWidth: 1,
-  },
-  sortContainer: {
-    alignItems: 'flex-end',
-  },
-  sortButton: {
+  filtersSummaryContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
   },
-  sortButtonText: {
-    marginHorizontal: 8,
-    color: '#2196F3',
+  filtersSummaryText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  filterActionButton: {
+    marginLeft: 10,
   },
   listContainer: {
     padding: 16,
   },
-  expenseCard: {
-    marginBottom: 16,
-    elevation: 2,
+  categoryModalList: {
+    maxHeight: 200,
   },
-  paidExpenseCard: {
-    borderLeftWidth: 5,
-    borderLeftColor: '#4CAF50',
-  },
-  expenseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  expenseInfo: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  expenseDetails: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  expenseTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  paidExpenseTitle: {
-    textDecorationLine: 'line-through',
-    color: '#999',
-  },
-  expenseCategory: {
-    fontSize: 14,
-    color: '#666',
-  },
-  expenseDate: {
-    fontSize: 12,
-    color: '#999',
-  },
-  paidDate: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
-  },
-  expenseAmount: {
-    alignItems: 'flex-end',
-  },
-  amountText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#d32f2f',
-  },
-  paidAmountText: {
-    color: '#4CAF50',
-  },
-  expenseIcons: {
-    flexDirection: 'row',
-    marginTop: 4,
-  },
-  expenseDescription: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
-  },
-  expenseTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8,
-  },
-  tag: {
-    marginRight: 8,
-  },
-  paidTag: {
-    backgroundColor: '#e8f5e9',
-    borderColor: '#4CAF50',
-    borderWidth: 1,
-  },
-  unpaidTag: {
-    backgroundColor: '#ffebee',
-    borderColor: '#d32f2f',
-    borderWidth: 1,
-  },
-  expenseActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  actionButton: {
+  categoryModalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-  },
-  actionText: {
-    marginLeft: 4,
-    fontSize: 14,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    color: '#666',
-    marginTop: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  addFirstButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  addFirstButtonText: {
-    color: 'white',
-    marginLeft: 8,
+  categoryModalText: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: 'bold',
+    marginLeft: 12,
+    color: '#333',
+  },
+  dateInput: {
+    marginTop: 16,
   },
   fab: {
     position: 'absolute',
@@ -727,14 +515,49 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 1000,
   },
-  modalText: {
-    fontSize: 16,
-    marginBottom: 16,
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
-  datePickerContainer: {
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 24,
+  },
+  modalFilterSection: {
+    marginBottom: 16,
+  },
+  modalFilterLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  modalSegmentedButtons: {
+    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  modalSortOrder: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 8,
+  },
+  sortOrderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  sortOrderText: {
+    fontSize: 14,
+    color: '#2196F3',
+    marginLeft: 5,
   },
 });
 
