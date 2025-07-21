@@ -4,6 +4,8 @@ import { Transaction } from '../../types';
 import { MoneyText } from '../common/MoneyText';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { SPACING, FONT_SIZES, ICON_SIZES, moderateScale } from '../../styles/responsive';
+import { getCategoryIcon } from '../../utils/formatters';
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -32,21 +34,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
     });
   };
 
-  const getCategoryIcon = (category: string) => {
-    const iconMap: { [key: string]: string } = {
-      'Alimentação': 'restaurant',
-      'Transporte': 'car',
-      'Moradia': 'home',
-      'Saúde': 'medical',
-      'Educação': 'school',
-      'Lazer': 'game-controller',
-      'Compras': 'bag',
-      'Salário': 'wallet',
-      'Freelance': 'laptop',
-      'Investimentos': 'trending-up',
-    };
-    return iconMap[category] || 'ellipse';
-  };
+  // Função getCategoryIcon removida - agora usa a importada de formatters.ts
 
   const getPaymentMethodIcon = (method?: string) => {
     const iconMap: { [key: string]: string } = {
@@ -75,7 +63,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
         ]}>
           <Ionicons 
             name={getCategoryIcon(transaction.category) as any} 
-            size={20} 
+            size={ICON_SIZES.md} 
             color={transaction.type === 'income' ? colors.success : colors.text} 
           />
         </View>
@@ -85,7 +73,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
             {transaction.description}
           </Text>
           <View style={styles.metadata}>
-            <Text style={styles.category}>
+            <Text style={styles.category} numberOfLines={1}>
               {transaction.category}
             </Text>
             {transaction.installmentNumber && (
@@ -100,7 +88,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           <View style={styles.paymentInfo}>
             <Ionicons 
               name={getPaymentMethodIcon(transaction.paymentMethod) as any} 
-              size={12} 
+              size={ICON_SIZES.xs} 
               color={colors.textSecondary} 
             />
             <Text style={styles.paymentMethod}>
@@ -133,15 +121,17 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   );
 };
 
+const iconContainerSize = moderateScale(40);
+
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,
-    marginHorizontal: 16,
-    marginVertical: 4,
-    padding: 16,
-    borderRadius: 12,
+    marginHorizontal: SPACING.md,
+    marginVertical: SPACING.xs,
+    padding: SPACING.md,
+    borderRadius: moderateScale(12),
     borderLeftWidth: 4,
     borderLeftColor: colors.danger,
     shadowColor: '#000',
@@ -160,14 +150,15 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    minWidth: 0, // Permite quebra de texto
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: iconContainerSize,
+    height: iconContainerSize,
+    borderRadius: iconContainerSize / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: SPACING.sm,
   },
   incomeIcon: {
     backgroundColor: colors.successLight,
@@ -177,39 +168,43 @@ const styles = StyleSheet.create({
   },
   details: {
     flex: 1,
+    minWidth: 0, // Permite quebra de texto
   },
   description: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.lg,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs / 2,
   },
   metadata: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: SPACING.xs / 2,
   },
   category: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     color: colors.textSecondary,
+    flexShrink: 1, // Permite compressão
   },
   separator: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     color: colors.textSecondary,
-    marginHorizontal: 6,
+    marginHorizontal: SPACING.xs / 2,
+    flexShrink: 0, // Não comprime o separador
   },
   installment: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     color: colors.primary,
     fontWeight: '500',
+    flexShrink: 1, // Permite compressão
   },
   paymentInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: SPACING.xs / 2,
   },
   paymentMethod: {
-    fontSize: 11,
+    fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
   },
   rightContent: {

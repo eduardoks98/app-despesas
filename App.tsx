@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screens
 import { HomeScreen } from './src/screens/Home/HomeScreen';
@@ -17,6 +18,9 @@ import { SelectTransactionTypeScreen } from './src/screens/SelectTransactionType
 import { EditTransactionScreen } from './src/screens/EditTransaction/EditTransactionScreen';
 import { EditInstallmentScreen } from './src/screens/EditInstallment/EditInstallmentScreen';
 import { InstallmentDetailScreen } from './src/screens/InstallmentDetail/InstallmentDetailScreen';
+import { InstallmentsScreen } from './src/screens/Installments/InstallmentsScreen';
+import { SubscriptionsScreen } from './src/screens/Subscriptions/SubscriptionsScreen';
+import { TransactionsScreen } from './src/screens/Transactions/TransactionsScreen';
 import { SubscriptionDetailScreen } from './src/screens/SubscriptionDetail/SubscriptionDetailScreen';
 import { ExportScreen } from './src/screens/Export/ExportScreen';
 import { SplashScreen } from './src/screens/Splash/SplashScreen';
@@ -32,6 +36,7 @@ const Stack = createStackNavigator();
 
 function TabNavigator() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   
   return (
     <Tab.Navigator
@@ -67,9 +72,9 @@ function TabNavigator() {
           },
           shadowOpacity: 0.1,
           shadowRadius: 4,
-          height: 70,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 5,
+          paddingTop: 5,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -114,9 +119,10 @@ function AppNavigator() {
   const { isDarkMode } = useTheme();
   
   return (
-    <NavigationContainer>
-      <StatusBar style={isDarkMode ? "light" : "dark"} />
-      <Stack.Navigator initialRouteName="Splash">
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar style={isDarkMode ? "light" : "dark"} />
+        <Stack.Navigator initialRouteName="Splash">
         <Stack.Screen 
           name="Splash" 
           component={SplashScreen} 
@@ -187,6 +193,33 @@ function AppNavigator() {
           }}
         />
         <Stack.Screen 
+          name="Installments" 
+          component={InstallmentsScreen}
+          options={{ 
+            title: 'Parcelamentos',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
+          name="Subscriptions" 
+          component={SubscriptionsScreen}
+          options={{ 
+            title: 'Assinaturas',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
+          name="Transactions" 
+          component={TransactionsScreen}
+          options={{ 
+            title: 'Transações',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
           name="InstallmentDetail" 
           component={InstallmentDetailScreen}
           options={{ 
@@ -211,8 +244,9 @@ function AppNavigator() {
             headerShown: false
           }}
         />
-      </Stack.Navigator>
-    </NavigationContainer>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 

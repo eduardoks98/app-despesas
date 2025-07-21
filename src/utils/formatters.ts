@@ -68,6 +68,13 @@ export const getCategoryIcon = (category: string) => {
     'Financiamento': 'card',
     'Serviços': 'construct',
     'Outros': 'ellipsis-horizontal',
+    // Categorias adicionais encontradas no código
+    'Compras': 'bag',
+    'Salário': 'wallet',
+    'Freelance': 'laptop',
+    'Investimentos': 'trending-up',
+    'Streaming': 'play-circle',
+    'Assinaturas': 'repeat',
   };
   return icons[category] || 'ellipsis-horizontal';
 };

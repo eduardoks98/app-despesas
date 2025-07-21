@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { SPACING, FONT_SIZES, LAYOUT } from '../../styles/responsive';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
 import { MoneyText } from '../../components/common/MoneyText';
@@ -68,9 +69,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       const activeSubscriptions = subscriptionsData.filter(sub => sub.status === 'active');
       const subscriptionTotal = activeSubscriptions.reduce((sum, sub) => sum + sub.amount, 0);
 
+      // Calcular despesas totais do mês (transações + parcelamentos + assinaturas)
+      const totalMonthlyExpenses = expenses + monthlyInstallmentValue + subscriptionTotal;
+      
       setMonthlyIncome(income);
-      setMonthlyExpenses(expenses);
-      setBalance(income - expenses);
+      setMonthlyExpenses(totalMonthlyExpenses);
+      setBalance(income - totalMonthlyExpenses);
       setActiveInstallments(active.slice(0, 3)); // Mostrar apenas 3
       setUpcomingInstallments(monthlyInstallmentValue);
       setSubscriptions(activeSubscriptions.slice(0, 3)); // Mostrar apenas 3
@@ -82,91 +86,99 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <Container>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header com Saldo */}
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Olá! 👋</Text>
-          <Text style={styles.balanceLabel}>Saldo disponível</Text>
-          <MoneyText value={balance} size="xlarge" showSign={false} style={styles.balanceValue} />
-        </View>
+      <FlatList
+        data={[{ key: 'content' }]}
+        renderItem={() => (
+          <>
+            {/* Header com Saldo */}
+            <View style={styles.header}>
+              <Text style={styles.greeting}>Olá! 👋</Text>
+              <Text style={styles.balanceLabel}>Saldo disponível</Text>
+              <MoneyText value={balance} size="xlarge" showSign={false} style={styles.balanceValue} />
+            </View>
 
-        {/* Cards de Resumo */}
-        <View style={styles.summaryCards}>
-          <Card style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Receitas</Text>
-            <MoneyText 
-              value={monthlyIncome} 
-              size="large" 
-              showSign={false}
-              style={styles.incomeText}
-            />
-          </Card>
+            {/* Cards de Resumo */}
+            <View style={styles.summaryCards}>
+              <Card style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Receitas</Text>
+                <MoneyText 
+                  value={monthlyIncome} 
+                  size="medium" 
+                  showSign={false}
+                  style={styles.incomeText}
+                />
+              </Card>
 
-          <Card style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Despesas</Text>
-            <MoneyText 
-              value={monthlyExpenses} 
-              size="large" 
-              showSign={false}
-            />
-          </Card>
-        </View>
+              <Card style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Despesas</Text>
+                <MoneyText 
+                  value={monthlyExpenses} 
+                  size="medium" 
+                  showSign={false}
+                  style={styles.expenseText}
+                />
+              </Card>
+            </View>
 
-        {/* Card de Parcelamentos */}
-        <Card style={styles.installmentSummary}>
-          <View style={styles.installmentHeader}>
-            <Text style={styles.sectionTitle}>Parcelamentos do Mês</Text>
-            <Text style={styles.installmentTotal}>
-              R$ {upcomingInstallments.toFixed(2)}
-            </Text>
-          </View>
-          <Text style={styles.installmentInfo}>
-            {activeInstallments.length} parcelamentos ativos
-          </Text>
-        </Card>
-
-        {/* Card de Assinaturas */}
-        {subscriptions.length > 0 && (
-          <Card style={styles.subscriptionSummary}>
-            <View style={styles.installmentHeader}>
-              <Text style={styles.sectionTitle}>Assinaturas Mensais</Text>
-              <Text style={styles.installmentTotal}>
-                R$ {monthlySubscriptionTotal.toFixed(2)}
+            {/* Card de Parcelamentos */}
+            <Card style={styles.installmentSummary}>
+              <View style={styles.installmentHeader}>
+                <Text style={styles.sectionTitle}>Parcelamentos do Mês</Text>
+                <Text style={styles.installmentTotal}>
+                  R$ {upcomingInstallments.toFixed(2)}
+                </Text>
+              </View>
+              <Text style={styles.installmentInfo}>
+                {activeInstallments.length} parcelamentos ativos
               </Text>
-            </View>
-            <Text style={styles.installmentInfo}>
-              {subscriptions.length} assinaturas ativas
-            </Text>
-          </Card>
+            </Card>
+
+            {/* Card de Assinaturas */}
+            {subscriptions.length > 0 && (
+              <Card style={styles.subscriptionSummary}>
+                <View style={styles.installmentHeader}>
+                  <Text style={styles.sectionTitle}>Assinaturas Mensais</Text>
+                  <Text style={styles.installmentTotal}>
+                    R$ {monthlySubscriptionTotal.toFixed(2)}
+                  </Text>
+                </View>
+                <Text style={styles.installmentInfo}>
+                  {subscriptions.length} assinaturas ativas
+                </Text>
+              </Card>
+            )}
+
+            {/* Lista de Parcelamentos Ativos */}
+            {activeInstallments.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Parcelamentos Ativos</Text>
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('Installments')}
+                  >
+                    <Text style={styles.seeAll}>Ver todos</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {activeInstallments.map(installment => (
+                  <InstallmentCard
+                    key={installment.id}
+                    installment={installment}
+                    onPress={() => navigation.navigate('InstallmentDetail', { 
+                      installmentId: installment.id 
+                    })}
+                  />
+                ))}
+              </View>
+            )}
+
+            {/* Adicionar espaço extra para o tab bar */}
+            <View style={styles.bottomSpacer} />
+          </>
         )}
-
-        {/* Lista de Parcelamentos Ativos */}
-        {activeInstallments.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Parcelamentos Ativos</Text>
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('Installments')}
-              >
-                <Text style={styles.seeAll}>Ver todos</Text>
-              </TouchableOpacity>
-            </View>
-
-            {activeInstallments.map(installment => (
-              <InstallmentCard
-                key={installment.id}
-                installment={installment}
-                onPress={() => navigation.navigate('InstallmentDetail', { 
-                  installmentId: installment.id 
-                })}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Adicionar espaço extra para o tab bar */}
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+      />
 
       <FAB onPress={() => navigation.navigate('SelectTransactionType')} />
     </Container>
@@ -202,63 +214,79 @@ const styles = StyleSheet.create({
   summaryCards: {
     flexDirection: 'row',
     marginTop: -20,
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.sm,
   },
   summaryCard: {
     flex: 1,
     alignItems: 'center',
+    minWidth: 0, // Permite que os cards se comprimam se necessário
+    paddingVertical: SPACING.md, // Espaço vertical reduzido
+    paddingHorizontal: SPACING.xs, // Espaço horizontal mínimo
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
-    marginBottom: 8,
+    marginBottom: SPACING.xs / 2,
+    textAlign: 'center',
   },
   incomeText: {
     color: colors.success,
+    textAlign: 'center',
+    flexShrink: 1, // Permite compressão do texto
+  },
+  expenseText: {
+    color: colors.danger,
+    textAlign: 'center',
+    flexShrink: 1, // Permite compressão do texto
   },
   installmentSummary: {
-    marginTop: 16,
+    marginTop: SPACING.md,
     backgroundColor: colors.warningLight,
   },
   subscriptionSummary: {
-    marginTop: 16,
+    marginTop: SPACING.md,
     backgroundColor: colors.infoLight,
   },
   installmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
+    flexWrap: 'wrap', // Permite quebra se necessário
   },
   installmentTotal: {
-    fontSize: 18,
+    fontSize: FONT_SIZES.xl,
     fontWeight: 'bold',
     color: colors.warning,
+    flexShrink: 0, // Não comprime o valor
   },
   installmentInfo: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     color: colors.textSecondary,
   },
   section: {
-    marginTop: 24,
+    marginTop: SPACING.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    flexWrap: 'wrap', // Permite quebra se necessário
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: FONT_SIZES.xl,
     fontWeight: '600',
     color: colors.text,
+    flexShrink: 1, // Permite compressão do título
   },
   seeAll: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.md,
     color: colors.primary,
     fontWeight: '500',
+    flexShrink: 0, // Não comprime o botão
   },
   bottomSpacer: {
     height: 100,

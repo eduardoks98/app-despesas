@@ -154,18 +154,7 @@ export const SubscriptionsScreen: React.FC<SubscriptionsScreenProps> = ({ naviga
         emptyMessage="Adicione suas assinaturas mensais para acompanhar seus gastos recorrentes!"
         emptyIcon="card"
       >
-        <ScrollView 
-          style={styles.container}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
-            />
-          }
-        >
+        <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Assinaturas</Text>
@@ -206,19 +195,26 @@ export const SubscriptionsScreen: React.FC<SubscriptionsScreenProps> = ({ naviga
             </Card>
           )}
 
-          {/* Assinaturas Ativas */}
-          {renderSubscriptionSection('Assinaturas Ativas', activeSubscriptions, false)}
-
-          {/* Assinaturas Pausadas */}
-          {renderSubscriptionSection('Assinaturas Pausadas', pausedSubscriptions, false)}
-
-          {/* Todas as Assinaturas (se não há seções específicas) */}
-          {activeSubscriptions.length === 0 && pausedSubscriptions.length === 0 && subscriptions.length > 0 && (
-            renderSubscriptionSection('Todas as Assinaturas', subscriptions)
-          )}
-
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
+          <FlatList
+            data={[
+              { key: 'active', render: () => renderSubscriptionSection('Assinaturas Ativas', activeSubscriptions, false) },
+              { key: 'paused', render: () => renderSubscriptionSection('Assinaturas Pausadas', pausedSubscriptions, false) },
+              { key: 'all', render: () => (activeSubscriptions.length === 0 && pausedSubscriptions.length === 0 && subscriptions.length > 0) ? renderSubscriptionSection('Todas as Assinaturas', subscriptions) : null }
+            ]}
+            renderItem={({ item }) => item.render()}
+            keyExtractor={(item) => item.key}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+              />
+            }
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
 
         {/* FAB para adicionar */}
         <FAB
@@ -321,8 +317,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
   },
-  bottomSpacer: {
-    height: 100,
+  listContent: {
+    paddingBottom: 100,
   },
   fab: {
     position: 'absolute',

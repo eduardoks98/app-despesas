@@ -1,5 +1,6 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet, StatusBar } from 'react-native';
+import { View, StyleSheet, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../hooks/useColors';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -14,15 +15,23 @@ export const Container: React.FC<ContainerProps> = ({
 }) => {
   const colors = useColors();
   const { isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
   
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: backgroundColor || colors.background }]}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: backgroundColor || colors.background,
+        paddingTop: insets.top,
+      }
+    ]}>
       <StatusBar 
         barStyle={isDarkMode ? "light-content" : "dark-content"} 
         backgroundColor={colors.background} 
+        translucent={true}
       />
       {children}
-    </SafeAreaView>
+    </View>
   );
 };
 

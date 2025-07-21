@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, StyleSheet, TextStyle } from 'react-native';
 import { colors } from '../../styles/colors';
+import { FONT_SIZES } from '../../styles/responsive';
 
 interface MoneyTextProps {
   value: number;
@@ -27,12 +28,17 @@ export const MoneyText: React.FC<MoneyTextProps> = ({
   const displayValue = hideValue ? 'R$ ••••••' : `${sign}${formattedValue}`;
 
   return (
-    <Text style={[
-      styles.text,
-      styles[size],
-      isPositive ? styles.positive : styles.negative,
-      style
-    ]}>
+    <Text 
+      style={[
+        styles.text,
+        styles[size],
+        isPositive ? styles.positive : styles.negative,
+        style
+      ]}
+      numberOfLines={1}
+      adjustsFontSizeToFit={true}
+      minimumFontScale={0.5}
+    >
       {displayValue}
     </Text>
   );
@@ -41,23 +47,24 @@ export const MoneyText: React.FC<MoneyTextProps> = ({
 const styles = StyleSheet.create({
   text: {
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   small: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.md,
   },
   medium: {
-    fontSize: 18,
+    fontSize: FONT_SIZES.xl,
   },
   large: {
-    fontSize: 24,
+    fontSize: FONT_SIZES.xxl,
   },
   xlarge: {
-    fontSize: 32,
+    fontSize: FONT_SIZES.title,
   },
   positive: {
     color: colors.success,
   },
   negative: {
-    color: colors.text,
+    color: colors.danger,
   },
 });

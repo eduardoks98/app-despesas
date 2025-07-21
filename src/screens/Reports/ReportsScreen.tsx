@@ -577,7 +577,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
             </View>
             
             <View style={styles.categoryValue}>
-              <MoneyText value={category.amount} size="small" showSign={false} />
+              <MoneyText value={-category.amount} size="small" showSign={false} />
               <Text style={styles.categoryPercentage}>
                 {category.percentage.toFixed(1)}%
               </Text>
@@ -734,7 +734,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Despesas</Text>
               <MoneyText 
-                value={currentPeriodData.expenses} 
+                value={-currentPeriodData.expenses} 
                 size="medium"
                 showSign={false}
               />
@@ -758,7 +758,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
                 <View style={styles.breakdownItem}>
                   <Text style={styles.breakdownLabel}>Parcelamentos</Text>
                   <MoneyText 
-                    value={currentPeriodData.installmentExpenses} 
+                    value={-currentPeriodData.installmentExpenses} 
                     size="small"
                     showSign={false}
                   />
@@ -769,7 +769,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
                 <View style={styles.breakdownItem}>
                   <Text style={styles.breakdownLabel}>Assinaturas</Text>
                   <MoneyText 
-                    value={currentPeriodData.subscriptionExpenses} 
+                    value={-currentPeriodData.subscriptionExpenses} 
                     size="small"
                     showSign={false}
                   />
@@ -826,7 +826,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
               
               <View style={styles.statItem}>
                 <MoneyText 
-                  value={installments
+                  value={-installments
                     .filter(i => i.status === 'active')
                     .reduce((sum, i) => sum + i.installmentValue, 0)
                   }
@@ -865,7 +865,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
               
               <View style={styles.statItem}>
                 <MoneyText 
-                  value={subscriptions
+                  value={-subscriptions
                     .filter(s => s.status === 'active')
                     .reduce((sum, s) => sum + s.amount, 0)
                   }

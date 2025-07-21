@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Alert
+  Alert,
+  FlatList
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
@@ -143,49 +143,9 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
     return RECORD_TYPES.find(type => type.key === selectedType)!;
   };
 
-  const getTotalAmount = () => {
-    switch (selectedType) {
-      case 'transactions':
-        return transactions.reduce((sum, t) => sum + t.amount, 0);
-      case 'installments':
-        return installments
-          .filter(i => i.status === 'active')
-          .reduce((sum, i) => sum + i.installmentValue, 0);
-      case 'subscriptions':
-        return subscriptions
-          .filter(s => s.status === 'active')
-          .reduce((sum, s) => sum + s.amount, 0);
-      default:
-        return 0;
-    }
-  };
-
-  const getCount = () => {
-    switch (selectedType) {
-      case 'transactions':
-        return transactions.length;
-      case 'installments':
-        return installments.filter(i => i.status === 'active').length;
-      case 'subscriptions':
-        return subscriptions.filter(s => s.status === 'active').length;
-      default:
-        return 0;
-    }
-  };
+  // Funções getTotalAmount e getCount removidas - não são mais utilizadas
 
   const renderTransactions = () => {
-    if (transactions.length === 0) {
-      return (
-        <Card style={styles.emptyCard}>
-          <Ionicons name="card-outline" size={48} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
-          <Text style={styles.emptySubtext}>
-            Adicione suas primeiras transações para começar!
-          </Text>
-        </Card>
-      );
-    }
-
     return (
       <TransactionList
         transactions={transactions}
@@ -196,29 +156,34 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
             navigation.navigate('EditTransaction', { transactionId: transaction.id });
           }
         }}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
       />
     );
   };
 
   const renderInstallments = () => {
     const activeInstallments = installments.filter(i => i.status === 'active');
+    const totalInstallments = activeInstallments.reduce((sum, i) => sum + i.installmentValue, 0);
     
-    if (activeInstallments.length === 0) {
-      return (
-        <Card style={styles.emptyCard}>
-          <Ionicons name="card-outline" size={48} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>Nenhum parcelamento ativo</Text>
-          <Text style={styles.emptySubtext}>
-            Adicione seus parcelamentos para acompanhar!
-          </Text>
-        </Card>
-      );
-    }
-
     return (
-      <View style={styles.installmentsList}>
-        {activeInstallments.map(installment => (
-          <Card key={installment.id} style={styles.installmentCard}>
+      <FlatList
+        data={activeInstallments}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={
+          activeInstallments.length > 0 ? (
+            <View style={styles.totalHeader}>
+              <Text style={styles.totalLabel}>
+                {activeInstallments.length} parcelamento{activeInstallments.length !== 1 ? 's' : ''} ativo{activeInstallments.length !== 1 ? 's' : ''}
+              </Text>
+              <Text style={styles.totalExpense}>
+                -R$ {totalInstallments.toFixed(2).replace('.', ',')}
+              </Text>
+            </View>
+          ) : null
+        }
+        renderItem={({ item: installment }) => (
+          <Card style={styles.installmentCard}>
             <TouchableOpacity
               onPress={() => navigation.navigate('InstallmentDetail', { installmentId: installment.id })}
             >
@@ -245,30 +210,52 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
               </View>
             </TouchableOpacity>
           </Card>
-        ))}
-      </View>
+        )}
+        ListEmptyComponent={
+          <Card style={styles.emptyCard}>
+            <Ionicons name="card-outline" size={48} color={colors.textSecondary} />
+            <Text style={styles.emptyText}>Nenhum parcelamento ativo</Text>
+            <Text style={styles.emptySubtext}>
+              Adicione seus parcelamentos para acompanhar!
+            </Text>
+          </Card>
+        }
+        contentContainerStyle={styles.listContentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      />
     );
   };
 
   const renderSubscriptions = () => {
     const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
+    const totalSubscriptions = activeSubscriptions.reduce((sum, s) => sum + s.amount, 0);
     
-    if (activeSubscriptions.length === 0) {
-      return (
-        <Card style={styles.emptyCard}>
-          <Ionicons name="repeat" size={48} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>Nenhuma assinatura ativa</Text>
-          <Text style={styles.emptySubtext}>
-            Adicione suas assinaturas mensais!
-          </Text>
-        </Card>
-      );
-    }
-
     return (
-      <View style={styles.subscriptionsList}>
-        {activeSubscriptions.map(subscription => (
-          <Card key={subscription.id} style={styles.subscriptionCard}>
+      <FlatList
+        data={activeSubscriptions}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={
+          activeSubscriptions.length > 0 ? (
+            <View style={styles.totalHeader}>
+              <Text style={styles.totalLabel}>
+                {activeSubscriptions.length} assinatura{activeSubscriptions.length !== 1 ? 's' : ''} ativa{activeSubscriptions.length !== 1 ? 's' : ''}
+              </Text>
+              <Text style={styles.totalExpense}>
+                -R$ {totalSubscriptions.toFixed(2).replace('.', ',')}
+              </Text>
+            </View>
+          ) : null
+        }
+        renderItem={({ item: subscription }) => (
+          <Card style={styles.subscriptionCard}>
             <TouchableOpacity
               onPress={() => navigation.navigate('SubscriptionDetail', { subscriptionId: subscription.id })}
             >
@@ -296,8 +283,27 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
               </View>
             </TouchableOpacity>
           </Card>
-        ))}
-      </View>
+        )}
+        ListEmptyComponent={
+          <Card style={styles.emptyCard}>
+            <Ionicons name="repeat" size={48} color={colors.textSecondary} />
+            <Text style={styles.emptyText}>Nenhuma assinatura ativa</Text>
+            <Text style={styles.emptySubtext}>
+              Adicione suas assinaturas mensais!
+            </Text>
+          </Card>
+        }
+        contentContainerStyle={styles.listContentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      />
     );
   };
 
@@ -327,18 +333,7 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
         emptyMessage={`Adicione seus ${currentConfig.label.toLowerCase()} para começar!`}
         emptyIcon={currentConfig.icon}
       >
-        <ScrollView 
-          style={styles.container}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
-            />
-          }
-        >
+        <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Registros</Text>
@@ -376,46 +371,11 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
             ))}
           </View>
 
-          {/* Resumo do Tipo Selecionado */}
-          <Card style={styles.summaryCard}>
-            <View style={styles.summaryHeader}>
-              <View style={styles.summaryIcon}>
-                <Ionicons 
-                  name={currentConfig.icon as any} 
-                  size={24} 
-                  color={currentConfig.color} 
-                />
-              </View>
-              <View style={styles.summaryInfo}>
-                <Text style={styles.summaryTitle}>{currentConfig.label}</Text>
-                <Text style={styles.summaryDescription}>{currentConfig.description}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.summaryStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Total</Text>
-                <MoneyText 
-                  value={getTotalAmount()} 
-                  size="large"
-                  showSign={false}
-                />
-              </View>
-              
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Quantidade</Text>
-                <Text style={styles.statValue}>{getCount()}</Text>
-              </View>
-            </View>
-          </Card>
-
           {/* Lista de Conteúdo */}
           <View style={styles.contentSection}>
             {renderContent()}
           </View>
-
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
+        </View>
 
         {/* FAB para adicionar */}
         <FAB
@@ -484,59 +444,36 @@ const styles = StyleSheet.create({
   typeButtonTextActive: {
     color: colors.white,
   },
-  summaryCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  summaryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  summaryInfo: {
-    flex: 1,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  summaryDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  summaryStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
+  // Estilos do card de resumo removidos (summaryCard, summaryHeader, etc.)
   contentSection: {
     marginTop: 16,
+    flex: 1,
+  },
+  totalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: 8,
+  },
+  totalLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  totalExpense: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.danger,
+  },
+  listContentContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 100,
+    flexGrow: 1,
   },
   emptyCard: {
     marginHorizontal: 16,
@@ -555,12 +492,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
-  installmentsList: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
   installmentCard: {
-    marginBottom: 0,
+    marginBottom: 12,
+    marginHorizontal: 0,
   },
   installmentHeader: {
     flexDirection: 'row',
@@ -599,12 +533,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  subscriptionsList: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
   subscriptionCard: {
-    marginBottom: 0,
+    marginBottom: 12,
+    marginHorizontal: 0,
   },
   subscriptionHeader: {
     flexDirection: 'row',
@@ -641,9 +572,6 @@ const styles = StyleSheet.create({
   subscriptionBilling: {
     fontSize: 12,
     color: colors.textSecondary,
-  },
-  bottomSpacer: {
-    height: 100,
   },
   fab: {
     position: 'absolute',

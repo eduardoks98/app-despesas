@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
 import { shadows } from '../../styles';
 import { useColors } from '../../hooks/useColors';
+import { SPACING, LAYOUT } from '../../styles/responsive';
 
 interface CardProps {
   children: React.ReactNode;
@@ -46,10 +47,10 @@ export const Card: React.FC<CardProps> = ({
 const createStyles = (colors: any) => StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    borderRadius: LAYOUT.borderRadius,
+    padding: LAYOUT.cardPadding,
+    marginHorizontal: SPACING.md,
+    marginVertical: SPACING.xs,
     ...shadows.small,
   },
   cardPrimary: {

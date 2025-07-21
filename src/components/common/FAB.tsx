@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Animated, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../styles';
+import { ICON_SIZES, SPACING, moderateScale } from '../../styles/responsive';
 
 interface FABProps {
   onPress: () => void;
@@ -15,7 +16,7 @@ interface FABProps {
 export const FAB: React.FC<FABProps> = ({ 
   onPress,
   icon = 'add',
-  size = 28,
+  size = ICON_SIZES.lg,
   color = colors.white,
   backgroundColor = colors.primary,
   style
@@ -58,16 +59,18 @@ export const FAB: React.FC<FABProps> = ({
   );
 };
 
+const fabSize = moderateScale(56);
+
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 80,
-    right: 16,
+    bottom: SPACING.xxl + SPACING.md,
+    right: SPACING.md,
   },
   button: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: fabSize,
+    height: fabSize,
+    borderRadius: fabSize / 2,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.large,
