@@ -145,8 +145,17 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
   };
 
   const handleTransactionPress = (transaction: Transaction) => {
-    setSelectedTransaction(transaction);
-    setShowTransactionModal(true);
+    // Se a transação tem installmentId, é uma transação de parcela
+    if (transaction.installmentId) {
+      navigation.navigate('InstallmentDetail', { 
+        installmentId: transaction.installmentId 
+      });
+    } else {
+      // Transação normal - navegar para edição
+      navigation.navigate('EditTransaction', { 
+        transactionId: transaction.id 
+      });
+    }
   };
 
   const handleTransactionLongPress = async (transaction: Transaction) => {

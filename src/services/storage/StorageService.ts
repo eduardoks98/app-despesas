@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Transaction, Installment, Category } from '../../types';
+import { Transaction, Installment, Category, Subscription } from '../../types';
 import { NotificationSettings } from '../notifications/NotificationService';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: '@app_despesas:transactions',
   CATEGORIES: '@app_despesas:categories',
   INSTALLMENTS: '@app_despesas:installments',
+  SUBSCRIPTIONS: '@app_despesas:subscriptions',
   USER_PREFERENCES: '@app_despesas:preferences',
   BALANCE: '@app_despesas:balance',
   NOTIFICATION_SETTINGS: '@app_despesas:notification_settings',
@@ -43,6 +44,37 @@ export class StorageService {
 
   static async setInstallments(installments: Installment[]): Promise<void> {
     await AsyncStorage.setItem(STORAGE_KEYS.INSTALLMENTS, JSON.stringify(installments));
+  }
+
+  // Assinaturas
+  static async saveSubscription(subscription: Subscription): Promise<void> {
+    const subscriptions = await this.getSubscriptions();
+    subscriptions.push(subscription);
+    await AsyncStorage.setItem(STORAGE_KEYS.SUBSCRIPTIONS, JSON.stringify(subscriptions));
+  }
+
+  static async getSubscriptions(): Promise<Subscription[]> {
+    const data = await AsyncStorage.getItem(STORAGE_KEYS.SUBSCRIPTIONS);
+    return data ? JSON.parse(data) : [];
+  }
+
+  static async updateSubscription(subscription: Subscription): Promise<void> {
+    const subscriptions = await this.getSubscriptions();
+    const index = subscriptions.findIndex(s => s.id === subscription.id);
+    if (index !== -1) {
+      subscriptions[index] = subscription;
+      await AsyncStorage.setItem(STORAGE_KEYS.SUBSCRIPTIONS, JSON.stringify(subscriptions));
+    }
+  }
+
+  static async deleteSubscription(id: string): Promise<void> {
+    const subscriptions = await this.getSubscriptions();
+    const filtered = subscriptions.filter(s => s.id !== id);
+    await AsyncStorage.setItem(STORAGE_KEYS.SUBSCRIPTIONS, JSON.stringify(filtered));
+  }
+
+  static async setSubscriptions(subscriptions: Subscription[]): Promise<void> {
+    await AsyncStorage.setItem(STORAGE_KEYS.SUBSCRIPTIONS, JSON.stringify(subscriptions));
   }
 
   // Categorias

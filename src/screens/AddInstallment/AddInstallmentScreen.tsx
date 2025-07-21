@@ -75,41 +75,19 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
         store: formData.store,
         totalAmount: totalAmount,
         totalInstallments: totalInstallments,
-        currentInstallment: 1,
+        currentInstallment: 0, // MUDANÇA: Começar com 0, não 1
         installmentValue: installmentValue,
         startDate: formData.startDate.toISOString(),
         endDate: endDate.toISOString(),
         category: formData.category,
         status: 'active',
-        paidInstallments: [],
+        paidInstallments: [], // MUDANÇA: Array vazio, sem parcelas pagas
         paymentMethod: 'credit',
       };
 
       await StorageService.saveInstallment(newInstallment);
       
-      // Criar a primeira transação do parcelamento (opcional - pode ser criada quando pagar)
-      const firstTransaction: Transaction = {
-        id: `transaction_${Date.now()}`,
-        type: 'expense',
-        amount: installmentValue,
-        description: `${formData.description} (1/${formData.totalInstallments})`,
-        category: formData.category,
-        date: formData.startDate.toISOString(),
-        installmentId: newInstallment.id,
-        installmentNumber: 1,
-        paymentMethod: 'credit',
-      };
-
-      await StorageService.saveTransaction(firstTransaction);
-
-      // Marcar primeira parcela como paga
-      newInstallment.paidInstallments = [1];
-      await StorageService.setInstallments([
-        ...await StorageService.getInstallments().then(installments => 
-          installments.filter(i => i.id !== newInstallment.id)
-        ),
-        newInstallment
-      ]);
+      // REMOVIDO: Não criar transação automática da primeira parcela
 
       Alert.alert(
         'Sucesso',

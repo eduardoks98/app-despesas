@@ -7,13 +7,17 @@ import { Ionicons } from '@expo/vector-icons';
 
 // Screens
 import { HomeScreen } from './src/screens/Home/HomeScreen';
-import { TransactionsScreen } from './src/screens/Transactions/TransactionsScreen';
-import { InstallmentsScreen } from './src/screens/Installments/InstallmentsScreen';
+import { RecordsScreen } from './src/screens/Records/RecordsScreen';
 import { ReportsScreen } from './src/screens/Reports/ReportsScreen';
 import { ProfileScreen } from './src/screens/Profile/ProfileScreen';
 import { AddTransactionScreen } from './src/screens/AddTransaction/AddTransactionScreen';
 import { AddInstallmentScreen } from './src/screens/AddInstallment/AddInstallmentScreen';
+import { AddSubscriptionScreen } from './src/screens/AddSubscription/AddSubscriptionScreen';
+import { SelectTransactionTypeScreen } from './src/screens/SelectTransactionType/SelectTransactionTypeScreen';
+import { EditTransactionScreen } from './src/screens/EditTransaction/EditTransactionScreen';
+import { EditInstallmentScreen } from './src/screens/EditInstallment/EditInstallmentScreen';
 import { InstallmentDetailScreen } from './src/screens/InstallmentDetail/InstallmentDetailScreen';
+import { SubscriptionDetailScreen } from './src/screens/SubscriptionDetail/SubscriptionDetailScreen';
 import { ExportScreen } from './src/screens/Export/ExportScreen';
 import { SplashScreen } from './src/screens/Splash/SplashScreen';
 import { OnboardingScreen } from './src/screens/Onboarding/OnboardingScreen';
@@ -37,10 +41,8 @@ function TabNavigator() {
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Transactions') {
+          } else if (route.name === 'Records') {
             iconName = focused ? 'list' : 'list-outline';
-          } else if (route.name === 'Installments') {
-            iconName = focused ? 'card' : 'card-outline';
           } else if (route.name === 'Reports') {
             iconName = focused ? 'bar-chart' : 'bar-chart-outline';
           } else if (route.name === 'Profile') {
@@ -83,17 +85,10 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen 
-        name="Transactions" 
-        component={TransactionsScreen}
+        name="Records" 
+        component={RecordsScreen}
         options={{
-          tabBarLabel: 'Transações',
-        }}
-      />
-      <Tab.Screen 
-        name="Installments" 
-        component={InstallmentsScreen}
-        options={{
-          tabBarLabel: 'Parcelamentos',
+          tabBarLabel: 'Registros',
         }}
       />
       <Tab.Screen 
@@ -156,10 +151,55 @@ function AppNavigator() {
           }}
         />
         <Stack.Screen 
+          name="AddSubscription" 
+          component={AddSubscriptionScreen}
+          options={{ 
+            title: 'Nova Assinatura',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
+          name="SelectTransactionType" 
+          component={SelectTransactionTypeScreen}
+          options={{ 
+            title: 'Tipo de Transação',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
+          name="EditTransaction" 
+          component={EditTransactionScreen}
+          options={{ 
+            title: 'Editar Transação',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
+          name="EditInstallment" 
+          component={EditInstallmentScreen}
+          options={{ 
+            title: 'Editar Parcelamento',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
           name="InstallmentDetail" 
           component={InstallmentDetailScreen}
           options={{ 
             title: 'Detalhes do Parcelamento',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
+          name="SubscriptionDetail" 
+          component={SubscriptionDetailScreen}
+          options={{ 
+            title: 'Detalhes da Assinatura',
             headerStyle: { backgroundColor: colors.primary },
             headerTintColor: colors.white,
           }}

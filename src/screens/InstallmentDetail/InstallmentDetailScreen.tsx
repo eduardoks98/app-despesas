@@ -64,6 +64,19 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
   const handlePayInstallment = async (installmentNumber: number) => {
     if (!installment) return;
 
+    // VALIDAÇÃO SEQUENCIAL: Verificar se todas as parcelas anteriores foram pagas
+    const previousInstallments = Array.from({ length: installmentNumber - 1 }, (_, i) => i + 1);
+    const unpaidPrevious = previousInstallments.filter(n => !installment.paidInstallments.includes(n));
+    
+    if (unpaidPrevious.length > 0) {
+      Alert.alert(
+        'Parcelas Anteriores Pendentes',
+        `Você precisa pagar as parcelas ${unpaidPrevious.join(', ')} antes de pagar a parcela ${installmentNumber}.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     try {
       // Criar transação para a parcela
       const transaction: Transaction = {
@@ -84,7 +97,7 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
       const updatedInstallment = {
         ...installment,
         paidInstallments: [...installment.paidInstallments, installmentNumber].sort((a, b) => a - b),
-        currentInstallment: Math.max(installment.currentInstallment, installmentNumber + 1)
+        currentInstallment: Math.max(...installment.paidInstallments, installmentNumber) + 1
       };
 
       // Se for a última parcela, marcar como completo
@@ -113,7 +126,7 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
   const handleDeleteInstallment = () => {
     Alert.alert(
       'Confirmar Exclusão',
-      'Deseja realmente excluir este parcelamento? Esta ação não pode ser desfeita.',
+      'Deseja realmente excluir este parcelamento? Todas as transações relacionadas serão removidas.',
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
@@ -121,12 +134,61 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
           style: 'destructive',
           onPress: async () => {
             try {
+              // Remover transações relacionadas
+              const allTransactions = await StorageService.getTransactions();
+              const filtered = allTransactions.filter(t => t.installmentId !== installmentId);
+              await StorageService.setTransactions(filtered);
+
+              // Remover parcelamento
               const allInstallments = await StorageService.getInstallments();
-              const filtered = allInstallments.filter(i => i.id !== installmentId);
-              await StorageService.setInstallments(filtered);
+              const filteredInstallments = allInstallments.filter(i => i.id !== installmentId);
+              await StorageService.setInstallments(filteredInstallments);
+
               navigation.goBack();
             } catch (error) {
               Alert.alert('Erro', 'Erro ao excluir parcelamento');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleUndoPayment = async (installmentNumber: number) => {
+    Alert.alert(
+      'Desfazer Pagamento',
+      `Deseja desfazer o pagamento da parcela ${installmentNumber}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desfazer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Remover a transação
+              const allTransactions = await StorageService.getTransactions();
+              const filtered = allTransactions.filter(t => 
+                !(t.installmentId === installmentId && t.installmentNumber === installmentNumber)
+              );
+              await StorageService.setTransactions(filtered);
+
+              // Atualizar o parcelamento
+              const updatedInstallment = {
+                ...installment!,
+                paidInstallments: installment!.paidInstallments.filter(n => n !== installmentNumber),
+                currentInstallment: Math.min(...installment!.paidInstallments.filter(n => n !== installmentNumber)) || 0,
+                status: 'active' as const
+              };
+
+              const allInstallments = await StorageService.getInstallments();
+              const index = allInstallments.findIndex(i => i.id === installmentId);
+              allInstallments[index] = updatedInstallment;
+              await StorageService.setInstallments(allInstallments);
+
+              loadInstallmentData();
+              Alert.alert('Sucesso', 'Pagamento desfeito com sucesso!');
+            } catch (error) {
+              Alert.alert('Erro', 'Erro ao desfazer pagamento');
             }
           }
         }
@@ -156,6 +218,20 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
   const renderInstallmentItem = (installmentNumber: number) => {
     const isPaid = installment.paidInstallments.includes(installmentNumber);
     const transaction = transactions.find(t => t.installmentNumber === installmentNumber);
+    
+    // Calcular data de vencimento da parcela
+    const startDate = new Date(installment.startDate);
+    const dueDate = new Date(startDate);
+    dueDate.setMonth(startDate.getMonth() + installmentNumber - 1);
+    
+    // Verificar se pode pagar esta parcela (todas as anteriores devem estar pagas)
+    const previousInstallments = Array.from({ length: installmentNumber - 1 }, (_, i) => i + 1);
+    const canPay = previousInstallments.every(n => installment.paidInstallments.includes(n));
+    const isBlocked = !isPaid && !canPay;
+    
+    // Verificar se a parcela está vencida
+    const today = new Date();
+    const isOverdue = !isPaid && dueDate < today;
 
     return (
       <TouchableOpacity
@@ -163,37 +239,72 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
         style={[
           styles.installmentItem,
           isPaid && styles.installmentItemPaid,
+          isBlocked && styles.installmentItemBlocked,
+          isOverdue && styles.installmentItemOverdue,
         ]}
         onPress={() => {
-          if (!isPaid) {
+          if (!isPaid && canPay) {
             setSelectedInstallmentNumber(installmentNumber);
             setShowPayModal(true);
+          } else if (isBlocked) {
+            const unpaidPrevious = previousInstallments.filter(n => !installment.paidInstallments.includes(n));
+            Alert.alert(
+              'Parcelas Anteriores Pendentes',
+              `Você precisa pagar as parcelas ${unpaidPrevious.join(', ')} antes de pagar a parcela ${installmentNumber}.`,
+              [{ text: 'OK' }]
+            );
           }
         }}
-        disabled={isPaid}
+        onLongPress={() => {
+          if (isPaid) {
+            handleUndoPayment(installmentNumber);
+          }
+        }}
+        disabled={false}
       >
         <View style={styles.installmentItemLeft}>
           <View style={[
             styles.installmentIcon,
             isPaid && styles.installmentIconPaid,
+            isOverdue && styles.installmentIconOverdue,
           ]}>
             <Ionicons 
-              name={isPaid ? "checkmark-circle" : "ellipse-outline"} 
+              name={
+                isPaid ? "checkmark-circle" : 
+                isBlocked ? "lock-closed" : 
+                isOverdue ? "warning" :
+                "ellipse-outline"
+              } 
               size={20} 
-              color={isPaid ? colors.success : colors.textSecondary} 
+              color={
+                isPaid ? colors.success : 
+                isBlocked ? colors.danger : 
+                isOverdue ? colors.danger :
+                colors.textSecondary
+              } 
             />
           </View>
           <View>
             <Text style={[
               styles.installmentItemTitle,
-              isPaid && styles.installmentItemTitlePaid
+              isPaid && styles.installmentItemTitlePaid,
+              isBlocked && styles.installmentItemTitleBlocked,
+              isOverdue && styles.installmentItemTitleOverdue
             ]}>
               Parcela {installmentNumber}/{installment.totalInstallments}
             </Text>
-            <Text style={styles.installmentItemDate}>
+            <Text style={[
+              styles.installmentItemDate,
+              isBlocked && styles.installmentItemDateBlocked,
+              isOverdue && styles.installmentItemDateOverdue
+            ]}>
               {isPaid && transaction ? 
                 `Paga em ${formatDate(transaction.date)}` :
-                `Pendente`
+                isBlocked ? 
+                `Bloqueada - Pague as anteriores` :
+                isOverdue ?
+                `Vencida em ${formatDate(dueDate.toISOString())}` :
+                `Vence em ${formatDate(dueDate.toISOString())}`
               }
             </Text>
           </View>
@@ -202,7 +313,7 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
           value={installment.installmentValue} 
           size="small"
           showSign={false}
-          style={isPaid ? styles.paidAmount : undefined}
+          style={isPaid ? styles.paidAmount : {}}
         />
       </TouchableOpacity>
     );
@@ -218,9 +329,17 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
               <Text style={styles.headerTitle}>{installment.description}</Text>
               <Text style={styles.headerStore}>{installment.store}</Text>
             </View>
-            <TouchableOpacity onPress={handleDeleteInstallment}>
-              <Ionicons name="trash" size={20} color={colors.white} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('EditInstallment', { installmentId: installment.id })}
+                style={styles.actionButton}
+              >
+                <Ionicons name="create" size={20} color={colors.white} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDeleteInstallment} style={styles.actionButton}>
+                <Ionicons name="trash" size={20} color={colors.white} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.headerAmounts}>
@@ -241,6 +360,23 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
                 showSign={false}
                 style={styles.whiteText}
               />
+            </View>
+          </View>
+
+          {/* Informações de Data */}
+          <View style={styles.headerDates}>
+            <View style={styles.dateInfo}>
+              <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.dateLabel}>Comprado em {formatDate(installment.startDate)}</Text>
+            </View>
+            <View style={styles.dateInfo}>
+              <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.dateLabel}>
+                {installment.status === 'completed' ? 
+                  `Concluído em ${formatDate(installment.endDate)}` : 
+                  `Vence em ${formatDate(installment.endDate)}`
+                }
+              </Text>
             </View>
           </View>
 
@@ -299,7 +435,7 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
                 }
               }}
               variant="primary"
-              style={styles.actionButton}
+              style={styles.quickActionButton}
             />
           </View>
         )}
@@ -365,6 +501,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 20,
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerInfo: {
     flex: 1,
   },
@@ -381,7 +530,20 @@ const styles = StyleSheet.create({
   headerAmounts: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  headerDates: {
     marginBottom: 20,
+    gap: 8,
+  },
+  dateInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
   },
   amountLabel: {
     fontSize: 12,
@@ -452,6 +614,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successLight,
     borderColor: colors.success,
   },
+  installmentItemBlocked: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    opacity: 0.6,
+  },
+  installmentItemOverdue: {
+    backgroundColor: colors.dangerLight,
+    borderColor: colors.danger,
+  },
   installmentItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -468,6 +639,9 @@ const styles = StyleSheet.create({
   installmentIconPaid: {
     backgroundColor: colors.success + '20',
   },
+  installmentIconOverdue: {
+    backgroundColor: colors.danger + '20',
+  },
   installmentItemTitle: {
     fontSize: 14,
     fontWeight: '600',
@@ -477,9 +651,23 @@ const styles = StyleSheet.create({
   installmentItemTitlePaid: {
     color: colors.success,
   },
+  installmentItemTitleBlocked: {
+    color: colors.danger,
+  },
+  installmentItemTitleOverdue: {
+    color: colors.danger,
+    fontWeight: 'bold',
+  },
   installmentItemDate: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  installmentItemDateBlocked: {
+    color: colors.danger,
+  },
+  installmentItemDateOverdue: {
+    color: colors.danger,
+    fontWeight: 'bold',
   },
   paidAmount: {
     color: colors.success,
@@ -488,7 +676,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  actionButton: {
+  quickActionButton: {
     width: '100%',
   },
   bottomSpacer: {

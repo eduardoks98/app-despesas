@@ -13,6 +13,7 @@ import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { MoneyText } from '../../components/common/MoneyText';
+import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
 import { ValidationService } from '../../services/validation/ValidationService';
 import { ErrorHandler } from '../../services/error/ErrorHandler';
@@ -65,10 +66,10 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
     if (!data) {
       // Se falhou, usar categorias padrão
       const defaultCategories: Category[] = [
-        { id: '1', name: 'Alimentação', icon: '🍔', type: 'expense', color: '#FF6B6B' },
-        { id: '2', name: 'Transporte', icon: '🚗', type: 'expense', color: '#4ECDC4' },
-        { id: '3', name: 'Salário', icon: '💰', type: 'income', color: '#45B7D1' },
-        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4' },
+        { id: '1', name: 'Alimentação', icon: '🍔', type: 'expense', color: '#FF6B6B', isCustom: false },
+        { id: '2', name: 'Transporte', icon: '🚗', type: 'expense', color: '#4ECDC4', isCustom: false },
+        { id: '3', name: 'Salário', icon: '💰', type: 'income', color: '#45B7D1', isCustom: false },
+        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
       ];
       setCategories(defaultCategories);
     }
@@ -363,13 +364,11 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
 
           {/* Data */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Data</Text>
-            <View style={styles.dateContainer}>
-              <Ionicons name="calendar" size={20} color={colors.textSecondary} />
-              <Text style={styles.dateText}>
-                {formData.date.toLocaleDateString('pt-BR')}
-              </Text>
-            </View>
+            <DatePicker
+              label="Data"
+              value={formData.date}
+              onChange={(date) => setFormData(prev => ({ ...prev, date }))}
+            />
           </View>
 
           <Button 

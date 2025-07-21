@@ -6,7 +6,7 @@ import { MoneyText } from '../../components/common/MoneyText';
 import { InstallmentCard } from '../../components/installments/InstallmentCard';
 import { FAB } from '../../components/common/FAB';
 import { StorageService } from '../../services/storage/StorageService';
-import { Installment, Transaction } from '../../types';
+import { Installment, Transaction, Subscription } from '../../types';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,6 +20,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [monthlyExpenses, setMonthlyExpenses] = useState(0);
   const [activeInstallments, setActiveInstallments] = useState<Installment[]>([]);
   const [upcomingInstallments, setUpcomingInstallments] = useState(0);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [monthlySubscriptionTotal, setMonthlySubscriptionTotal] = useState(0);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -61,11 +63,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         return total + inst.installmentValue;
       }, 0);
 
+      // Carregar assinaturas ativas
+      const subscriptionsData = await StorageService.getSubscriptions();
+      const activeSubscriptions = subscriptionsData.filter(sub => sub.status === 'active');
+      const subscriptionTotal = activeSubscriptions.reduce((sum, sub) => sum + sub.amount, 0);
+
       setMonthlyIncome(income);
       setMonthlyExpenses(expenses);
       setBalance(income - expenses);
       setActiveInstallments(active.slice(0, 3)); // Mostrar apenas 3
       setUpcomingInstallments(monthlyInstallmentValue);
+      setSubscriptions(activeSubscriptions.slice(0, 3)); // Mostrar apenas 3
+      setMonthlySubscriptionTotal(subscriptionTotal);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     }
@@ -116,6 +125,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           </Text>
         </Card>
 
+        {/* Card de Assinaturas */}
+        {subscriptions.length > 0 && (
+          <Card style={styles.subscriptionSummary}>
+            <View style={styles.installmentHeader}>
+              <Text style={styles.sectionTitle}>Assinaturas Mensais</Text>
+              <Text style={styles.installmentTotal}>
+                R$ {monthlySubscriptionTotal.toFixed(2)}
+              </Text>
+            </View>
+            <Text style={styles.installmentInfo}>
+              {subscriptions.length} assinaturas ativas
+            </Text>
+          </Card>
+        )}
+
         {/* Lista de Parcelamentos Ativos */}
         {activeInstallments.length > 0 && (
           <View style={styles.section}>
@@ -140,30 +164,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           </View>
         )}
 
-        {/* Ações Rápidas */}
-        <View style={styles.quickActions}>
-          <Card 
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('AddTransaction')}
-          >
-            <Ionicons name="add-circle" size={32} color={colors.primary} />
-            <Text style={styles.actionText}>Adicionar Gasto</Text>
-          </Card>
-
-          <Card 
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('AddInstallment')}
-          >
-            <Ionicons name="card" size={32} color={colors.primary} />
-            <Text style={styles.actionText}>Novo Parcelamento</Text>
-          </Card>
-        </View>
-
         {/* Adicionar espaço extra para o tab bar */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      <FAB onPress={() => navigation.navigate('AddTransaction')} />
+      <FAB onPress={() => navigation.navigate('SelectTransactionType')} />
     </Container>
   );
 };
@@ -216,6 +221,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     backgroundColor: colors.warningLight,
   },
+  subscriptionSummary: {
+    marginTop: 16,
+    backgroundColor: colors.infoLight,
+  },
   installmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -250,23 +259,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: '500',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginTop: 24,
-  },
-  actionCard: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-    marginTop: 8,
   },
   bottomSpacer: {
     height: 100,

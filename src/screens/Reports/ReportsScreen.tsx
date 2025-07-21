@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity, Modal } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
 import { MoneyText } from '../../components/common/MoneyText';
+import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
 import { ErrorHandler } from '../../services/error/ErrorHandler';
 import { HapticService } from '../../services/haptic/HapticService';
 import { LoadingWrapper, useLoadingState } from '../../components/common/LoadingWrapper';
 import { ChartSkeleton, CategorySkeleton, StatCardSkeleton } from '../../components/common/Skeleton';
-import { Transaction, Installment } from '../../types';
+import { Transaction, Installment, Subscription } from '../../types';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth, isSameYear } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface ReportsScreenProps {
   navigation: any;
@@ -24,6 +27,7 @@ interface MonthData {
   balance: number;
   transactions: number;
   installmentValue: number;
+  subscriptionValue: number;
 }
 
 interface CategoryData {
@@ -38,8 +42,12 @@ interface CategoryData {
 export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [installments, setInstallments] = useState<Installment[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'custom'>('month');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [customStartDate, setCustomStartDate] = useState(new Date());
+  const [customEndDate, setCustomEndDate] = useState(new Date());
+  const [showCustomPeriodModal, setShowCustomPeriodModal] = useState(false);
   const [monthlyData, setMonthlyData] = useState<MonthData[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,9 +59,10 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
 
   useEffect(() => {
     if (transactions.length > 0) {
+      console.log('🔄 Gerando relatórios para período:', selectedPeriod, 'data:', currentMonth.toISOString());
       generateReports();
     }
-  }, [transactions, installments, selectedPeriod, currentMonth]);
+  }, [transactions, installments, subscriptions, selectedPeriod, currentMonth, customStartDate, customEndDate]);
 
   const loadData = async (isRefresh = false) => {
     if (!isRefresh) {
@@ -65,15 +74,17 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     const result = await ErrorHandler.withErrorHandling(
       'carregar dados para relatórios',
       async () => {
-        const [transactionsData, installmentsData] = await Promise.all([
+        const [transactionsData, installmentsData, subscriptionsData] = await Promise.all([
           StorageService.getTransactions(),
-          StorageService.getInstallments()
+          StorageService.getInstallments(),
+          StorageService.getSubscriptions()
         ]);
         
         setTransactions(transactionsData);
         setInstallments(installmentsData);
+        setSubscriptions(subscriptionsData);
         
-        return { transactionsData, installmentsData };
+        return { transactionsData, installmentsData, subscriptionsData };
       },
       false // Não mostrar erro para o usuário - apenas loggar
     );
@@ -98,6 +109,59 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
 
   const handleRefresh = () => {
     loadData(true);
+  };
+
+  const navigatePeriod = (direction: 'next' | 'prev') => {
+    const multiplier = direction === 'next' ? 1 : -1;
+    
+    switch (selectedPeriod) {
+      case 'month':
+        setCurrentMonth(addMonths(currentMonth, multiplier));
+        break;
+      case 'quarter':
+        setCurrentMonth(addMonths(currentMonth, multiplier * 3));
+        break;
+      case 'year':
+        setCurrentMonth(addMonths(currentMonth, multiplier * 12));
+        break;
+      case 'custom':
+        // Para período customizado, ajustar as datas
+        setCustomStartDate(addMonths(customStartDate, multiplier));
+        setCustomEndDate(addMonths(customEndDate, multiplier));
+        break;
+    }
+  };
+
+  const openCustomPeriodModal = () => {
+    setShowCustomPeriodModal(true);
+  };
+
+  const closeCustomPeriodModal = () => {
+    setShowCustomPeriodModal(false);
+  };
+
+  const confirmCustomPeriod = () => {
+    setSelectedPeriod('custom');
+    closeCustomPeriodModal();
+  };
+
+  const isCurrentPeriod = () => {
+    const now = new Date();
+    
+    switch (selectedPeriod) {
+      case 'month':
+        return isSameMonth(currentMonth, now) && isSameYear(currentMonth, now);
+      case 'quarter':
+        const currentQuarter = Math.floor(now.getMonth() / 3);
+        const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
+        return selectedQuarter === currentQuarter && isSameYear(currentMonth, now);
+      case 'year':
+        return isSameYear(currentMonth, now);
+      case 'custom':
+        return false; // Período customizado nunca é "atual"
+      default:
+        return false;
+    }
   };
 
   const generateReports = () => {
@@ -129,19 +193,46 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
       
-      // Calcular valor de parcelamentos para o mês
+      // Calcular valor de parcelamentos para o mês específico
       const monthInstallmentValue = installments
         .filter(inst => inst.status === 'active')
-        .reduce((sum, inst) => sum + inst.installmentValue, 0);
+        .reduce((sum, inst) => {
+          const startDate = new Date(inst.startDate);
+          const monthsSinceStart = (year - startDate.getFullYear()) * 12 
+            + date.getMonth() - startDate.getMonth();
+          
+          // Verificar se o parcelamento está ativo neste mês específico
+          if (monthsSinceStart >= 0 && monthsSinceStart < inst.totalInstallments) {
+            return sum + inst.installmentValue;
+          }
+          return sum;
+        }, 0);
+      
+      // Calcular valor de assinaturas para o mês específico
+      const monthSubscriptionValue = subscriptions
+        .filter(sub => sub.status === 'active')
+        .reduce((sum, sub) => {
+          const startDate = new Date(sub.startDate);
+          
+          // Verificar se a assinatura estava ativa neste mês específico
+          if (startDate <= date) {
+            return sum + sub.amount;
+          }
+          return sum;
+        }, 0);
+      
+      // Total de despesas incluindo parcelamentos e assinaturas
+      const totalExpenses = expenses + monthInstallmentValue + monthSubscriptionValue;
       
       last6Months.push({
         month,
         year,
         income,
-        expenses,
-        balance: income - expenses,
+        expenses: totalExpenses,
+        balance: income - totalExpenses,
         transactions: monthTransactions.length,
         installmentValue: monthInstallmentValue,
+        subscriptionValue: monthSubscriptionValue,
       });
     }
     
@@ -156,20 +247,21 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     }>();
 
     // Filtrar transações do período selecionado
-    const currentDate = new Date();
     const periodTransactions = transactions.filter(t => {
       const tDate = new Date(t.date);
       
       switch (selectedPeriod) {
         case 'month':
-          return tDate.getMonth() === currentDate.getMonth() && 
-                 tDate.getFullYear() === currentDate.getFullYear();
+          return tDate.getMonth() === currentMonth.getMonth() && 
+                 tDate.getFullYear() === currentMonth.getFullYear();
         case 'quarter':
-          const currentQuarter = Math.floor(currentDate.getMonth() / 3);
+          const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
           const tQuarter = Math.floor(tDate.getMonth() / 3);
-          return tQuarter === currentQuarter && tDate.getFullYear() === currentDate.getFullYear();
+          return tQuarter === selectedQuarter && tDate.getFullYear() === currentMonth.getFullYear();
         case 'year':
-          return tDate.getFullYear() === currentDate.getFullYear();
+          return tDate.getFullYear() === currentMonth.getFullYear();
+        case 'custom':
+          return tDate >= customStartDate && tDate <= customEndDate;
         default:
           return true;
       }
@@ -192,6 +284,42 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       });
     });
 
+    // Adicionar assinaturas do período selecionado como categoria "Assinaturas"
+    const periodSubscriptions = subscriptions.filter(sub => {
+      if (sub.status !== 'active') return false;
+      
+      const startDate = new Date(sub.startDate);
+      
+      // Verificar se a assinatura está ativa no período selecionado
+      switch (selectedPeriod) {
+        case 'month':
+          return startDate <= currentMonth;
+        case 'quarter':
+          return startDate <= currentMonth;
+        case 'year':
+          return startDate.getFullYear() <= currentMonth.getFullYear();
+        case 'custom':
+          return startDate <= customEndDate;
+        default:
+          return true;
+      }
+    });
+    
+    if (periodSubscriptions.length > 0) {
+      const subscriptionAmount = periodSubscriptions.reduce((sum, sub) => sum + sub.amount, 0);
+      const existing = categoryMap.get('Assinaturas') || {
+        amount: 0,
+        transactions: 0,
+        type: 'expense' as const
+      };
+      
+      categoryMap.set('Assinaturas', {
+        amount: existing.amount + subscriptionAmount,
+        transactions: existing.transactions + periodSubscriptions.length,
+        type: 'expense'
+      });
+    }
+
     const totalExpenses = Array.from(categoryMap.values())
       .reduce((sum, cat) => sum + cat.amount, 0);
 
@@ -199,6 +327,11 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
       '#9C88FF', '#FD79A8', '#6C5CE7', '#A29BFE', '#74B9FF'
     ];
+
+    // Cores específicas para categorias
+    const specificCategoryColors: Record<string, string> = {
+      'Assinaturas': '#74B9FF', // Azul para assinaturas
+    };
 
     const categoryIcons = {
       'Alimentação': '🍔',
@@ -208,6 +341,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       'Educação': '📚',
       'Lazer': '🎮',
       'Compras': '🛍️',
+      'Assinaturas': '🔄',
       'Outros': '📂'
     };
 
@@ -217,7 +351,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         amount: data.amount,
         percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
         transactions: data.transactions,
-        color: categoryColors[index % categoryColors.length],
+        color: specificCategoryColors[name] || categoryColors[index % categoryColors.length] || '#96CEB4',
         icon: categoryIcons[name as keyof typeof categoryIcons] || '📂'
       }))
       .sort((a, b) => b.amount - a.amount)
@@ -235,31 +369,37 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         return `${quarter}º Trimestre ${currentMonth.getFullYear()}`;
       case 'year':
         return currentMonth.getFullYear().toString();
+      case 'custom':
+        return `${format(customStartDate, 'dd/MM/yyyy', { locale: ptBR })} - ${format(customEndDate, 'dd/MM/yyyy', { locale: ptBR })}`;
       default:
         return '';
     }
   };
 
   const getCurrentPeriodData = () => {
-    const currentDate = new Date();
+    console.log('📊 Calculando dados do período:', selectedPeriod, 'data:', currentMonth.toISOString());
     
     const periodTransactions = transactions.filter(t => {
       const tDate = new Date(t.date);
       
       switch (selectedPeriod) {
         case 'month':
-          return tDate.getMonth() === currentDate.getMonth() && 
-                 tDate.getFullYear() === currentDate.getFullYear();
+          return tDate.getMonth() === currentMonth.getMonth() && 
+                 tDate.getFullYear() === currentMonth.getFullYear();
         case 'quarter':
-          const currentQuarter = Math.floor(currentDate.getMonth() / 3);
+          const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
           const tQuarter = Math.floor(tDate.getMonth() / 3);
-          return tQuarter === currentQuarter && tDate.getFullYear() === currentDate.getFullYear();
+          return tQuarter === selectedQuarter && tDate.getFullYear() === currentMonth.getFullYear();
         case 'year':
-          return tDate.getFullYear() === currentDate.getFullYear();
+          return tDate.getFullYear() === currentMonth.getFullYear();
+        case 'custom':
+          return tDate >= customStartDate && tDate <= customEndDate;
         default:
           return true;
       }
     });
+    
+    console.log('📈 Transações filtradas:', periodTransactions.length);
 
     const income = periodTransactions
       .filter(t => t.type === 'income')
@@ -269,7 +409,97 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    return { income, expenses, balance: income - expenses, transactions: periodTransactions.length };
+    // Calcular parcelamentos do período selecionado
+    const periodInstallments = installments
+      .filter(inst => inst.status === 'active')
+      .reduce((sum, inst) => {
+        const startDate = new Date(inst.startDate);
+        
+        // Verificar se o parcelamento está ativo no período selecionado
+        let shouldInclude = false;
+        
+        switch (selectedPeriod) {
+          case 'month':
+            const monthsSinceStart = (currentMonth.getFullYear() - startDate.getFullYear()) * 12 
+              + currentMonth.getMonth() - startDate.getMonth();
+            shouldInclude = monthsSinceStart >= 0 && monthsSinceStart < inst.totalInstallments;
+            break;
+          case 'quarter':
+            const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
+            const startQuarter = Math.floor(startDate.getMonth() / 3);
+            const startYear = startDate.getFullYear();
+            const currentYear = currentMonth.getFullYear();
+            const quartersSinceStart = (currentYear - startYear) * 4 + selectedQuarter - startQuarter;
+            shouldInclude = quartersSinceStart >= 0 && quartersSinceStart < Math.ceil(inst.totalInstallments / 3);
+            break;
+          case 'year':
+            const yearSinceStart = currentMonth.getFullYear() - startDate.getFullYear();
+            shouldInclude = yearSinceStart >= 0 && yearSinceStart < Math.ceil(inst.totalInstallments / 12);
+            break;
+          case 'custom':
+            shouldInclude = startDate <= customEndDate;
+            break;
+          default:
+            shouldInclude = true;
+        }
+        
+        if (shouldInclude) {
+          return sum + inst.installmentValue;
+        }
+        return sum;
+      }, 0);
+
+    // Calcular assinaturas do período selecionado
+    const periodSubscriptions = subscriptions
+      .filter(sub => sub.status === 'active')
+      .reduce((sum, sub) => {
+        const startDate = new Date(sub.startDate);
+        
+        // Verificar se a assinatura está ativa no período selecionado
+        let shouldInclude = false;
+        
+        switch (selectedPeriod) {
+          case 'month':
+            shouldInclude = startDate <= currentMonth;
+            break;
+          case 'quarter':
+            shouldInclude = startDate <= currentMonth;
+            break;
+          case 'year':
+            shouldInclude = startDate.getFullYear() <= currentMonth.getFullYear();
+            break;
+          case 'custom':
+            shouldInclude = startDate <= customEndDate;
+            break;
+          default:
+            shouldInclude = true;
+        }
+        
+        if (shouldInclude) {
+          return sum + sub.amount;
+        }
+        return sum;
+      }, 0);
+
+    const totalExpenses = expenses + periodInstallments + periodSubscriptions;
+
+    console.log('💰 Resultados do período:', {
+      income,
+      expenses: totalExpenses,
+      balance: income - totalExpenses,
+      transactions: periodTransactions.length,
+      installmentExpenses: periodInstallments,
+      subscriptionExpenses: periodSubscriptions
+    });
+
+    return { 
+      income, 
+      expenses: totalExpenses, 
+      balance: income - totalExpenses, 
+      transactions: periodTransactions.length,
+      installmentExpenses: periodInstallments,
+      subscriptionExpenses: periodSubscriptions
+    };
   };
 
   const renderSimpleChart = (data: MonthData[]) => {
@@ -432,7 +662,8 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
             {[
               { key: 'month', label: 'Mês' },
               { key: 'quarter', label: 'Trimestre' },
-              { key: 'year', label: 'Ano' }
+              { key: 'year', label: 'Ano' },
+              { key: 'custom', label: 'Personalizado' }
             ].map(period => (
               <TouchableOpacity
                 key={period.key}
@@ -440,7 +671,13 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
                   styles.periodButton,
                   selectedPeriod === period.key && styles.periodButtonActive
                 ]}
-                onPress={() => setSelectedPeriod(period.key as any)}
+                onPress={() => {
+                  if (period.key === 'custom') {
+                    openCustomPeriodModal();
+                  } else {
+                    setSelectedPeriod(period.key as any);
+                  }
+                }}
               >
                 <Text style={[
                   styles.periodButtonText,
@@ -450,6 +687,32 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+
+          {/* Controles de navegação */}
+          <View style={styles.navigationControls}>
+            <TouchableOpacity 
+              style={styles.navButton}
+              onPress={() => navigatePeriod('prev')}
+            >
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
+            </TouchableOpacity>
+            
+            <View style={styles.periodDisplay}>
+              <Text style={styles.periodDisplayText}>{getPeriodLabel()}</Text>
+              {isCurrentPeriod() && (
+                <View style={styles.currentPeriodBadge}>
+                  <Text style={styles.currentPeriodText}>Atual</Text>
+                </View>
+              )}
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.navButton}
+              onPress={() => navigatePeriod('next')}
+            >
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -485,6 +748,35 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
               size="large"
             />
           </View>
+
+          {/* Breakdown das despesas */}
+          {(currentPeriodData.installmentExpenses > 0 || currentPeriodData.subscriptionExpenses > 0) && (
+            <View style={styles.expenseBreakdown}>
+              <Text style={styles.breakdownTitle}>Composição das Despesas:</Text>
+              
+              {currentPeriodData.installmentExpenses > 0 && (
+                <View style={styles.breakdownItem}>
+                  <Text style={styles.breakdownLabel}>Parcelamentos</Text>
+                  <MoneyText 
+                    value={currentPeriodData.installmentExpenses} 
+                    size="small"
+                    showSign={false}
+                  />
+                </View>
+              )}
+              
+              {currentPeriodData.subscriptionExpenses > 0 && (
+                <View style={styles.breakdownItem}>
+                  <Text style={styles.breakdownLabel}>Assinaturas</Text>
+                  <MoneyText 
+                    value={currentPeriodData.subscriptionExpenses} 
+                    size="small"
+                    showSign={false}
+                  />
+                </View>
+              )}
+            </View>
+          )}
           
           <Text style={styles.transactionCount}>
             {currentPeriodData.transactions} transaç{currentPeriodData.transactions === 1 ? 'ão' : 'ões'}
@@ -548,8 +840,96 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
           </Card>
         )}
 
+        {/* Insights de assinaturas */}
+        {subscriptions.length > 0 && (
+          <Card>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Assinaturas</Text>
+              <Ionicons name="repeat" size={20} color={colors.info} />
+            </View>
+            
+            <View style={styles.installmentStats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {subscriptions.filter(s => s.status === 'active').length}
+                </Text>
+                <Text style={styles.statLabel}>Ativas</Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {subscriptions.filter(s => s.status === 'paused').length}
+                </Text>
+                <Text style={styles.statLabel}>Pausadas</Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <MoneyText 
+                  value={subscriptions
+                    .filter(s => s.status === 'active')
+                    .reduce((sum, s) => sum + s.amount, 0)
+                  }
+                  size="small"
+                  showSign={false}
+                  style={styles.statValue}
+                />
+                <Text style={styles.statLabel}>Mensal</Text>
+              </View>
+            </View>
+          </Card>
+        )}
+
           <View style={styles.bottomSpacer} />
         </ScrollView>
+
+        {/* Modal de Período Personalizado */}
+        <Modal
+          visible={showCustomPeriodModal}
+          transparent
+          animationType="slide"
+          onRequestClose={closeCustomPeriodModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={closeCustomPeriodModal}>
+                  <Text style={styles.modalCancel}>Cancelar</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Período Personalizado</Text>
+                <TouchableOpacity onPress={confirmCustomPeriod}>
+                  <Text style={styles.modalConfirm}>Confirmar</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.modalBody}>
+                <View style={styles.datePickerRow}>
+                  <View style={styles.datePickerContainer}>
+                    <Text style={styles.datePickerLabel}>Data Inicial</Text>
+                    <DatePicker
+                      value={customStartDate}
+                      onChange={setCustomStartDate}
+                    />
+                  </View>
+                  
+                  <View style={styles.datePickerContainer}>
+                    <Text style={styles.datePickerLabel}>Data Final</Text>
+                    <DatePicker
+                      value={customEndDate}
+                      onChange={setCustomEndDate}
+                    />
+                  </View>
+                </View>
+                
+                <View style={styles.periodPreview}>
+                  <Text style={styles.periodPreviewLabel}>Período Selecionado:</Text>
+                  <Text style={styles.periodPreviewText}>
+                    {format(customStartDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} - {format(customEndDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </LoadingWrapper>
     </Container>
   );
@@ -788,5 +1168,133 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 100,
+  },
+  expenseBreakdown: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  breakdownTitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  breakdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  breakdownLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  navigationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  navButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  periodDisplay: {
+    flex: 1,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  periodDisplayText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  currentPeriodBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  currentPeriodText: {
+    fontSize: 10,
+    color: colors.white,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalCancel: {
+    fontSize: 16,
+    color: colors.danger,
+  },
+  modalConfirm: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 20,
+  },
+  datePickerContainer: {
+    flex: 1,
+  },
+  datePickerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  periodPreview: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  periodPreviewLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  periodPreviewText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
   },
 });
