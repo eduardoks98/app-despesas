@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity, Modal, Animated } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
 import { MoneyText } from '../../components/common/MoneyText';
@@ -44,6 +44,8 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'custom'>('month');
+  const [showFilters, setShowFilters] = useState(true);
+  const filterAnimation = useRef(new Animated.Value(1)).current;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [customStartDate, setCustomStartDate] = useState(new Date());
   const [customEndDate, setCustomEndDate] = useState(new Date());
@@ -320,6 +322,50 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       });
     }
 
+    // Adicionar parcelamentos do período selecionado como categoria "Parcelamentos"
+    const periodInstallments = installments.filter(inst => {
+      if (inst.status !== 'active') return false;
+      
+      const startDate = new Date(inst.startDate);
+      
+      // Verificar se o parcelamento está ativo no período selecionado
+      switch (selectedPeriod) {
+        case 'month':
+          const monthsSinceStart = (currentMonth.getFullYear() - startDate.getFullYear()) * 12 
+            + currentMonth.getMonth() - startDate.getMonth();
+          return monthsSinceStart >= 0 && monthsSinceStart < inst.totalInstallments;
+        case 'quarter':
+          const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
+          const startQuarter = Math.floor(startDate.getMonth() / 3);
+          const startYear = startDate.getFullYear();
+          const currentYear = currentMonth.getFullYear();
+          const quartersSinceStart = (currentYear - startYear) * 4 + selectedQuarter - startQuarter;
+          return quartersSinceStart >= 0 && quartersSinceStart < Math.ceil(inst.totalInstallments / 3);
+        case 'year':
+          const yearSinceStart = currentMonth.getFullYear() - startDate.getFullYear();
+          return yearSinceStart >= 0 && yearSinceStart < Math.ceil(inst.totalInstallments / 12);
+        case 'custom':
+          return startDate <= customEndDate;
+        default:
+          return true;
+      }
+    });
+    
+    if (periodInstallments.length > 0) {
+      const installmentAmount = periodInstallments.reduce((sum, inst) => sum + inst.installmentValue, 0);
+      const existing = categoryMap.get('Parcelamentos') || {
+        amount: 0,
+        transactions: 0,
+        type: 'expense' as const
+      };
+      
+      categoryMap.set('Parcelamentos', {
+        amount: existing.amount + installmentAmount,
+        transactions: existing.transactions + periodInstallments.length,
+        type: 'expense'
+      });
+    }
+
     const totalExpenses = Array.from(categoryMap.values())
       .reduce((sum, cat) => sum + cat.amount, 0);
 
@@ -331,6 +377,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     // Cores específicas para categorias
     const specificCategoryColors: Record<string, string> = {
       'Assinaturas': '#74B9FF', // Azul para assinaturas
+      'Parcelamentos': '#FD79A8', // Rosa para parcelamentos
     };
 
     const categoryIcons = {
@@ -340,8 +387,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       'Saúde': '💊',
       'Educação': '📚',
       'Lazer': '🎮',
-      'Compras': '🛍️',
-      'Assinaturas': '🔄',
+      'Compras': 'cart',
+      'Assinaturas': 'repeat',
+      'Parcelamentos': 'card',
       'Outros': '📂'
     };
 
@@ -405,7 +453,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const expenses = periodTransactions
+    const regularExpenses = periodTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -481,7 +529,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         return sum;
       }, 0);
 
-    const totalExpenses = expenses + periodInstallments + periodSubscriptions;
+    const totalExpenses = regularExpenses + periodInstallments + periodSubscriptions;
 
     console.log('💰 Resultados do período:', {
       income,
@@ -494,7 +542,8 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
 
     return { 
       income, 
-      expenses: totalExpenses, 
+      expenses: totalExpenses,
+      regularExpenses,
       balance: income - totalExpenses, 
       transactions: periodTransactions.length,
       installmentExpenses: periodInstallments,
@@ -566,21 +615,36 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       <View style={styles.categoryChart}>
         {categoryData.map((category, index) => (
           <View key={index} style={styles.categoryItem}>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryIcon}>{category.icon}</Text>
-              <View style={styles.categoryDetails}>
-                <Text style={styles.categoryName}>{category.name}</Text>
-                <Text style={styles.categoryTransactions}>
-                  {category.transactions} transaç{category.transactions === 1 ? 'ão' : 'ões'}
+            <View style={styles.categoryRow}>
+              <View style={styles.categoryInfo}>
+                <View style={[
+                  styles.categoryIconContainer,
+                  { backgroundColor: category.color + '20' }
+                ]}>
+                  {category.name === 'Assinaturas' || category.name === 'Parcelamentos' || category.name === 'Compras' ? (
+                    <Ionicons 
+                      name={category.icon as any} 
+                      size={20} 
+                      color={category.color} 
+                    />
+                  ) : (
+                    <Text style={[styles.categoryIcon, { color: category.color }]}>{category.icon}</Text>
+                  )}
+                </View>
+                <View style={styles.categoryDetails}>
+                  <Text style={styles.categoryName}>{category.name}</Text>
+                  <Text style={styles.categoryTransactions}>
+                    {category.transactions} item{category.transactions === 1 ? '' : 's'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.categoryValue}>
+                <MoneyText value={-category.amount} size="medium" showSign={false} style={styles.categoryAmount} />
+                <Text style={[styles.categoryPercentage, { color: category.color }]}>
+                  {category.percentage.toFixed(1)}%
                 </Text>
               </View>
-            </View>
-            
-            <View style={styles.categoryValue}>
-              <MoneyText value={-category.amount} size="small" showSign={false} />
-              <Text style={styles.categoryPercentage}>
-                {category.percentage.toFixed(1)}%
-              </Text>
             </View>
             
             <View style={styles.categoryBarContainer}>
@@ -646,19 +710,55 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>Relatórios</Text>
-            <TouchableOpacity 
-              style={styles.exportButton}
-              onPress={async () => {
-                await HapticService.buttonPress();
-                navigation.navigate('Export');
-              }}
-            >
-              <Ionicons name="download" size={20} color={colors.primary} />
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity 
+                style={styles.filterToggleButton}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  const toValue = showFilters ? 0 : 1;
+                  Animated.timing(filterAnimation, {
+                    toValue,
+                    duration: 300,
+                    useNativeDriver: false,
+                  }).start(() => {
+                    setShowFilters(!showFilters);
+                  });
+                }}
+              >
+                <Ionicons 
+                  name={showFilters ? "filter" : "filter-outline"} 
+                  size={20} 
+                  color={colors.primary} 
+                />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.exportButton}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  navigation.navigate('Export');
+                }}
+              >
+                <Ionicons name="download" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
           
           {/* Seletor de período */}
-          <View style={styles.periodSelector}>
+          {showFilters && (
+            <Animated.View style={[
+              styles.filtersContainer,
+              {
+                opacity: filterAnimation,
+                transform: [{
+                  translateY: filterAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-20, 0],
+                  }),
+                }],
+              },
+            ]}>
+              <Text style={styles.filterLabel}>Selecione o período</Text>
+              <View style={styles.periodSelector}>
             {[
               { key: 'month', label: 'Mês' },
               { key: 'quarter', label: 'Trimestre' },
@@ -671,7 +771,8 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
                   styles.periodButton,
                   selectedPeriod === period.key && styles.periodButtonActive
                 ]}
-                onPress={() => {
+                onPress={async () => {
+                  await HapticService.buttonPress();
                   if (period.key === 'custom') {
                     openCustomPeriodModal();
                   } else {
@@ -687,19 +788,22 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+              </View>
 
-          {/* Controles de navegação */}
-          <View style={styles.navigationControls}>
+              {/* Controles de navegação */}
+              <View style={styles.navigationControls}>
             <TouchableOpacity 
               style={styles.navButton}
-              onPress={() => navigatePeriod('prev')}
+              onPress={async () => {
+                await HapticService.buttonPress();
+                navigatePeriod('prev');
+              }}
             >
-              <Ionicons name="chevron-back" size={20} color={colors.primary} />
+              <Ionicons name="chevron-back" size={24} color={colors.primary} />
             </TouchableOpacity>
             
             <View style={styles.periodDisplay}>
-              <Text style={styles.periodDisplayText}>{getPeriodLabel()}</Text>
+              <Text style={styles.periodDisplayText} numberOfLines={1} adjustsFontSizeToFit>{getPeriodLabel()}</Text>
               {isCurrentPeriod() && (
                 <View style={styles.currentPeriodBadge}>
                   <Text style={styles.currentPeriodText}>Atual</Text>
@@ -709,11 +813,16 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
             
             <TouchableOpacity 
               style={styles.navButton}
-              onPress={() => navigatePeriod('next')}
+              onPress={async () => {
+                await HapticService.buttonPress();
+                navigatePeriod('next');
+              }}
             >
-              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+              <Ionicons name="chevron-forward" size={24} color={colors.primary} />
             </TouchableOpacity>
-          </View>
+              </View>
+            </Animated.View>
+          )}
         </View>
 
         {/* Resumo do período atual */}
@@ -740,43 +849,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
               />
             </View>
           </View>
-          
-          <View style={styles.balanceSummary}>
-            <Text style={styles.summaryLabel}>Saldo</Text>
-            <MoneyText 
-              value={currentPeriodData.balance} 
-              size="large"
-            />
-          </View>
 
-          {/* Breakdown das despesas */}
-          {(currentPeriodData.installmentExpenses > 0 || currentPeriodData.subscriptionExpenses > 0) && (
-            <View style={styles.expenseBreakdown}>
-              <Text style={styles.breakdownTitle}>Composição das Despesas:</Text>
-              
-              {currentPeriodData.installmentExpenses > 0 && (
-                <View style={styles.breakdownItem}>
-                  <Text style={styles.breakdownLabel}>Parcelamentos</Text>
-                  <MoneyText 
-                    value={-currentPeriodData.installmentExpenses} 
-                    size="small"
-                    showSign={false}
-                  />
-                </View>
-              )}
-              
-              {currentPeriodData.subscriptionExpenses > 0 && (
-                <View style={styles.breakdownItem}>
-                  <Text style={styles.breakdownLabel}>Assinaturas</Text>
-                  <MoneyText 
-                    value={-currentPeriodData.subscriptionExpenses} 
-                    size="small"
-                    showSign={false}
-                  />
-                </View>
-              )}
-            </View>
-          )}
           
           <Text style={styles.transactionCount}>
             {currentPeriodData.transactions} transaç{currentPeriodData.transactions === 1 ? 'ão' : 'ões'}
@@ -801,83 +874,6 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
           {renderCategoryChart()}
         </Card>
 
-        {/* Insights de parcelamentos */}
-        {installments.length > 0 && (
-          <Card>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Parcelamentos</Text>
-              <Ionicons name="card" size={20} color={colors.primary} />
-            </View>
-            
-            <View style={styles.installmentStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {installments.filter(i => i.status === 'active').length}
-                </Text>
-                <Text style={styles.statLabel}>Ativos</Text>
-              </View>
-              
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {installments.filter(i => i.status === 'completed').length}
-                </Text>
-                <Text style={styles.statLabel}>Concluídos</Text>
-              </View>
-              
-              <View style={styles.statItem}>
-                <MoneyText 
-                  value={-installments
-                    .filter(i => i.status === 'active')
-                    .reduce((sum, i) => sum + i.installmentValue, 0)
-                  }
-                  size="small"
-                  showSign={false}
-                  style={styles.statValue}
-                />
-                <Text style={styles.statLabel}>Mensal</Text>
-              </View>
-            </View>
-          </Card>
-        )}
-
-        {/* Insights de assinaturas */}
-        {subscriptions.length > 0 && (
-          <Card>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Assinaturas</Text>
-              <Ionicons name="repeat" size={20} color={colors.info} />
-            </View>
-            
-            <View style={styles.installmentStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {subscriptions.filter(s => s.status === 'active').length}
-                </Text>
-                <Text style={styles.statLabel}>Ativas</Text>
-              </View>
-              
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {subscriptions.filter(s => s.status === 'paused').length}
-                </Text>
-                <Text style={styles.statLabel}>Pausadas</Text>
-              </View>
-              
-              <View style={styles.statItem}>
-                <MoneyText 
-                  value={-subscriptions
-                    .filter(s => s.status === 'active')
-                    .reduce((sum, s) => sum + s.amount, 0)
-                  }
-                  size="small"
-                  showSign={false}
-                  style={styles.statValue}
-                />
-                <Text style={styles.statLabel}>Mensal</Text>
-              </View>
-            </View>
-          </Card>
-        )}
 
           <View style={styles.bottomSpacer} />
         </ScrollView>
@@ -892,11 +888,17 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={closeCustomPeriodModal}>
+                <TouchableOpacity onPress={async () => {
+                  await HapticService.buttonPress();
+                  closeCustomPeriodModal();
+                }}>
                   <Text style={styles.modalCancel}>Cancelar</Text>
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>Período Personalizado</Text>
-                <TouchableOpacity onPress={confirmCustomPeriod}>
+                <TouchableOpacity onPress={async () => {
+                  await HapticService.buttonPress();
+                  confirmCustomPeriod();
+                }}>
                   <Text style={styles.modalConfirm}>Confirmar</Text>
                 </TouchableOpacity>
               </View>
@@ -951,13 +953,44 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
+    backgroundColor: colors.white,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primary + '20',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterToggleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filtersContainer: {
+    paddingTop: 12,
+    paddingBottom: 8,
+    marginTop: 8,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 8,
   },
   title: {
     fontSize: 24,
@@ -977,20 +1010,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderRadius: 12,
     padding: 4,
+    marginBottom: 16,
+    justifyContent: 'space-between',
   },
   periodButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
   },
   periodButtonActive: {
     backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   periodButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
+    fontWeight: '500',
   },
   periodButtonTextActive: {
     color: colors.white,
@@ -1022,12 +1065,6 @@ const styles = StyleSheet.create({
   },
   incomeText: {
     color: colors.success,
-  },
-  balanceSummary: {
-    alignItems: 'center',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   transactionCount: {
     fontSize: 12,
@@ -1107,26 +1144,51 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   categoryChart: {
-    gap: 12,
+    gap: 16,
   },
   categoryItem: {
-    gap: 8,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   categoryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   categoryIcon: {
     fontSize: 20,
+    fontWeight: 'bold',
+  },
+  categoryIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   categoryDetails: {
     flex: 1,
   },
   categoryName: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.text,
+    marginBottom: 2,
   },
   categoryTransactions: {
     fontSize: 12,
@@ -1135,19 +1197,23 @@ const styles = StyleSheet.create({
   categoryValue: {
     alignItems: 'flex-end',
   },
+  categoryAmount: {
+    fontWeight: '700',
+  },
   categoryPercentage: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 2,
   },
   categoryBarContainer: {
-    height: 4,
+    height: 6,
     backgroundColor: colors.background,
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   categoryBar: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
   },
   installmentStats: {
     flexDirection: 'row',
@@ -1169,61 +1235,57 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 100,
   },
-  expenseBreakdown: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  breakdownTitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  breakdownItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  breakdownLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
   navigationControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     marginTop: 16,
-    paddingHorizontal: 8,
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 12,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   navButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   periodDisplay: {
     flex: 1,
     alignItems: 'center',
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'center',
-    gap: 8,
+    gap: 4,
+    paddingHorizontal: 12,
   },
   periodDisplayText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    fontWeight: '700',
+    color: colors.primary,
     textAlign: 'center',
+    numberOfLines: 1,
+    adjustsFontSizeToFit: true,
+    minimumFontScale: 0.7,
+    textTransform: 'capitalize',
   },
   currentPeriodBadge: {
     backgroundColor: colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
+    marginTop: 2,
   },
   currentPeriodText: {
     fontSize: 10,
@@ -1240,6 +1302,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 20,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1270,9 +1333,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     marginBottom: 20,
+    flexWrap: 'wrap',
   },
   datePickerContainer: {
     flex: 1,
+    minWidth: '100%',
+    marginBottom: 16,
   },
   datePickerLabel: {
     fontSize: 14,

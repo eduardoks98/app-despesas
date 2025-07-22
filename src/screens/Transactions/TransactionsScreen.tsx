@@ -219,18 +219,25 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
       {/* Header com estatísticas */}
       <View style={styles.header}>
         <Text style={styles.title}>Transações</Text>
+        <Text style={styles.subtitle}>Interface melhorada!</Text>
         <View style={styles.stats}>
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Receitas</Text>
-            <MoneyText value={totalIncome} size="small" style={styles.incomeText} showSign={false} />
+            <View style={styles.statIcon}>
+              <Ionicons name="trending-up" size={16} color={colors.success} />
+            </View>
+            <View>
+              <Text style={styles.statLabel}>Receitas</Text>
+              <MoneyText value={totalIncome} size="small" style={styles.incomeText} showSign={false} />
+            </View>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Despesas</Text>
-            <MoneyText value={totalExpenses} size="small" showSign={false} />
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Saldo</Text>
-            <MoneyText value={totalIncome - totalExpenses} size="small" />
+            <View style={styles.statIcon}>
+              <Ionicons name="trending-down" size={16} color={colors.danger} />
+            </View>
+            <View>
+              <Text style={styles.statLabel}>Despesas</Text>
+              <MoneyText value={totalExpenses} size="small" showSign={false} />
+            </View>
           </View>
         </View>
       </View>
@@ -241,26 +248,32 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
           <Ionicons name="search" size={20} color={colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar transações..."
+            placeholder="Buscar por descrição ou categoria..."
             placeholderTextColor={colors.textSecondary}
             value={searchText}
             onChangeText={setSearchText}
           />
           {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchText('')}>
+            <TouchableOpacity onPress={async () => {
+              await HapticService.buttonPress();
+              setSearchText('');
+            }}>
               <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
         
         <TouchableOpacity 
-          style={styles.filterToggle}
-          onPress={() => setShowFilters(!showFilters)}
+          style={[styles.filterToggle, showFilters && styles.filterToggleActive]}
+          onPress={async () => {
+            await HapticService.buttonPress();
+            setShowFilters(!showFilters);
+          }}
         >
           <Ionicons 
             name={showFilters ? "options" : "options-outline"} 
             size={20} 
-            color={colors.primary} 
+            color={showFilters ? colors.white : colors.primary} 
           />
         </TouchableOpacity>
       </View>
@@ -268,33 +281,61 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
       {/* Filtros */}
       {showFilters && (
         <Card style={styles.filtersCard}>
-          <Text style={styles.filtersTitle}>Filtros</Text>
+          <View style={styles.filtersHeader}>
+            <Text style={styles.filtersTitle}>Filtros</Text>
+            <TouchableOpacity 
+              onPress={async () => {
+                await HapticService.buttonPress();
+                setFilterType('all');
+                setSortType('date_desc');
+              }}
+              style={styles.clearFiltersButton}
+            >
+              <Text style={styles.clearFiltersText}>Limpar</Text>
+            </TouchableOpacity>
+          </View>
           
           <View style={styles.filterSection}>
             <Text style={styles.filterSectionTitle}>Tipo:</Text>
             <View style={styles.filterButtons}>
               <TouchableOpacity 
                 style={getFilterButtonStyle('all')}
-                onPress={() => setFilterType('all')}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  setFilterType('all');
+                }}
               >
+                <Ionicons name="list" size={16} color={filterType === 'all' ? colors.white : colors.textSecondary} />
                 <Text style={getFilterTextStyle('all')}>Todas</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={getFilterButtonStyle('income')}
-                onPress={() => setFilterType('income')}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  setFilterType('income');
+                }}
               >
+                <Ionicons name="trending-up" size={16} color={filterType === 'income' ? colors.white : colors.success} />
                 <Text style={getFilterTextStyle('income')}>Receitas</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={getFilterButtonStyle('expense')}
-                onPress={() => setFilterType('expense')}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  setFilterType('expense');
+                }}
               >
+                <Ionicons name="trending-down" size={16} color={filterType === 'expense' ? colors.white : colors.danger} />
                 <Text style={getFilterTextStyle('expense')}>Despesas</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={getFilterButtonStyle('installments')}
-                onPress={() => setFilterType('installments')}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  setFilterType('installments');
+                }}
               >
+                <Ionicons name="card" size={16} color={filterType === 'installments' ? colors.white : colors.primary} />
                 <Text style={getFilterTextStyle('installments')}>Parcelas</Text>
               </TouchableOpacity>
             </View>
@@ -302,21 +343,53 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
 
           <View style={styles.filterSection}>
             <Text style={styles.filterSectionTitle}>Ordenar por:</Text>
-            <View style={styles.filterButtons}>
+            <View style={styles.sortButtons}>
               <TouchableOpacity 
-                style={[styles.filterButton, sortType === 'date_desc' && styles.filterButtonActive]}
-                onPress={() => setSortType('date_desc')}
+                style={[styles.sortButton, sortType === 'date_desc' && styles.sortButtonActive]}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  setSortType('date_desc');
+                }}
               >
-                <Text style={[styles.filterButtonText, sortType === 'date_desc' && styles.filterButtonTextActive]}>
-                  Data ↓
+                <Ionicons name="calendar" size={16} color={sortType === 'date_desc' ? colors.white : colors.primary} />
+                <Text style={[styles.sortButtonText, sortType === 'date_desc' && styles.sortButtonTextActive]}>
+                  Mais recente
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.filterButton, sortType === 'amount_desc' && styles.filterButtonActive]}
-                onPress={() => setSortType('amount_desc')}
+                style={[styles.sortButton, sortType === 'date_asc' && styles.sortButtonActive]}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  setSortType('date_asc');
+                }}
               >
-                <Text style={[styles.filterButtonText, sortType === 'amount_desc' && styles.filterButtonTextActive]}>
-                  Valor ↓
+                <Ionicons name="calendar-outline" size={16} color={sortType === 'date_asc' ? colors.white : colors.primary} />
+                <Text style={[styles.sortButtonText, sortType === 'date_asc' && styles.sortButtonTextActive]}>
+                  Mais antigo
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.sortButton, sortType === 'amount_desc' && styles.sortButtonActive]}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  setSortType('amount_desc');
+                }}
+              >
+                <Ionicons name="arrow-down" size={16} color={sortType === 'amount_desc' ? colors.white : colors.primary} />
+                <Text style={[styles.sortButtonText, sortType === 'amount_desc' && styles.sortButtonTextActive]}>
+                  Maior valor
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.sortButton, sortType === 'amount_asc' && styles.sortButtonActive]}
+                onPress={async () => {
+                  await HapticService.buttonPress();
+                  setSortType('amount_asc');
+                }}
+              >
+                <Ionicons name="arrow-up" size={16} color={sortType === 'amount_asc' ? colors.white : colors.primary} />
+                <Text style={[styles.sortButtonText, sortType === 'amount_asc' && styles.sortButtonTextActive]}>
+                  Menor valor
                 </Text>
               </TouchableOpacity>
             </View>
@@ -443,20 +516,51 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
+    backgroundColor: colors.white,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primary + '20',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: colors.success,
+    fontWeight: '600',
     marginBottom: 16,
   },
   stats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    backgroundColor: colors.primary + '10',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: colors.primary + '20',
   },
   statItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary + '30',
   },
   statLabel: {
     fontSize: 12,
@@ -499,14 +603,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  filterToggleActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
   filtersCard: {
     marginTop: 8,
+  },
+  filtersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   filtersTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 16,
+  },
+  clearFiltersButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+  },
+  clearFiltersText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '500',
   },
   filterSection: {
     marginBottom: 16,
@@ -523,12 +647,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterButton: {
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
+    minWidth: '23%',
+    justifyContent: 'center',
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
@@ -537,6 +666,7 @@ const styles = StyleSheet.create({
   filterButtonText: {
     fontSize: 12,
     color: colors.textSecondary,
+    fontWeight: '500',
   },
   filterButtonTextActive: {
     color: colors.white,
@@ -597,5 +727,36 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     marginTop: 20,
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flex: 1,
+    minWidth: '48%',
+    justifyContent: 'center',
+  },
+  sortButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  sortButtonText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  sortButtonTextActive: {
+    color: colors.white,
   },
 });
