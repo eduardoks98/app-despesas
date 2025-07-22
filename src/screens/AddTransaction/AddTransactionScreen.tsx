@@ -33,6 +33,8 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
     category: '',
     paymentMethod: 'cash' as 'cash' | 'debit' | 'credit' | 'pix',
     date: new Date(),
+    isPaid: true, // Por padrão, considera como já pago
+    paidDate: new Date(), // Data do pagamento (igual à data da transação por padrão)
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -97,7 +99,9 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
       type: formData.type,
       category: formData.category,
       date: formData.date.toISOString(),
-      paymentMethod: formData.paymentMethod,
+      paymentMethod: formData.isPaid ? formData.paymentMethod : undefined,
+      isPaid: formData.isPaid,
+      paidDate: formData.isPaid ? formData.paidDate.toISOString() : undefined,
     };
 
     // Sanitizar dados
@@ -325,42 +329,97 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
             </TouchableOpacity>
           </View>
 
-          {/* Método de pagamento */}
+          {/* Status de Pagamento */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Método de Pagamento</Text>
-            <View style={styles.paymentMethods}>
-              {[
-                { key: 'cash', label: 'Dinheiro' },
-                { key: 'debit', label: 'Débito' },
-                { key: 'credit', label: 'Crédito' },
-                { key: 'pix', label: 'PIX' },
-              ].map(method => (
-                <TouchableOpacity
-                  key={method.key}
-                  style={[
-                    styles.paymentMethod,
-                    formData.paymentMethod === method.key && styles.paymentMethodActive
-                  ]}
-                  onPress={() => setFormData(prev => ({ 
-                    ...prev, 
-                    paymentMethod: method.key as any 
-                  }))}
-                >
-                  <Ionicons 
-                    name={getPaymentMethodIcon(method.key) as any} 
-                    size={16} 
-                    color={formData.paymentMethod === method.key ? colors.white : colors.textSecondary} 
-                  />
-                  <Text style={[
-                    styles.paymentMethodText,
-                    formData.paymentMethod === method.key && styles.paymentMethodTextActive
-                  ]}>
-                    {method.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <Text style={styles.label}>Status</Text>
+            <View style={styles.statusButtons}>
+              <TouchableOpacity 
+                style={[
+                  styles.statusButton,
+                  formData.isPaid && styles.statusButtonActive
+                ]}
+                onPress={() => setFormData(prev => ({ 
+                  ...prev, 
+                  isPaid: true,
+                  paidDate: prev.date // Usar a data da transação como padrão
+                }))}
+              >
+                <Ionicons 
+                  name="checkmark-circle" 
+                  size={20} 
+                  color={formData.isPaid ? colors.white : colors.success} 
+                />
+                <Text style={[
+                  styles.statusButtonText,
+                  formData.isPaid && styles.statusButtonTextActive
+                ]}>
+                  Já {formData.type === 'income' ? 'Recebido' : 'Pago'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.statusButton,
+                  !formData.isPaid && styles.statusButtonPendingActive
+                ]}
+                onPress={() => setFormData(prev => ({ 
+                  ...prev, 
+                  isPaid: false 
+                }))}
+              >
+                <Ionicons 
+                  name="time" 
+                  size={20} 
+                  color={!formData.isPaid ? colors.white : colors.warning} 
+                />
+                <Text style={[
+                  styles.statusButtonText,
+                  !formData.isPaid && styles.statusButtonTextActive
+                ]}>
+                  {formData.type === 'income' ? 'A Receber' : 'A Pagar'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
+
+          {/* Método de pagamento - só aparece se já foi pago */}
+          {formData.isPaid && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Método de Pagamento</Text>
+              <View style={styles.paymentMethods}>
+                {[
+                  { key: 'cash', label: 'Dinheiro' },
+                  { key: 'debit', label: 'Débito' },
+                  { key: 'credit', label: 'Crédito' },
+                  { key: 'pix', label: 'PIX' },
+                ].map(method => (
+                  <TouchableOpacity
+                    key={method.key}
+                    style={[
+                      styles.paymentMethod,
+                      formData.paymentMethod === method.key && styles.paymentMethodActive
+                    ]}
+                    onPress={() => setFormData(prev => ({ 
+                      ...prev, 
+                      paymentMethod: method.key as any 
+                    }))}
+                  >
+                    <Ionicons 
+                      name={getPaymentMethodIcon(method.key) as any} 
+                      size={16} 
+                      color={formData.paymentMethod === method.key ? colors.white : colors.textSecondary} 
+                    />
+                    <Text style={[
+                      styles.paymentMethodText,
+                      formData.paymentMethod === method.key && styles.paymentMethodTextActive
+                    ]}>
+                      {method.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Data */}
           <View style={styles.inputGroup}>

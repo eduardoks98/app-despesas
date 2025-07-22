@@ -161,8 +161,24 @@ export class InstallmentCalculations {
 
     const activeInstallments = installments.filter(i => i.status === 'active');
     
-    // Calcular pagamento mensal
-    const monthlyPayment = activeInstallments.reduce((sum, inst) => sum + inst.installmentValue, 0);
+    // Calcular pagamento mensal (apenas parcelas que vencem este mês)
+    const today = new Date();
+    const thisMonth = today.getMonth();
+    const thisYear = today.getFullYear();
+    
+    const monthlyPayment = activeInstallments.reduce((sum, inst) => {
+      const startDate = new Date(inst.startDate);
+      const monthsSinceStart = (thisYear - startDate.getFullYear()) * 12 + (thisMonth - startDate.getMonth());
+      const currentInstallmentNumber = monthsSinceStart + 1;
+      
+      // Se há uma parcela que vence este mês e ainda não foi paga
+      if (currentInstallmentNumber >= 1 && 
+          currentInstallmentNumber <= inst.totalInstallments &&
+          !inst.paidInstallments.includes(currentInstallmentNumber)) {
+        return sum + inst.installmentValue;
+      }
+      return sum;
+    }, 0);
     
     // Calcular dívida total
     const totalDebt = this.getTotalDebt(installments);

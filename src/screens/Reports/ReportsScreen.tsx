@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity, Modal, Animated } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
+import { Button } from '../../components/common/Button';
 import { MoneyText } from '../../components/common/MoneyText';
 import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
@@ -50,6 +51,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
   const [customStartDate, setCustomStartDate] = useState(new Date());
   const [customEndDate, setCustomEndDate] = useState(new Date());
   const [showCustomPeriodModal, setShowCustomPeriodModal] = useState(false);
+  const [showStartDateModal, setShowStartDateModal] = useState(false);
+  const [showEndDateModal, setShowEndDateModal] = useState(false);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [monthlyData, setMonthlyData] = useState<MonthData[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -191,39 +195,36 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
       
+      // Calcular apenas despesas diretas (não pagamentos de parcelamentos/assinaturas)
       const expenses = monthTransactions
-        .filter(t => t.type === 'expense')
+        .filter(t => t.type === 'expense' && !t.installmentId && !t.subscriptionId)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      // Calcular valor de parcelamentos para o mês específico
+      // Calcular apenas PAGAMENTOS efetivos de parcelamentos no mês
       const monthInstallmentValue = installments
-        .filter(inst => inst.status === 'active')
         .reduce((sum, inst) => {
           const startDate = new Date(inst.startDate);
-          const monthsSinceStart = (year - startDate.getFullYear()) * 12 
-            + date.getMonth() - startDate.getMonth();
           
-          // Verificar se o parcelamento está ativo neste mês específico
-          if (monthsSinceStart >= 0 && monthsSinceStart < inst.totalInstallments) {
-            return sum + inst.installmentValue;
-          }
-          return sum;
+          // Para cada parcela paga, verificar se foi paga neste mês
+          return sum + inst.paidInstallments.reduce((paidSum, paidNumber) => {
+            const paidDate = new Date(startDate);
+            paidDate.setMonth(paidDate.getMonth() + paidNumber - 1);
+            
+            // Se a parcela foi paga neste mês específico
+            if (paidDate.getMonth() === date.getMonth() && 
+                paidDate.getFullYear() === year) {
+              return paidSum + inst.installmentValue;
+            }
+            return paidSum;
+          }, 0);
         }, 0);
       
-      // Calcular valor de assinaturas para o mês específico
-      const monthSubscriptionValue = subscriptions
-        .filter(sub => sub.status === 'active')
-        .reduce((sum, sub) => {
-          const startDate = new Date(sub.startDate);
-          
-          // Verificar se a assinatura estava ativa neste mês específico
-          if (startDate <= date) {
-            return sum + sub.amount;
-          }
-          return sum;
-        }, 0);
+      // Adicionar pagamentos de assinaturas do mês (se registradas como transações)
+      const monthSubscriptionValue = monthTransactions
+        .filter(t => t.subscriptionId && t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
       
-      // Total de despesas incluindo parcelamentos e assinaturas
+      // Total de despesas incluindo apenas pagamentos efetivos
       const totalExpenses = expenses + monthInstallmentValue + monthSubscriptionValue;
       
       last6Months.push({
@@ -273,98 +274,30 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     const expenseTransactions = periodTransactions.filter(t => t.type === 'expense');
     
     expenseTransactions.forEach(transaction => {
-      const existing = categoryMap.get(transaction.category) || {
+      // Determinar a categoria correta
+      let category = transaction.category;
+      
+      // Se é transação de parcelamento, agrupar como "Parcelamentos"
+      if (transaction.installmentId) {
+        category = 'Parcelamentos';
+      }
+      // Se é transação de assinatura, agrupar como "Assinaturas" 
+      else if (transaction.subscriptionId) {
+        category = 'Assinaturas';
+      }
+      
+      const existing = categoryMap.get(category) || {
         amount: 0,
         transactions: 0,
         type: transaction.type
       };
       
-      categoryMap.set(transaction.category, {
+      categoryMap.set(category, {
         amount: existing.amount + transaction.amount,
         transactions: existing.transactions + 1,
         type: transaction.type
       });
     });
-
-    // Adicionar assinaturas do período selecionado como categoria "Assinaturas"
-    const periodSubscriptions = subscriptions.filter(sub => {
-      if (sub.status !== 'active') return false;
-      
-      const startDate = new Date(sub.startDate);
-      
-      // Verificar se a assinatura está ativa no período selecionado
-      switch (selectedPeriod) {
-        case 'month':
-          return startDate <= currentMonth;
-        case 'quarter':
-          return startDate <= currentMonth;
-        case 'year':
-          return startDate.getFullYear() <= currentMonth.getFullYear();
-        case 'custom':
-          return startDate <= customEndDate;
-        default:
-          return true;
-      }
-    });
-    
-    if (periodSubscriptions.length > 0) {
-      const subscriptionAmount = periodSubscriptions.reduce((sum, sub) => sum + sub.amount, 0);
-      const existing = categoryMap.get('Assinaturas') || {
-        amount: 0,
-        transactions: 0,
-        type: 'expense' as const
-      };
-      
-      categoryMap.set('Assinaturas', {
-        amount: existing.amount + subscriptionAmount,
-        transactions: existing.transactions + periodSubscriptions.length,
-        type: 'expense'
-      });
-    }
-
-    // Adicionar parcelamentos do período selecionado como categoria "Parcelamentos"
-    const periodInstallments = installments.filter(inst => {
-      if (inst.status !== 'active') return false;
-      
-      const startDate = new Date(inst.startDate);
-      
-      // Verificar se o parcelamento está ativo no período selecionado
-      switch (selectedPeriod) {
-        case 'month':
-          const monthsSinceStart = (currentMonth.getFullYear() - startDate.getFullYear()) * 12 
-            + currentMonth.getMonth() - startDate.getMonth();
-          return monthsSinceStart >= 0 && monthsSinceStart < inst.totalInstallments;
-        case 'quarter':
-          const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
-          const startQuarter = Math.floor(startDate.getMonth() / 3);
-          const startYear = startDate.getFullYear();
-          const currentYear = currentMonth.getFullYear();
-          const quartersSinceStart = (currentYear - startYear) * 4 + selectedQuarter - startQuarter;
-          return quartersSinceStart >= 0 && quartersSinceStart < Math.ceil(inst.totalInstallments / 3);
-        case 'year':
-          const yearSinceStart = currentMonth.getFullYear() - startDate.getFullYear();
-          return yearSinceStart >= 0 && yearSinceStart < Math.ceil(inst.totalInstallments / 12);
-        case 'custom':
-          return startDate <= customEndDate;
-        default:
-          return true;
-      }
-    });
-    
-    if (periodInstallments.length > 0) {
-      const installmentAmount = periodInstallments.reduce((sum, inst) => sum + inst.installmentValue, 0);
-      const existing = categoryMap.get('Parcelamentos') || {
-        amount: 0,
-        transactions: 0,
-        type: 'expense' as const
-      };
-      
-      categoryMap.set('Parcelamentos', {
-        amount: existing.amount + installmentAmount,
-        transactions: existing.transactions + periodInstallments.length,
-        type: 'expense'
-      });
-    }
 
     const totalExpenses = Array.from(categoryMap.values())
       .reduce((sum, cat) => sum + cat.amount, 0);
@@ -453,81 +386,20 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
     
+    // Calcular despesas regulares (excluindo pagamentos de parcelamentos e assinaturas para evitar dupla contagem)
     const regularExpenses = periodTransactions
-      .filter(t => t.type === 'expense')
+      .filter(t => t.type === 'expense' && !t.installmentId && !t.subscriptionId)
       .reduce((sum, t) => sum + t.amount, 0);
 
-    // Calcular parcelamentos do período selecionado
-    const periodInstallments = installments
-      .filter(inst => inst.status === 'active')
-      .reduce((sum, inst) => {
-        const startDate = new Date(inst.startDate);
-        
-        // Verificar se o parcelamento está ativo no período selecionado
-        let shouldInclude = false;
-        
-        switch (selectedPeriod) {
-          case 'month':
-            const monthsSinceStart = (currentMonth.getFullYear() - startDate.getFullYear()) * 12 
-              + currentMonth.getMonth() - startDate.getMonth();
-            shouldInclude = monthsSinceStart >= 0 && monthsSinceStart < inst.totalInstallments;
-            break;
-          case 'quarter':
-            const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
-            const startQuarter = Math.floor(startDate.getMonth() / 3);
-            const startYear = startDate.getFullYear();
-            const currentYear = currentMonth.getFullYear();
-            const quartersSinceStart = (currentYear - startYear) * 4 + selectedQuarter - startQuarter;
-            shouldInclude = quartersSinceStart >= 0 && quartersSinceStart < Math.ceil(inst.totalInstallments / 3);
-            break;
-          case 'year':
-            const yearSinceStart = currentMonth.getFullYear() - startDate.getFullYear();
-            shouldInclude = yearSinceStart >= 0 && yearSinceStart < Math.ceil(inst.totalInstallments / 12);
-            break;
-          case 'custom':
-            shouldInclude = startDate <= customEndDate;
-            break;
-          default:
-            shouldInclude = true;
-        }
-        
-        if (shouldInclude) {
-          return sum + inst.installmentValue;
-        }
-        return sum;
-      }, 0);
+    // Calcular apenas PAGAMENTOS de parcelamentos efetivamente pagos no período (através das transações)
+    const periodInstallments = periodTransactions
+      .filter(t => t.installmentId && t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
 
-    // Calcular assinaturas do período selecionado
-    const periodSubscriptions = subscriptions
-      .filter(sub => sub.status === 'active')
-      .reduce((sum, sub) => {
-        const startDate = new Date(sub.startDate);
-        
-        // Verificar se a assinatura está ativa no período selecionado
-        let shouldInclude = false;
-        
-        switch (selectedPeriod) {
-          case 'month':
-            shouldInclude = startDate <= currentMonth;
-            break;
-          case 'quarter':
-            shouldInclude = startDate <= currentMonth;
-            break;
-          case 'year':
-            shouldInclude = startDate.getFullYear() <= currentMonth.getFullYear();
-            break;
-          case 'custom':
-            shouldInclude = startDate <= customEndDate;
-            break;
-          default:
-            shouldInclude = true;
-        }
-        
-        if (shouldInclude) {
-          return sum + sub.amount;
-        }
-        return sum;
-      }, 0);
+    // Calcular apenas PAGAMENTOS de assinaturas efetivamente pagos no período (através das transações)
+    const periodSubscriptions = periodTransactions
+      .filter(t => t.subscriptionId && t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
 
     const totalExpenses = regularExpenses + periodInstallments + periodSubscriptions;
 
@@ -715,18 +587,11 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
                 style={styles.filterToggleButton}
                 onPress={async () => {
                   await HapticService.buttonPress();
-                  const toValue = showFilters ? 0 : 1;
-                  Animated.timing(filterAnimation, {
-                    toValue,
-                    duration: 300,
-                    useNativeDriver: false,
-                  }).start(() => {
-                    setShowFilters(!showFilters);
-                  });
+                  setShowFiltersModal(true);
                 }}
               >
                 <Ionicons 
-                  name={showFilters ? "filter" : "filter-outline"} 
+                  name="filter" 
                   size={20} 
                   color={colors.primary} 
                 />
@@ -742,87 +607,6 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
-          
-          {/* Seletor de período */}
-          {showFilters && (
-            <Animated.View style={[
-              styles.filtersContainer,
-              {
-                opacity: filterAnimation,
-                transform: [{
-                  translateY: filterAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-20, 0],
-                  }),
-                }],
-              },
-            ]}>
-              <Text style={styles.filterLabel}>Selecione o período</Text>
-              <View style={styles.periodSelector}>
-            {[
-              { key: 'month', label: 'Mês' },
-              { key: 'quarter', label: 'Trimestre' },
-              { key: 'year', label: 'Ano' },
-              { key: 'custom', label: 'Personalizado' }
-            ].map(period => (
-              <TouchableOpacity
-                key={period.key}
-                style={[
-                  styles.periodButton,
-                  selectedPeriod === period.key && styles.periodButtonActive
-                ]}
-                onPress={async () => {
-                  await HapticService.buttonPress();
-                  if (period.key === 'custom') {
-                    openCustomPeriodModal();
-                  } else {
-                    setSelectedPeriod(period.key as any);
-                  }
-                }}
-              >
-                <Text style={[
-                  styles.periodButtonText,
-                  selectedPeriod === period.key && styles.periodButtonTextActive
-                ]}>
-                  {period.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-              </View>
-
-              {/* Controles de navegação */}
-              <View style={styles.navigationControls}>
-            <TouchableOpacity 
-              style={styles.navButton}
-              onPress={async () => {
-                await HapticService.buttonPress();
-                navigatePeriod('prev');
-              }}
-            >
-              <Ionicons name="chevron-back" size={24} color={colors.primary} />
-            </TouchableOpacity>
-            
-            <View style={styles.periodDisplay}>
-              <Text style={styles.periodDisplayText} numberOfLines={1} adjustsFontSizeToFit>{getPeriodLabel()}</Text>
-              {isCurrentPeriod() && (
-                <View style={styles.currentPeriodBadge}>
-                  <Text style={styles.currentPeriodText}>Atual</Text>
-                </View>
-              )}
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.navButton}
-              onPress={async () => {
-                await HapticService.buttonPress();
-                navigatePeriod('next');
-              }}
-            >
-              <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-            </TouchableOpacity>
-              </View>
-            </Animated.View>
-          )}
         </View>
 
         {/* Resumo do período atual */}
@@ -888,39 +672,34 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={async () => {
-                  await HapticService.buttonPress();
-                  closeCustomPeriodModal();
-                }}>
-                  <Text style={styles.modalCancel}>Cancelar</Text>
-                </TouchableOpacity>
                 <Text style={styles.modalTitle}>Período Personalizado</Text>
-                <TouchableOpacity onPress={async () => {
-                  await HapticService.buttonPress();
-                  confirmCustomPeriod();
-                }}>
-                  <Text style={styles.modalConfirm}>Confirmar</Text>
+                <TouchableOpacity onPress={() => closeCustomPeriodModal()}>
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
               
-              <View style={styles.modalBody}>
-                <View style={styles.datePickerRow}>
-                  <View style={styles.datePickerContainer}>
-                    <Text style={styles.datePickerLabel}>Data Inicial</Text>
-                    <DatePicker
-                      value={customStartDate}
-                      onChange={setCustomStartDate}
-                    />
-                  </View>
-                  
-                  <View style={styles.datePickerContainer}>
-                    <Text style={styles.datePickerLabel}>Data Final</Text>
-                    <DatePicker
-                      value={customEndDate}
-                      onChange={setCustomEndDate}
-                    />
-                  </View>
-                </View>
+              <ScrollView style={styles.modalScrollView}>
+                <TouchableOpacity 
+                  style={styles.datePickerButton}
+                  onPress={() => setShowStartDateModal(true)}
+                >
+                  <Text style={styles.datePickerLabel}>Data Inicial</Text>
+                  <Text style={styles.datePickerValue}>
+                    {format(customStartDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.datePickerButton}
+                  onPress={() => setShowEndDateModal(true)}
+                >
+                  <Text style={styles.datePickerLabel}>Data Final</Text>
+                  <Text style={styles.datePickerValue}>
+                    {format(customEndDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
                 
                 <View style={styles.periodPreview}>
                   <Text style={styles.periodPreviewLabel}>Período Selecionado:</Text>
@@ -928,7 +707,195 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
                     {format(customStartDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} - {format(customEndDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </Text>
                 </View>
+
+                <View style={styles.modalButtons}>
+                  <Button
+                    title="Cancelar"
+                    onPress={() => closeCustomPeriodModal()}
+                    variant="outline"
+                    style={styles.modalButton}
+                  />
+                  <Button
+                    title="Confirmar"
+                    onPress={() => confirmCustomPeriod()}
+                    style={styles.modalButton}
+                  />
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Data Inicial */}
+        <Modal
+          visible={showStartDateModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowStartDateModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Selecionar Data Inicial</Text>
+                <TouchableOpacity onPress={() => setShowStartDateModal(false)}>
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
+              
+              <View style={styles.modalScrollView}>
+                <DatePicker
+                  value={customStartDate}
+                  onChange={(date) => {
+                    setCustomStartDate(date);
+                    setShowStartDateModal(false);
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Data Final */}
+        <Modal
+          visible={showEndDateModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowEndDateModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Selecionar Data Final</Text>
+                <TouchableOpacity onPress={() => setShowEndDateModal(false)}>
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.modalScrollView}>
+                <DatePicker
+                  value={customEndDate}
+                  onChange={(date) => {
+                    setCustomEndDate(date);
+                    setShowEndDateModal(false);
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Filtros */}
+        <Modal
+          visible={showFiltersModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowFiltersModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Filtros de Relatório</Text>
+                <TouchableOpacity onPress={() => setShowFiltersModal(false)}>
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.modalScrollView}>
+                <View style={styles.filtersHeader}>
+                  <Text style={styles.filtersTitle}>Período dos Relatórios</Text>
+                  <TouchableOpacity 
+                    onPress={async () => {
+                      await HapticService.buttonPress();
+                      setSelectedPeriod('month');
+                      setCurrentMonth(new Date());
+                    }}
+                    style={styles.clearButton}
+                  >
+                    <Text style={styles.clearButtonText}>Resetar</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterSectionTitle}>Selecione o período:</Text>
+                  <View style={styles.periodSelector}>
+                    {[
+                      { key: 'month', label: 'Mês' },
+                      { key: 'quarter', label: 'Trimestre' },
+                      { key: 'year', label: 'Ano' },
+                      { key: 'custom', label: 'Personalizado' }
+                    ].map(period => (
+                      <TouchableOpacity
+                        key={period.key}
+                        style={[
+                          styles.periodButton,
+                          selectedPeriod === period.key && styles.periodButtonActive
+                        ]}
+                        onPress={async () => {
+                          await HapticService.buttonPress();
+                          if (period.key === 'custom') {
+                            setShowFiltersModal(false);
+                            openCustomPeriodModal();
+                          } else {
+                            setSelectedPeriod(period.key as any);
+                          }
+                        }}
+                      >
+                        <Text style={[
+                          styles.periodButtonText,
+                          selectedPeriod === period.key && styles.periodButtonTextActive
+                        ]}>
+                          {period.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Controles de navegação */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterSectionTitle}>Navegar período:</Text>
+                  <View style={styles.navigationControls}>
+                    <TouchableOpacity 
+                      style={styles.navButton}
+                      onPress={async () => {
+                        await HapticService.buttonPress();
+                        navigatePeriod('prev');
+                      }}
+                    >
+                      <Ionicons name="chevron-back" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                    
+                    <View style={styles.periodDisplay}>
+                      <Text style={styles.periodDisplayText} numberOfLines={1} adjustsFontSizeToFit>
+                        {getPeriodLabel()}
+                      </Text>
+                      {isCurrentPeriod() && (
+                        <View style={styles.currentPeriodBadge}>
+                          <Text style={styles.currentPeriodText}>Atual</Text>
+                        </View>
+                      )}
+                    </View>
+                    
+                    <TouchableOpacity 
+                      style={styles.navButton}
+                      onPress={async () => {
+                        await HapticService.buttonPress();
+                        navigatePeriod('next');
+                      }}
+                    >
+                      <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.modalButtons}>
+                  <Button
+                    title="Aplicar Filtros"
+                    onPress={() => setShowFiltersModal(false)}
+                    style={styles.modalButton}
+                  />
+                </View>
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -981,15 +948,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  filtersContainer: {
-    paddingTop: 12,
-    paddingBottom: 8,
-    marginTop: 8,
+  filtersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  filterLabel: {
-    fontSize: 14,
+  filtersTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: colors.text,
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+  },
+  clearButtonText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  filterSection: {
+    marginBottom: 16,
+  },
+  filterSectionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
     marginBottom: 8,
   },
   title: {
@@ -1239,27 +1226,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 12,
-    gap: 16,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 8,
+    gap: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   navButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.primary,
   },
   periodDisplay: {
@@ -1301,8 +1282,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingBottom: 20,
-    maxHeight: '80%',
+    maxHeight: '70%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1317,34 +1297,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
-  modalCancel: {
-    fontSize: 16,
-    color: colors.danger,
-  },
-  modalConfirm: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  datePickerRow: {
+  modalButtons: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 20,
-    flexWrap: 'wrap',
+    gap: 12,
+    paddingTop: 20,
   },
-  datePickerContainer: {
+  modalButton: {
     flex: 1,
-    minWidth: '100%',
+  },
+  modalScrollView: {
+    padding: 16,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: colors.background,
     marginBottom: 16,
   },
   datePickerLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: 8,
+  },
+  datePickerValue: {
+    fontSize: 16,
+    color: colors.text,
+    flex: 1,
+    marginLeft: 12,
   },
   periodPreview: {
     alignItems: 'center',

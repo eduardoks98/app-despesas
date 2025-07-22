@@ -39,6 +39,8 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [totalPaid, setTotalPaid] = useState(0);
   const [paymentCount, setPaymentCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSubscriptionData();
@@ -46,6 +48,9 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
 
   const loadSubscriptionData = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
       const subscriptions = await StorageService.getSubscriptions();
       const found = subscriptions.find(s => s.id === subscriptionId);
       
@@ -61,9 +66,14 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
         const total = related.reduce((sum, t) => sum + t.amount, 0);
         setTotalPaid(total);
         setPaymentCount(related.length);
+      } else {
+        setError('Assinatura não encontrada');
       }
     } catch (error) {
       console.error('Erro ao carregar assinatura:', error);
+      setError('Erro ao carregar dados da assinatura');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -160,11 +170,35 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
     );
   };
 
-  if (!subscription) {
+  if (loading) {
     return (
       <Container>
         <View style={styles.loading}>
           <Text>Carregando...</Text>
+        </View>
+      </Container>
+    );
+  }
+
+  if (error || !subscription) {
+    return (
+      <Container>
+        <View style={styles.loading}>
+          <Text style={styles.errorText}>{error || 'Assinatura não encontrada'}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              if (error) {
+                loadSubscriptionData();
+              } else {
+                navigation.goBack();
+              }
+            }}
+          >
+            <Text style={styles.retryText}>
+              {error ? 'Tentar Novamente' : 'Voltar'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </Container>
     );
@@ -260,7 +294,7 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
             <View style={styles.controlInfo}>
               <Text style={styles.controlLabel}>Lembretes</Text>
               <Text style={styles.controlDescription}>
-                Notificar {subscription.reminderDays || 3} dias antes do vencimento
+                Notificar 3 dias antes do vencimento
               </Text>
             </View>
             <Switch
@@ -374,6 +408,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
   headerCard: {
     marginTop: 16,

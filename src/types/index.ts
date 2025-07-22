@@ -12,6 +12,8 @@ export interface Transaction {
   tags?: string[];
   isRecurring?: boolean;
   recurringDay?: number;
+  isPaid?: boolean; // Se a transação foi paga/recebida
+  paidDate?: string; // Data em que foi efetivamente paga/recebida
 }
 
 export interface Installment {

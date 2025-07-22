@@ -3,6 +3,7 @@ import {
   View, 
   Text, 
   TextInput, 
+  FlatList,
   ScrollView, 
   StyleSheet,
   Alert,
@@ -19,6 +20,8 @@ import { ValidationService } from '../../services/validation/ValidationService';
 import { ErrorHandler } from '../../services/error/ErrorHandler';
 import { Installment, Category } from '../../types';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
+import { HapticService } from '../../services/haptic/HapticService';
 import { Ionicons } from '@expo/vector-icons';
 
 interface EditInstallmentScreenProps {
@@ -261,14 +264,30 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
 
   return (
     <Container>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Editar Parcelamento</Text>
-          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-            <Ionicons name="trash" size={24} color={colors.danger} />
-          </TouchableOpacity>
-        </View>
+      <FlatList
+        data={[{ key: 'content' }]}
+        renderItem={() => (
+          <>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerTop}>
+                <View>
+                  <Text style={styles.title}>Editar Parcelamento</Text>
+                  <Text style={styles.subtitle}>
+                    {formData.description || 'Parcelamento'}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.deleteButton}
+                  onPress={async () => {
+                    await HapticService.buttonPress();
+                    handleDelete();
+                  }}
+                >
+                  <Ionicons name="trash" size={20} color={colors.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
 
         {/* Descrição */}
         <Card style={styles.card}>
@@ -432,7 +451,12 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
         </View>
 
         <View style={styles.bottomSpacer} />
-      </ScrollView>
+          </>
+        )}
+        keyExtractor={(item) => item.key}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.flatListContent}
+      />
 
       {/* Modal de Categorias */}
       <Modal

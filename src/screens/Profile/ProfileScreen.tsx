@@ -349,23 +349,44 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     await StorageService.saveHapticEnabled(value);
   };
 
-  const menuItems = [
+  const quickActions = [
     {
-      icon: 'help-circle',
-      title: 'Tour do App',
-      subtitle: 'Revisar recursos e funcionalidades',
+      icon: 'add-circle',
+      title: 'Nova Transação',
+      subtitle: 'Adicionar receita ou despesa',
       onPress: async () => {
         await HapticService.buttonPress();
-        setShowQuickTour(true);
+        navigation.navigate('SelectTransactionType');
       },
     },
     {
-      icon: 'notifications',
-      title: 'Configurar Notificações',
-      subtitle: 'Gerenciar lembretes de pagamentos',
+      icon: 'card-outline',
+      title: 'Novo Parcelamento',
+      subtitle: 'Compra parcelada',
       onPress: async () => {
         await HapticService.buttonPress();
-        navigation.navigate('Notifications');
+        navigation.navigate('AddInstallment');
+      },
+    },
+    {
+      icon: 'repeat',
+      title: 'Nova Assinatura',
+      subtitle: 'Serviço recorrente mensal',
+      onPress: async () => {
+        await HapticService.buttonPress();
+        navigation.navigate('AddSubscription');
+      },
+    },
+  ];
+
+  const toolsItems = [
+    {
+      icon: 'bar-chart',
+      title: 'Relatórios',
+      subtitle: 'Análises e gráficos financeiros',
+      onPress: async () => {
+        await HapticService.buttonPress();
+        navigation.navigate('Reports');
       },
     },
     {
@@ -377,6 +398,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         navigation.navigate('Export');
       },
     },
+    {
+      icon: 'help-circle',
+      title: 'Tour do App',
+      subtitle: 'Revisar recursos e funcionalidades',
+      onPress: async () => {
+        await HapticService.buttonPress();
+        setShowQuickTour(true);
+      },
+    },
+  ];
+
+  const dataItems = [
     {
       icon: 'refresh',
       title: 'Dados de Teste',
@@ -532,11 +565,77 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           </View>
         </Card>
 
-        {/* Menu de ações */}
+        {/* Ações Rápidas */}
+        <Card>
+          <Text style={styles.cardTitle}>Ações Rápidas</Text>
+          
+          {quickActions.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuItem}
+              onPress={item.onPress}
+              disabled={isLoading}
+            >
+              <View style={styles.menuItemLeft}>
+                <View style={styles.menuIcon}>
+                  <Ionicons 
+                    name={item.icon as any} 
+                    size={20} 
+                    color={colors.primary} 
+                  />
+                </View>
+                <View>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                </View>
+              </View>
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color={colors.textSecondary} 
+              />
+            </TouchableOpacity>
+          ))}
+        </Card>
+
+        {/* Ferramentas */}
+        <Card>
+          <Text style={styles.cardTitle}>Ferramentas</Text>
+          
+          {toolsItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuItem}
+              onPress={item.onPress}
+              disabled={isLoading}
+            >
+              <View style={styles.menuItemLeft}>
+                <View style={styles.menuIcon}>
+                  <Ionicons 
+                    name={item.icon as any} 
+                    size={20} 
+                    color={colors.primary} 
+                  />
+                </View>
+                <View>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                </View>
+              </View>
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color={colors.textSecondary} 
+              />
+            </TouchableOpacity>
+          ))}
+        </Card>
+
+        {/* Dados e Backup */}
         <Card>
           <Text style={styles.cardTitle}>Dados e Backup</Text>
           
-          {menuItems.map((item, index) => (
+          {dataItems.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={[

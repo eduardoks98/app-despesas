@@ -1,4 +1,5 @@
 import React from 'react';
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -17,6 +18,7 @@ import { AddSubscriptionScreen } from './src/screens/AddSubscription/AddSubscrip
 import { SelectTransactionTypeScreen } from './src/screens/SelectTransactionType/SelectTransactionTypeScreen';
 import { EditTransactionScreen } from './src/screens/EditTransaction/EditTransactionScreen';
 import { EditInstallmentScreen } from './src/screens/EditInstallment/EditInstallmentScreen';
+import { EditSubscriptionScreen } from './src/screens/EditSubscription/EditSubscriptionScreen';
 import { InstallmentDetailScreen } from './src/screens/InstallmentDetail/InstallmentDetailScreen';
 import { InstallmentsScreen } from './src/screens/Installments/InstallmentsScreen';
 import { SubscriptionsScreen } from './src/screens/Subscriptions/SubscriptionsScreen';
@@ -46,39 +48,58 @@ function TabNavigator() {
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Transactions') {
+            iconName = focused ? 'receipt' : 'receipt-outline';
           } else if (route.name === 'Records') {
-            iconName = focused ? 'list' : 'list-outline';
+            iconName = focused ? 'folder' : 'folder-outline';
           } else if (route.name === 'Reports') {
-            iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+            iconName = focused ? 'analytics' : 'analytics-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
             iconName = 'help-outline';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return (
+            <View style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 50,
+              height: 50,
+              borderRadius: 25,
+              backgroundColor: focused ? colors.primary + '15' : 'transparent',
+            }}>
+              <Ionicons name={iconName} size={focused ? 22 : 20} color={color} />
+            </View>
+          );
         },
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarInactiveTintColor: colors.textSecondary,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 0,
-          elevation: 8,
+          backgroundColor: colors.white,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          elevation: 12,
           shadowColor: '#000',
           shadowOffset: {
             width: 0,
-            height: -2,
+            height: -3,
           },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom + 5,
-          paddingTop: 5,
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          height: 70 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
+          paddingTop: 8,
+          paddingHorizontal: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
+          marginTop: -5,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
         },
       })}
     >
@@ -87,6 +108,13 @@ function TabNavigator() {
         component={HomeScreen}
         options={{
           tabBarLabel: 'Início',
+        }}
+      />
+      <Tab.Screen 
+        name="Transactions" 
+        component={TransactionsScreen}
+        options={{
+          tabBarLabel: 'Transações',
         }}
       />
       <Tab.Screen 
@@ -188,6 +216,15 @@ function AppNavigator() {
           component={EditInstallmentScreen}
           options={{ 
             title: 'Editar Parcelamento',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+          }}
+        />
+        <Stack.Screen 
+          name="EditSubscription" 
+          component={EditSubscriptionScreen}
+          options={{ 
+            title: 'Editar Assinatura',
             headerStyle: { backgroundColor: colors.primary },
             headerTintColor: colors.white,
           }}

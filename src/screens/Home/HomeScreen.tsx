@@ -60,30 +60,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       let income = 0;
       let expenses = 0;
 
-      // Calcular transações do mês atual
+      // Calcular TODAS as transações do mês atual (igual à timeline)
       transactions.forEach(transaction => {
         const transactionDate = new Date(transaction.date);
         if (transactionDate.getMonth() === currentMonth && 
             transactionDate.getFullYear() === currentYear) {
           if (transaction.type === 'income') {
             income += transaction.amount;
-          } else {
+          } else if (transaction.type === 'expense') {
+            // Todas as despesas (incluindo pagamentos de parcelamentos e assinaturas)
             expenses += transaction.amount;
           }
         }
       });
 
-      // Adicionar parcelamentos e assinaturas do mês
-      const activeInstallments = installments.filter(inst => inst.status === 'active');
-      const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
-      
-      const monthlyInstallmentValue = activeInstallments.reduce((total, inst) => total + inst.installmentValue, 0);
-      const subscriptionTotal = activeSubscriptions.reduce((sum, sub) => sum + sub.amount, 0);
-      const totalMonthlyExpenses = expenses + monthlyInstallmentValue + subscriptionTotal;
+      const totalMonthlyExpenses = expenses;
       
       setMonthlyIncome(income);
       setMonthlyExpenses(totalMonthlyExpenses);
       setBalance(income - totalMonthlyExpenses);
+
+      // Filtrar parcelamentos e assinaturas ativos para a timeline
+      const activeInstallments = installments.filter(inst => inst.status === 'active');
+      const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
 
       // Criar timeline unificada
       const timeline = createTimeline(transactions, activeInstallments, activeSubscriptions);
@@ -101,48 +100,85 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     const thirtyDaysAgo = addDays(now, -30);
     const thirtyDaysAhead = addDays(now, 30);
 
-    // Adicionar transações recentes
+    // Adicionar todas as transações recentes (incluindo pagamentos de parcelamentos/assinaturas)
     transactions
       .filter(t => new Date(t.date) >= thirtyDaysAgo)
       .forEach(transaction => {
+        let title = transaction.description;
+        let icon = transaction.type === 'income' ? 'trending-up' : 'trending-down';
+        let color = transaction.type === 'income' ? colors.success : colors.danger;
+        let type: 'transaction' | 'installment' | 'subscription' = 'transaction';
+
+        // Se é pagamento de parcelamento
+        if (transaction.installmentId) {
+          const installment = installments.find(i => i.id === transaction.installmentId);
+          if (installment) {
+            title = `${installment.description}`;
+            // Usar o installmentNumber da transação se existir
+            const parcelaNumero = transaction.installmentNumber || 'N/A';
+            transaction.category = `Parcela ${parcelaNumero}/${installment.totalInstallments} • ${installment.store}`;
+            icon = 'card';
+            color = colors.warning;
+            type = 'installment';
+          }
+        }
+        // Se é pagamento de assinatura
+        else if (transaction.subscriptionId) {
+          const subscription = subscriptions.find(s => s.id === transaction.subscriptionId);
+          if (subscription) {
+            title = `${subscription.name}`;
+            // Adicionar informação do vencimento na categoria
+            const transactionDate = new Date(transaction.date);
+            const monthName = transactionDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            transaction.category = `Assinatura • ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`;
+            icon = 'repeat';
+            color = colors.info;
+            type = 'subscription';
+          }
+        }
+
         items.push({
           id: transaction.id,
-          type: 'transaction',
-          title: transaction.description,
+          type,
+          title,
           amount: transaction.type === 'income' ? transaction.amount : -transaction.amount,
           date: new Date(transaction.date),
           category: transaction.category,
-          icon: transaction.type === 'income' ? 'trending-up' : 'trending-down',
-          color: transaction.type === 'income' ? colors.success : colors.danger,
+          icon,
+          color,
           originalData: transaction
         });
       });
 
-    // Adicionar parcelas (próximas e recentes)
+    // Adicionar próximas parcelas não pagas (só para vencimentos)
     installments.forEach(installment => {
-      // Calcular próximas parcelas
       const startDate = new Date(installment.startDate);
-      for (let i = installment.currentInstallment; i <= installment.totalInstallments; i++) {
-        const dueDate = new Date(startDate);
-        dueDate.setMonth(dueDate.getMonth() + i - 1);
-        
-        if (dueDate >= thirtyDaysAgo && dueDate <= thirtyDaysAhead) {
-          items.push({
-            id: `${installment.id}_${i}`,
-            type: 'installment',
-            title: `${installment.description} (${i}/${installment.totalInstallments})`,
-            amount: -installment.installmentValue,
-            date: dueDate,
-            category: installment.category,
-            icon: 'card',
-            color: colors.warning,
-            originalData: installment
-          });
+      
+      for (let i = 1; i <= installment.totalInstallments; i++) {
+        // Só adicionar se não foi paga ainda
+        if (!installment.paidInstallments.includes(i)) {
+          const dueDate = new Date(startDate);
+          dueDate.setMonth(dueDate.getMonth() + i - 1);
+          
+          if (dueDate >= now && dueDate <= thirtyDaysAhead) {
+            items.push({
+              id: `${installment.id}_upcoming_${i}`,
+              type: 'installment',
+              title: `${installment.description}`,
+              amount: -installment.installmentValue,
+              date: dueDate,
+              category: `Próxima parcela ${i}/${installment.totalInstallments} • ${installment.store}`,
+              icon: 'card',
+              color: colors.warning,
+              originalData: installment
+            });
+          }
         }
       }
     });
 
-    // Adicionar assinaturas (próximos vencimentos)
+
+    // Adicionar próximos vencimentos de assinaturas
     subscriptions.forEach(subscription => {
       const today = new Date();
       const currentMonth = today.getMonth();
@@ -150,14 +186,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       
       // Próximo vencimento deste mês
       const thisMonthDue = new Date(currentYear, currentMonth, subscription.billingDay);
-      if (thisMonthDue >= thirtyDaysAgo && thisMonthDue <= thirtyDaysAhead) {
+      if (thisMonthDue >= now && thisMonthDue <= thirtyDaysAhead) {
+        const monthName = thisMonthDue.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         items.push({
           id: `${subscription.id}_${currentYear}_${currentMonth}`,
           type: 'subscription',
           title: subscription.name,
           amount: -subscription.amount,
           date: thisMonthDue,
-          category: subscription.category,
+          category: `Próximo vencimento • ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`,
           icon: 'repeat',
           color: colors.info,
           originalData: subscription
@@ -167,13 +204,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       // Próximo mês também
       const nextMonthDue = new Date(currentYear, currentMonth + 1, subscription.billingDay);
       if (nextMonthDue <= thirtyDaysAhead) {
+        const monthName = nextMonthDue.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         items.push({
           id: `${subscription.id}_${nextMonthDue.getFullYear()}_${nextMonthDue.getMonth()}`,
           type: 'subscription',
           title: subscription.name,
           amount: -subscription.amount,
           date: nextMonthDue,
-          category: subscription.category,
+          category: `Próximo vencimento • ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`,
           icon: 'repeat',
           color: colors.info,
           originalData: subscription
@@ -185,7 +223,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     items.sort((a, b) => b.date.getTime() - a.date.getTime());
 
     // Separar em recentes (últimos 7 dias) e próximos (próximos 15 dias)
-    const recent = items.filter(item => item.date <= now).slice(0, 10);
+    const recent = items.filter(item => item.date <= now).slice(0, 5);
     const upcoming = items
       .filter(item => item.date > now)
       .sort((a, b) => a.date.getTime() - b.date.getTime())
@@ -263,51 +301,53 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               </Card>
             </View>
 
-            {/* Ações Rápidas */}
-            <View style={styles.quickActions}>
-              <TouchableOpacity 
-                style={styles.quickActionButton}
-                onPress={() => navigation.navigate('SelectTransactionType')}
-              >
-                <Ionicons name="add-circle" size={24} color={colors.primary} />
-                <Text style={styles.quickActionText}>Adicionar</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.quickActionButton}
-                onPress={() => navigation.navigate('Reports')}
-              >
-                <Ionicons name="bar-chart" size={24} color={colors.primary} />
-                <Text style={styles.quickActionText}>Relatórios</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.quickActionButton}
-                onPress={() => navigation.navigate('Records')}
-              >
-                <Ionicons name="list" size={24} color={colors.primary} />
-                <Text style={styles.quickActionText}>Registros</Text>
-              </TouchableOpacity>
-            </View>
 
             {/* Próximos Vencimentos */}
             {upcomingItems.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Próximos Vencimentos</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('Records')}>
+                  <TouchableOpacity onPress={() => {
+                    // Analisar os tipos dos próximos vencimentos para decidir o filtro
+                    const hasInstallments = upcomingItems.some(item => item.type === 'installment');
+                    const hasSubscriptions = upcomingItems.some(item => item.type === 'subscription');
+                    
+                    if (hasInstallments && !hasSubscriptions) {
+                      // Só parcelamentos - navegar para parcelamentos
+                      navigation.navigate('Records', { 
+                        selectedType: 'installments',
+                        showFilters: true 
+                      });
+                    } else if (hasSubscriptions && !hasInstallments) {
+                      // Só assinaturas - navegar para assinaturas
+                      navigation.navigate('Records', { 
+                        selectedType: 'subscriptions',
+                        showFilters: true 
+                      });
+                    } else {
+                      // Ambos ou só transações - navegar para records geral
+                      navigation.navigate('Records', { showFilters: true });
+                    }
+                  }}>
                     <Text style={styles.seeAll}>Ver todos</Text>
                   </TouchableOpacity>
                 </View>
                 
-                {upcomingItems.map(item => (
-                  <Card key={item.id} style={styles.timelineCard}>
-                    <View style={styles.timelineItem}>
+                <View style={styles.timelineContainer}>
+                  {upcomingItems.map((item, index) => (
+                    <TouchableOpacity 
+                      key={item.id} 
+                      style={[
+                        styles.timelineItemCompact,
+                        index !== upcomingItems.length - 1 && styles.timelineItemBorder
+                      ]}
+                      onPress={() => handleTimelineItemPress(item)}
+                    >
                       <View style={[
                         styles.timelineIcon,
                         { backgroundColor: item.color + '20' }
                       ]}>
-                        <Ionicons name={item.icon as any} size={20} color={item.color} />
+                        <Ionicons name={item.icon as any} size={16} color={item.color} />
                       </View>
                       
                       <View style={styles.timelineContent}>
@@ -322,12 +362,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                       
                       <MoneyText 
                         value={item.amount} 
-                        size="medium" 
+                        size="small" 
                         style={[styles.timelineAmount, { color: item.color }]}
                       />
-                    </View>
-                  </Card>
-                ))}
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             )}
 
@@ -335,23 +375,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             {timelineItems.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Movimentações Recentes</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('Records')}>
+                  <View style={styles.sectionTitleContainer}>
+                    <Text style={styles.sectionTitle}>Movimentações Recentes</Text>
+                    <Text style={styles.sectionSubtitle}>Últimas 5 movimentações</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
                     <Text style={styles.seeAll}>Ver todas</Text>
                   </TouchableOpacity>
                 </View>
                 
-                {timelineItems.map(item => (
-                  <Card key={item.id} style={styles.timelineCard}>
+                <View style={styles.timelineContainer}>
+                  {timelineItems.map((item, index) => (
                     <TouchableOpacity 
-                      style={styles.timelineItem}
+                      key={item.id}
+                      style={[
+                        styles.timelineItemCompact,
+                        index !== timelineItems.length - 1 && styles.timelineItemBorder
+                      ]}
                       onPress={() => handleTimelineItemPress(item)}
                     >
                       <View style={[
                         styles.timelineIcon,
                         { backgroundColor: item.color + '20' }
                       ]}>
-                        <Ionicons name={item.icon as any} size={20} color={item.color} />
+                        <Ionicons name={item.icon as any} size={16} color={item.color} />
                       </View>
                       
                       <View style={styles.timelineContent}>
@@ -366,12 +413,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                       
                       <MoneyText 
                         value={item.amount} 
-                        size="medium" 
+                        size="small" 
                         style={[styles.timelineAmount, { color: item.color }]}
                       />
                     </TouchableOpacity>
-                  </Card>
-                ))}
+                  ))}
+                </View>
               </View>
             )}
 
@@ -395,37 +442,38 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.primary,
     paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 40,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   greeting: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.white,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.primaryLight,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   balanceValue: {
     color: colors.white,
   },
   summaryCards: {
     flexDirection: 'row',
-    marginTop: -20,
+    marginTop: -16,
     paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
+    gap: SPACING.xs,
+    marginBottom: SPACING.xs,
   },
   summaryCard: {
     flex: 1,
     alignItems: 'center',
-    minWidth: 0, // Permite que os cards se comprimam se necessário
-    paddingVertical: SPACING.md, // Espaço vertical reduzido
-    paddingHorizontal: SPACING.xs, // Espaço horizontal mínimo
+    minWidth: 0,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
   },
   summaryLabel: {
     fontSize: FONT_SIZES.xs,
@@ -469,21 +517,29 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   section: {
-    marginTop: SPACING.lg,
+    marginTop: SPACING.md,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-    flexWrap: 'wrap', // Permite quebra se necessário
+    marginBottom: SPACING.xs,
+    flexWrap: 'wrap',
+  },
+  sectionTitleContainer: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: FONT_SIZES.xl,
     fontWeight: '600',
     color: colors.text,
     flexShrink: 1, // Permite compressão do título
+  },
+  sectionSubtitle: {
+    fontSize: FONT_SIZES.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   seeAll: {
     fontSize: FONT_SIZES.md,
@@ -492,50 +548,46 @@ const styles = StyleSheet.create({
     flexShrink: 0, // Não comprime o botão
   },
   bottomSpacer: {
-    height: 100,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
-  },
-  quickActionButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  quickActionText: {
-    fontSize: FONT_SIZES.xs,
-    color: colors.text,
-    marginTop: SPACING.xs / 2,
-    fontWeight: '500',
+    height: 80,
   },
   timelineCard: {
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
     marginHorizontal: 0,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
   },
   timelineItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
   },
+  timelineContainer: {
+    backgroundColor: colors.white,
+    marginHorizontal: SPACING.md,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
   timelineIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  timelineItemCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.sm,
+  },
+  timelineItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   timelineContent: {
     flex: 1,
@@ -544,12 +596,12 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   timelineDate: {
     fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   timelineCategory: {
     fontSize: FONT_SIZES.xs,

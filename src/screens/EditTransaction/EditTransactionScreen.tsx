@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { 
   View, 
   Text, 
   TextInput, 
-  ScrollView, 
+  FlatList, 
+  ScrollView,
   StyleSheet,
   Alert,
   TouchableOpacity,
@@ -19,6 +20,8 @@ import { ValidationService } from '../../services/validation/ValidationService';
 import { ErrorHandler } from '../../services/error/ErrorHandler';
 import { Transaction, Category } from '../../types';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
+import { HapticService } from '../../services/haptic/HapticService';
 import { Ionicons } from '@expo/vector-icons';
 
 interface EditTransactionScreenProps {
@@ -55,20 +58,37 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
     loadCategories();
   }, []);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={{ marginRight: 15 }}
+          onPress={async () => {
+            await HapticService.buttonPress();
+            handleDelete();
+          }}
+        >
+          <Ionicons name="trash" size={24} color="white" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+
   const loadTransaction = async () => {
     try {
       const transactions = await StorageService.getTransactions();
       const found = transactions.find(t => t.id === transactionId);
       
       if (found) {
+        console.log('Transação encontrada:', found);
         setTransaction(found);
         setFormData({
-          type: found.type,
-          amount: found.amount.toString(),
-          description: found.description,
-          category: found.category,
-          paymentMethod: found.paymentMethod,
-          date: new Date(found.date),
+          type: found.type || 'expense',
+          amount: (found.amount || 0).toFixed(2).replace('.', ','),
+          description: found.description || '',
+          category: found.category || '',
+          paymentMethod: found.paymentMethod || 'cash',
+          date: new Date(found.date || new Date()),
         });
       } else {
         Alert.alert('Erro', 'Transação não encontrada');
@@ -82,16 +102,13 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
   };
 
   const loadCategories = async () => {
-    const data = await ErrorHandler.withErrorHandling(
-      'carregar categorias',
-      async () => {
-        const categories = await StorageService.getCategories();
-        setCategories(categories);
-        return categories;
-      }
-    );
-    
-    if (!data) {
+    try {
+      console.log('Carregando categorias...');
+      const categories = await StorageService.getCategories();
+      console.log('Categorias carregadas:', categories);
+      setCategories(categories || []);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
       // Se falhou, usar categorias padrão
       const defaultCategories: Category[] = [
         { id: '1', name: 'Alimentação', icon: '🍔', type: 'expense', color: '#FF6B6B', isCustom: false },
@@ -114,9 +131,11 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
   };
 
   const validateForm = () => {
+    console.log('=== VALIDANDO FORMULARIO ===');
     setValidationErrors([]);
 
     const amount = formData.amount ? parseFloat(formData.amount.replace(',', '.')) : 0;
+    console.log('Amount parsed:', amount);
 
     const transactionData = {
       description: formData.description,
@@ -127,13 +146,27 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
       paymentMethod: formData.paymentMethod,
     };
 
-    const errors = ValidationService.validateTransaction(transactionData);
+    console.log('Transaction data para validação:', transactionData);
+    const validationResult = ValidationService.validateTransaction(transactionData);
+    console.log('Resultado da validação:', validationResult);
+    
+    // A validação retorna um objeto com { errors, isValid, warnings }
+    const errors = validationResult.errors || [];
     setValidationErrors(errors);
-    return errors.length === 0;
+    const isValid = validationResult.isValid || errors.length === 0;
+    console.log('Formulário válido:', isValid);
+    return isValid;
   };
 
   const updateTransaction = async (transactionData: any) => {
-    if (!transaction) return;
+    console.log('=== ATUALIZANDO TRANSACAO ===');
+    if (!transaction) {
+      console.log('Transaction não encontrada!');
+      return false;
+    }
+
+    console.log('Transaction original:', transaction);
+    console.log('Dados novos:', transactionData);
 
     const updatedTransaction: Transaction = {
       ...transaction,
@@ -141,24 +174,39 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
       amount: transactionData.amount,
     };
 
+    console.log('Transaction atualizada:', updatedTransaction);
+
     const allTransactions = await StorageService.getTransactions();
+    console.log('Total de transactions:', allTransactions.length);
     const index = allTransactions.findIndex(t => t.id === transactionId);
+    console.log('Index encontrado:', index);
     
     if (index !== -1) {
       allTransactions[index] = updatedTransaction;
+      console.log('Salvando transactions...');
       await StorageService.setTransactions(allTransactions);
+      console.log('Transactions salvas com sucesso!');
       return true;
     }
+    console.log('Transaction não encontrada na lista!');
     return false;
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    console.log('=== HANDLE SAVE INICIADO ===');
+    console.log('FormData atual:', formData);
+    
+    if (!validateForm()) {
+      console.log('Validação falhou, parando execução');
+      return;
+    }
 
+    console.log('Validação passou, continuando...');
     setIsLoading(true);
 
     try {
       const amount = parseFloat(formData.amount.replace(',', '.'));
+      console.log('Amount final:', amount);
       
       const transactionData = {
         description: formData.description,
@@ -169,13 +217,17 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
         paymentMethod: formData.paymentMethod,
       };
 
+      console.log('Transaction data final:', transactionData);
       const success = await updateTransaction(transactionData);
+      console.log('Resultado updateTransaction:', success);
       
       if (success) {
+        console.log('Sucesso! Mostrando alert...');
         Alert.alert('Sucesso', 'Transação atualizada com sucesso!', [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } else {
+        console.log('Falha na atualização');
         Alert.alert('Erro', 'Erro ao atualizar transação');
       }
     } catch (error) {
@@ -215,7 +267,14 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
   };
 
   const formatAmount = (value: string) => {
-    return value.replace(/[^0-9,]/g, '').replace(/,/g, '.');
+    // Remove tudo exceto números e vírgula
+    const cleaned = value.replace(/[^0-9,]/g, '');
+    // Garante apenas uma vírgula
+    const parts = cleaned.split(',');
+    if (parts.length > 2) {
+      return parts[0] + ',' + parts.slice(1).join('');
+    }
+    return cleaned;
   };
 
   const handleAmountChange = (value: string) => {
@@ -256,151 +315,151 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
 
   return (
     <Container>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Editar Transação</Text>
-          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-            <Ionicons name="trash" size={24} color={colors.danger} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Tipo de Transação */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Tipo de Transação</Text>
-          <View style={styles.typeButtons}>
-            <TouchableOpacity
-              style={getTypeButtonStyle('expense')}
-              onPress={() => setFormData(prev => ({ ...prev, type: 'expense' }))}
-            >
-              <Ionicons name="arrow-down" size={20} color={formData.type === 'expense' ? colors.white : colors.textSecondary} />
-              <Text style={getTypeTextStyle('expense')}>Despesa</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={getTypeButtonStyle('income')}
-              onPress={() => setFormData(prev => ({ ...prev, type: 'income' }))}
-            >
-              <Ionicons name="arrow-up" size={20} color={formData.type === 'income' ? colors.white : colors.textSecondary} />
-              <Text style={getTypeTextStyle('income')}>Receita</Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
-
-        {/* Valor */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Valor</Text>
-          <View style={styles.amountContainer}>
-            <Text style={styles.currencySymbol}>R$</Text>
-            <TextInput
-              style={styles.amountInput}
-              value={formData.amount}
-              onChangeText={handleAmountChange}
-              placeholder="0,00"
-              keyboardType="numeric"
-              placeholderTextColor={colors.textTertiary}
-            />
-          </View>
-        </Card>
-
-        {/* Descrição */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Descrição</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.description}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
-            placeholder="Ex: Compras no mercado"
-            placeholderTextColor={colors.textTertiary}
-          />
-        </Card>
-
-        {/* Categoria */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Categoria</Text>
-          <TouchableOpacity
-            style={styles.categoryButton}
-            onPress={() => setShowCategoryModal(true)}
-          >
-            {getSelectedCategory() ? (
-              <View style={styles.selectedCategory}>
-                <Text style={styles.categoryIcon}>{getSelectedCategory()?.icon}</Text>
-                <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
+      <FlatList
+        data={[{ key: 'content' }]}
+        renderItem={() => (
+          <>
+            {/* Tipo de Transação */}
+            <Card style={styles.card}>
+              <Text style={styles.label}>Tipo de Transação</Text>
+              <View style={styles.typeButtons}>
+                <TouchableOpacity
+                  style={getTypeButtonStyle('expense')}
+                  onPress={() => setFormData(prev => ({ ...prev, type: 'expense' }))}
+                >
+                  <Ionicons name="arrow-down" size={20} color={formData.type === 'expense' ? colors.white : colors.textSecondary} />
+                  <Text style={getTypeTextStyle('expense')}>Despesa</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={getTypeButtonStyle('income')}
+                  onPress={() => setFormData(prev => ({ ...prev, type: 'income' }))}
+                >
+                  <Ionicons name="arrow-up" size={20} color={formData.type === 'income' ? colors.white : colors.textSecondary} />
+                  <Text style={getTypeTextStyle('income')}>Receita</Text>
+                </TouchableOpacity>
               </View>
-            ) : (
-              <Text style={styles.categoryPlaceholder}>Selecione uma categoria</Text>
-            )}
-            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </Card>
+            </Card>
 
-        {/* Data */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Data</Text>
-          <DatePicker
-            value={formData.date}
-            onChange={(date) => setFormData(prev => ({ ...prev, date }))}
-          />
-        </Card>
-
-        {/* Forma de Pagamento */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Forma de Pagamento</Text>
-          <View style={styles.paymentMethods}>
-            {['cash', 'debit', 'credit', 'pix'].map((method) => (
-              <TouchableOpacity
-                key={method}
-                style={[
-                  styles.paymentMethodButton,
-                  formData.paymentMethod === method && styles.paymentMethodButtonActive
-                ]}
-                onPress={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
-              >
-                <Ionicons 
-                  name={getPaymentMethodIcon(method) as any} 
-                  size={20} 
-                  color={formData.paymentMethod === method ? colors.white : colors.textSecondary} 
+            {/* Valor */}
+            <Card style={styles.card}>
+              <Text style={styles.label}>Valor</Text>
+              <View style={styles.amountContainer}>
+                <Text style={styles.currencySymbol}>R$</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  value={formData.amount}
+                  onChangeText={handleAmountChange}
+                  placeholder="0,00"
+                  keyboardType="numeric"
+                  placeholderTextColor={colors.textTertiary}
                 />
-                <Text style={[
-                  styles.paymentMethodText,
-                  formData.paymentMethod === method && styles.paymentMethodTextActive
-                ]}>
-                  {method === 'cash' ? 'Dinheiro' : 
-                   method === 'debit' ? 'Débito' : 
-                   method === 'credit' ? 'Crédito' : 'PIX'}
-                </Text>
+              </View>
+            </Card>
+
+            {/* Descrição */}
+            <Card style={styles.card}>
+              <Text style={styles.label}>Descrição</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.description}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
+                placeholder="Ex: Compras no mercado"
+                placeholderTextColor={colors.textTertiary}
+              />
+            </Card>
+
+            {/* Categoria */}
+            <Card style={styles.card}>
+              <Text style={styles.label}>Categoria</Text>
+              <TouchableOpacity
+                style={styles.categoryButton}
+                onPress={() => setShowCategoryModal(true)}
+              >
+                {getSelectedCategory() ? (
+                  <View style={styles.selectedCategory}>
+                    <Text style={styles.categoryIcon}>{getSelectedCategory()?.icon}</Text>
+                    <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Selecione uma categoria</Text>
+                )}
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
-            ))}
-          </View>
-        </Card>
+            </Card>
 
-        {/* Erros de Validação */}
-        {validationErrors.length > 0 && (
-          <Card style={styles.errorCard}>
-            {validationErrors.map((error, index) => (
-              <Text key={index} style={styles.errorText}>• {error}</Text>
-            ))}
-          </Card>
+            {/* Data */}
+            <Card style={styles.card}>
+              <Text style={styles.label}>Data</Text>
+              <DatePicker
+                value={formData.date}
+                onChange={(date) => setFormData(prev => ({ ...prev, date }))}
+              />
+            </Card>
+
+            {/* Forma de Pagamento */}
+            <Card style={styles.card}>
+              <Text style={styles.label}>Forma de Pagamento</Text>
+              <View style={styles.paymentMethods}>
+                {['cash', 'debit', 'credit', 'pix'].map((method) => (
+                  <TouchableOpacity
+                    key={method}
+                    style={[
+                      styles.paymentMethodButton,
+                      formData.paymentMethod === method && styles.paymentMethodButtonActive
+                    ]}
+                    onPress={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
+                  >
+                    <Ionicons 
+                      name={getPaymentMethodIcon(method) as any} 
+                      size={20} 
+                      color={formData.paymentMethod === method ? colors.white : colors.textSecondary} 
+                    />
+                    <Text style={[
+                      styles.paymentMethodText,
+                      formData.paymentMethod === method && styles.paymentMethodTextActive
+                    ]}>
+                      {method === 'cash' ? 'Dinheiro' : 
+                       method === 'debit' ? 'Débito' : 
+                       method === 'credit' ? 'Crédito' : 'PIX'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Card>
+
+            {/* Erros de Validação */}
+            {validationErrors.length > 0 && (
+              <Card style={styles.errorCard}>
+                {validationErrors.map((error, index) => (
+                  <Text key={index} style={styles.errorText}>• {error}</Text>
+                ))}
+              </Card>
+            )}
+
+            {/* Botões */}
+            <View style={styles.buttons}>
+              <Button
+                title="Cancelar"
+                onPress={() => navigation.goBack()}
+                variant="outline"
+                style={styles.button}
+              />
+              <Button
+                title="Salvar Alterações"
+                onPress={handleSave}
+                loading={isLoading}
+                style={styles.button}
+              />
+            </View>
+
+            <View style={styles.bottomSpacer} />
+          </>
         )}
-
-        {/* Botões */}
-        <View style={styles.buttons}>
-          <Button
-            title="Cancelar"
-            onPress={() => navigation.goBack()}
-            variant="outline"
-            style={styles.button}
-          />
-          <Button
-            title="Salvar Alterações"
-            onPress={handleSave}
-            loading={isLoading}
-            style={styles.button}
-          />
-        </View>
-
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
+        keyExtractor={(item) => item.key}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.flatListContent}
+      />
 
       {/* Modal de Categorias */}
       <Modal
@@ -444,39 +503,24 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  flatListContent: {
+    paddingBottom: 100,
   },
   loading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  deleteButton: {
-    padding: 8,
-  },
   card: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+    padding: SPACING.md,
   },
   label: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.md,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: SPACING.sm,
   },
   typeButtons: {
     flexDirection: 'row',
@@ -613,9 +657,9 @@ const styles = StyleSheet.create({
   },
   buttons: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 16,
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   button: {
     flex: 1,

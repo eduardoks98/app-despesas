@@ -45,19 +45,44 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
 
   const loadInstallmentData = async () => {
     try {
+      console.log('Carregando parcelamento com ID:', installmentId);
       const installments = await StorageService.getInstallments();
-      const found = installments.find(i => i.id === installmentId);
+      console.log('Parcelamentos carregados:', installments);
+      
+      let found = installments.find(i => i.id === installmentId);
+      
+      // Se não encontrou com o ID direto, verificar se o ID passado é de uma transação
+      if (!found && installmentId.startsWith('transaction_')) {
+        console.log('ID parece ser de transação, tentando encontrar parcelamento relacionado...');
+        const allTransactions = await StorageService.getTransactions();
+        const transaction = allTransactions.find(t => t.id === installmentId);
+        
+        if (transaction && transaction.installmentId) {
+          console.log('Transação encontrada, buscando parcelamento:', transaction.installmentId);
+          found = installments.find(i => i.id === transaction.installmentId);
+        }
+      }
       
       if (found) {
+        console.log('Parcelamento encontrado:', found);
         setInstallment(found);
         
         // Carregar transações relacionadas
         const allTransactions = await StorageService.getTransactions();
-        const related = allTransactions.filter(t => t.installmentId === installmentId);
+        const related = allTransactions.filter(t => t.installmentId === found.id);
+        console.log('Transações relacionadas:', related);
         setTransactions(related);
+      } else {
+        console.error('Parcelamento não encontrado com ID:', installmentId);
+        Alert.alert('Erro', 'Parcelamento não encontrado', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
       }
     } catch (error) {
       console.error('Erro ao carregar parcelamento:', error);
+      Alert.alert('Erro', 'Erro ao carregar dados do parcelamento', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
     }
   };
 

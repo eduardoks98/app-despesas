@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  RefreshControl,
-  Alert,
   FlatList,
   TextInput,
-  Animated
+  Modal,
+  ScrollView
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
@@ -19,12 +18,15 @@ import { Installment, Subscription } from '../../types';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingWrapper, useLoadingState } from '../../components/common/LoadingWrapper';
-import { useFocusEffect } from '@react-navigation/native';
+import { useRefresh } from '../../hooks/useRefresh';
+import { HapticService } from '../../services/haptic/HapticService';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface RecordsScreenProps {
   navigation: any;
+  route?: any;
 }
 
 type RecordType = 'installments' | 'subscriptions';
@@ -57,34 +59,32 @@ const RECORD_TYPES: RecordTypeConfig[] = [
   }
 ];
 
-export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
-  const [selectedType, setSelectedType] = useState<RecordType>('installments');
+export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route }) => {
+  // Obter parâmetros da navegação
+  const params = route?.params as { selectedType?: RecordType; showFilters?: boolean } | undefined;
+  
+  const [selectedType, setSelectedType] = useState<RecordType>(params?.selectedType || 'installments');
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [installmentFilter, setInstallmentFilter] = useState<'all' | 'active' | 'completed'>('all');
-  const filterAnimation = useRef(new Animated.Value(0)).current;
   const { loading, error, startLoading, stopLoading, setErrorState } = useLoadingState(true);
+  const { refreshing, onRefresh } = useRefresh({ onRefresh: () => loadData(true) });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  // Recarregar dados quando a tela receber foco
-  useFocusEffect(
-    React.useCallback(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
       loadData();
-    }, [])
-  );
+    });
+
+    loadData();
+    return unsubscribe;
+  }, [navigation]);
 
   const loadData = async (isRefresh = false) => {
     if (!isRefresh) {
       startLoading();
-    } else {
-      setRefreshing(true);
     }
 
     try {
@@ -92,11 +92,6 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
         StorageService.getInstallments(),
         StorageService.getSubscriptions()
       ]);
-
-      console.log('RecordsScreen - Dados carregados:', {
-        installments: installmentsData.length,
-        subscriptions: subscriptionsData.length
-      });
 
       setInstallments(installmentsData);
       setSubscriptions(subscriptionsData);
@@ -110,25 +105,29 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
         setErrorState('Erro ao carregar dados');
       }
     }
-
-    if (isRefresh) {
-      setRefreshing(false);
-    }
   };
 
-  const handleRefresh = () => {
-    loadData(true);
-  };
-
-  const getCurrentData = () => {
+  const getFilteredData = () => {
     let data: any[] = [];
     
     switch (selectedType) {
       case 'installments':
         data = installments;
+        // Aplicar filtro de status
+        if (installmentFilter === 'active') {
+          data = data.filter(i => i.status === 'active');
+        } else if (installmentFilter === 'completed') {
+          data = data.filter(i => i.status === 'completed');
+        }
         break;
       case 'subscriptions':
         data = subscriptions;
+        // Aplicar filtro de status
+        if (subscriptionFilter === 'active') {
+          data = data.filter(s => s.status === 'active');
+        } else if (subscriptionFilter === 'inactive') {
+          data = data.filter(s => s.status !== 'active');
+        }
         break;
       default:
         data = [];
@@ -158,246 +157,175 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
     return RECORD_TYPES.find(type => type.key === selectedType)!;
   };
 
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (searchText.length > 0) count++;
+    if (selectedType === 'installments' && installmentFilter !== 'all') count++;
+    if (selectedType === 'subscriptions' && subscriptionFilter !== 'all') count++;
+    return count;
+  };
+
+  const clearFilters = async () => {
+    await HapticService.buttonPress();
+    setSearchText('');
+    setInstallmentFilter('all');
+    setSubscriptionFilter('all');
+  };
+
+
+  const renderInstallmentCard = (installment: Installment, index: number, data: Installment[]) => (
+    <TouchableOpacity 
+      key={installment.id} 
+      style={[
+        styles.timelineItemCompact,
+        index !== data.length - 1 && styles.timelineItemBorder
+      ]}
+      onPress={() => navigation.navigate('InstallmentDetail', { installmentId: installment.id })}
+    >
+      <View style={[
+        styles.timelineIcon,
+        { backgroundColor: colors.warning + '20' }
+      ]}>
+        <Ionicons name="card" size={16} color={colors.warning} />
+      </View>
+      
+      <View style={styles.timelineContent}>
+        <Text style={styles.timelineTitle}>{installment.description}</Text>
+        <Text style={styles.timelineDate}>{installment.store}</Text>
+        {installment.category && (
+          <Text style={styles.timelineCategory}>{installment.category}</Text>
+        )}
+      </View>
+      
+      <MoneyText 
+        value={-installment.installmentValue} 
+        size="small" 
+        style={[styles.timelineAmount, { color: colors.warning }]}
+      />
+    </TouchableOpacity>
+  );
 
   const renderInstallments = () => {
     const activeInstallments = installments.filter(i => i.status === 'active');
-    const completedInstallments = installments.filter(i => i.status === 'completed');
-    
-    let filteredInstallments = installments;
-    if (installmentFilter === 'active') {
-      filteredInstallments = activeInstallments;
-    } else if (installmentFilter === 'completed') {
-      filteredInstallments = completedInstallments;
-    }
-    
     const totalInstallments = activeInstallments.reduce((sum, i) => sum + i.installmentValue, 0);
     
     return (
-      <FlatList
-        data={filteredInstallments}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={
-          <>
-            {filteredInstallments.length > 0 && (
-              <View style={styles.installmentStats}>
-                <View style={styles.totalHeader}>
-                  <Text style={styles.totalLabel}>
-                    {activeInstallments.length} ativo{activeInstallments.length !== 1 ? 's' : ''} • {completedInstallments.length} concluído{completedInstallments.length !== 1 ? 's' : ''}
-                  </Text>
-                  <Text style={styles.totalExpense}>
-                    -R$ {totalInstallments.toFixed(2).replace('.', ',')}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </>
-        }
-        renderItem={({ item: installment }) => (
-          <Card style={styles.installmentCard}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('InstallmentDetail', { installmentId: installment.id })}
-            >
-              <View style={styles.installmentHeader}>
-                <Text style={styles.installmentTitle}>{installment.description}</Text>
-                <View style={[
-                  styles.installmentStatus,
-                  installment.status === 'completed' && styles.installmentStatusCompleted
-                ]}>
-                  <Text style={[
-                    styles.installmentStatusText,
-                    installment.status === 'completed' && styles.installmentStatusTextCompleted
-                  ]}>
-                    {installment.status === 'completed' ? 'Concluído' : `${installment.currentInstallment}/${installment.totalInstallments}`}
-                  </Text>
-                </View>
-              </View>
-              
-              <Text style={styles.installmentStore}>{installment.store}</Text>
-              
-              <View style={styles.installmentDetails}>
-                <View style={styles.installmentValues}>
-                  <MoneyText 
-                    value={installment.installmentValue} 
-                    size="medium"
-                    showSign={false}
-                    style={styles.installmentValue}
-                  />
-                  <Text style={styles.installmentTotal}>
-                    Total: R$ {installment.totalAmount.toFixed(2).replace('.', ',')}
-                  </Text>
-                </View>
-                <View style={styles.installmentProgressInfo}>
-                  <Text style={styles.installmentProgress}>
-                    {installment.status === 'completed' ? '100% pago' : `${Math.round((installment.paidInstallments.length / installment.totalInstallments) * 100)}% pago`}
-                  </Text>
-                  <Text style={styles.installmentRemaining}>
-                    {installment.status === 'completed' 
-                      ? 'Finalizado' 
-                      : `${installment.totalInstallments - installment.paidInstallments.length} parcelas restantes`
-                    }
-                  </Text>
-                </View>
-              </View>
-              
-              {/* Progress Bar */}
-              {installment.status !== 'completed' && (
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[
-                        styles.progressFill, 
-                        { width: `${(installment.paidInstallments.length / installment.totalInstallments) * 100}%` }
-                      ]} 
-                    />
-                  </View>
-                  <Text style={styles.progressText}>
-                    {installment.paidInstallments.length} de {installment.totalInstallments} parcelas pagas
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+      <>
+        {/* Summary Cards */}
+        <View style={styles.summaryCards}>
+          <Card style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Ativos</Text>
+            <Text style={styles.summaryValue}>{activeInstallments.length}</Text>
           </Card>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="card-outline" size={64} color={colors.textSecondary} />
-            </View>
-            <Text style={styles.emptyTitle}>Nenhum parcelamento</Text>
-            <Text style={styles.emptyMessage}>
-              Adicione seus parcelamentos para acompanhar as parcelas!
-            </Text>
-            <TouchableOpacity 
-              style={styles.emptyAction}
-              onPress={() => navigation.navigate('AddInstallment')}
-            >
-              <Ionicons name="add" size={20} color={colors.white} />
-              <Text style={styles.emptyActionText}>Adicionar Parcelamento</Text>
-            </TouchableOpacity>
-          </View>
-        }
-        contentContainerStyle={styles.listContentContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+          <Card style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Total Mensal</Text>
+            <MoneyText 
+              value={totalInstallments} 
+              size="small" 
+              showSign={false}
+              style={styles.summaryAmount}
+            />
+          </Card>
+        </View>
+
+        {/* Lista de Parcelamentos */}
+        <View style={styles.timelineContainer}>
+          {getFilteredData().map((item, index, array) => renderInstallmentCard(item, index, array))}
+        </View>
+      </>
     );
   };
 
+  const renderSubscriptionCard = (subscription: Subscription, index: number, data: Subscription[]) => (
+    <TouchableOpacity 
+      key={subscription.id}
+      style={[
+        styles.timelineItemCompact,
+        index !== data.length - 1 && styles.timelineItemBorder
+      ]}
+      onPress={() => navigation.navigate('SubscriptionDetail', { subscriptionId: subscription.id })}
+    >
+      <View style={[
+        styles.timelineIcon,
+        { backgroundColor: colors.info + '20' }
+      ]}>
+        <Ionicons name="repeat" size={16} color={colors.info} />
+      </View>
+      
+      <View style={styles.timelineContent}>
+        <Text style={styles.timelineTitle}>{subscription.name}</Text>
+        <Text style={styles.timelineDate}>
+          Dia {subscription.billingDay}
+        </Text>
+        {subscription.category && (
+          <Text style={styles.timelineCategory}>{subscription.category}</Text>
+        )}
+      </View>
+      
+      <MoneyText 
+        value={-subscription.amount} 
+        size="small" 
+        style={[styles.timelineAmount, { color: colors.info }]}
+      />
+    </TouchableOpacity>
+  );
+
   const renderSubscriptions = () => {
     const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
-    const inactiveSubscriptions = subscriptions.filter(s => s.status !== 'active');
-    
-    let filteredSubscriptions = subscriptions;
-    if (subscriptionFilter === 'active') {
-      filteredSubscriptions = activeSubscriptions;
-    } else if (subscriptionFilter === 'inactive') {
-      filteredSubscriptions = inactiveSubscriptions;
-    }
-    
     const totalSubscriptions = activeSubscriptions.reduce((sum, s) => sum + s.amount, 0);
     
     return (
-      <FlatList
-        data={filteredSubscriptions}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={
-          <>
-            {filteredSubscriptions.length > 0 && (
-              <View style={styles.subscriptionStats}>
-                <View style={styles.totalHeader}>
-                  <Text style={styles.totalLabel}>
-                    {activeSubscriptions.length} ativa{activeSubscriptions.length !== 1 ? 's' : ''} • {inactiveSubscriptions.length} inativa{inactiveSubscriptions.length !== 1 ? 's' : ''}
-                  </Text>
-                  <Text style={styles.totalExpense}>
-                    -R$ {totalSubscriptions.toFixed(2).replace('.', ',')}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </>
-        }
-        renderItem={({ item: subscription }) => (
-          <Card style={styles.subscriptionCard}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('SubscriptionDetail', { subscriptionId: subscription.id })}
-            >
-              <View style={styles.subscriptionHeader}>
-                <Text style={styles.subscriptionTitle}>{subscription.name}</Text>
-                <View style={[
-                  styles.subscriptionStatus,
-                  subscription.status !== 'active' && styles.subscriptionStatusInactive
-                ]}>
-                  <Ionicons 
-                    name={subscription.status === 'active' ? "checkmark-circle" : "close-circle"} 
-                    size={16} 
-                    color={subscription.status === 'active' ? colors.success : colors.textSecondary} 
-                  />
-                  <Text style={[
-                    styles.subscriptionStatusText,
-                    subscription.status !== 'active' && styles.subscriptionStatusTextInactive
-                  ]}>
-                    {subscription.status === 'active' ? 'Ativa' : 'Inativa'}
-                  </Text>
-                </View>
-              </View>
-              
-              <Text style={styles.subscriptionDescription}>
-                {subscription.description || 'Sem descrição'}
-              </Text>
-              
-              <View style={styles.subscriptionDetails}>
-                <MoneyText 
-                  value={subscription.amount} 
-                  size="medium"
-                  showSign={false}
-                />
-                <Text style={styles.subscriptionBilling}>
-                  Dia {subscription.billingDay}
-                </Text>
-              </View>
-            </TouchableOpacity>
+      <>
+        {/* Summary Cards */}
+        <View style={styles.summaryCards}>
+          <Card style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Ativas</Text>
+            <Text style={styles.summaryValue}>{activeSubscriptions.length}</Text>
           </Card>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="repeat" size={64} color={colors.textSecondary} />
-            </View>
-            <Text style={styles.emptyTitle}>Nenhuma assinatura</Text>
-            <Text style={styles.emptyMessage}>
-              Adicione suas assinaturas mensais para controlar gastos recorrentes!
-            </Text>
-            <TouchableOpacity 
-              style={styles.emptyAction}
-              onPress={() => navigation.navigate('AddSubscription')}
-            >
-              <Ionicons name="add" size={20} color={colors.white} />
-              <Text style={styles.emptyActionText}>Adicionar Assinatura</Text>
-            </TouchableOpacity>
-          </View>
-        }
-        contentContainerStyle={styles.listContentContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+          <Card style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Total Mensal</Text>
+            <MoneyText 
+              value={totalSubscriptions} 
+              size="small" 
+              showSign={false}
+              style={styles.summaryAmount}
+            />
+          </Card>
+        </View>
+
+        {/* Lista de Assinaturas */}
+        <View style={styles.timelineContainer}>
+          {getFilteredData().map((item, index, array) => renderSubscriptionCard(item, index, array))}
+        </View>
+      </>
     );
   };
 
   const renderContent = () => {
+    const filteredData = getFilteredData();
+    
+    if (filteredData.length === 0) {
+      const config = getCurrentConfig();
+      return (
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name={config.icon as any} size={64} color={colors.textSecondary} />
+          </View>
+          <Text style={styles.emptyTitle}>Nenhum {config.label.toLowerCase()}</Text>
+          <Text style={styles.emptyMessage}>
+            {config.description}
+          </Text>
+          <TouchableOpacity 
+            style={styles.emptyAction}
+            onPress={() => navigation.navigate(config.addScreen)}
+          >
+            <Ionicons name="add" size={20} color={colors.white} />
+            <Text style={styles.emptyActionText}>Adicionar {config.label.slice(0, -1)}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     switch (selectedType) {
       case 'installments':
         return renderInstallments();
@@ -408,281 +336,298 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
     }
   };
 
-  const currentConfig = getCurrentConfig();
-
   return (
     <Container>
       <LoadingWrapper
         loading={loading}
         error={error}
         retry={loadData}
-        empty={!loading && !error && getCurrentData().length === 0}
-        emptyTitle={`Nenhum ${currentConfig.label.toLowerCase()}`}
-        emptyMessage={`Adicione seus ${currentConfig.label.toLowerCase()} para começar!`}
-        emptyIcon={currentConfig.icon}
+        empty={!loading && !error && installments.length === 0 && subscriptions.length === 0}
+        emptyTitle="Nenhum registro encontrado"
+        emptyMessage="Adicione seus parcelamentos e assinaturas para começar!"
+        emptyIcon="folder-outline"
       >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.titleRow}>
-              <Text style={styles.title}>Registros</Text>
-              <View style={styles.headerButtons}>
+        <FlatList
+          data={[{ key: 'content' }]}
+          renderItem={() => (
+            <>
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.headerTop}>
+                  <View>
+                    <Text style={styles.title}>Registros</Text>
+                    <Text style={styles.subtitle}>
+                      {selectedType === 'installments' ? 'Parcelamentos' : 'Assinaturas'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={[styles.filterButton, getActiveFiltersCount() > 0 && styles.filterButtonWithFilters]}
+                    onPress={async () => {
+                      await HapticService.buttonPress();
+                      setShowFiltersModal(true);
+                    }}
+                  >
+                    <Ionicons 
+                      name="options" 
+                      size={20} 
+                      color={getActiveFiltersCount() > 0 ? colors.white : colors.primary} 
+                    />
+                    {getActiveFiltersCount() > 0 && (
+                      <View style={styles.filterBadge}>
+                        <Text style={styles.filterBadgeText}>{getActiveFiltersCount()}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Type Selector */}
+              <View style={styles.typeSelector}>
+                {RECORD_TYPES.map(type => (
+                  <TouchableOpacity
+                    key={type.key}
+                    style={[
+                      styles.typeButton,
+                      selectedType === type.key && styles.typeButtonActive
+                    ]}
+                    onPress={async () => {
+                      await HapticService.buttonPress();
+                      setSelectedType(type.key);
+                    }}
+                  >
+                    <Ionicons 
+                      name={type.icon as any} 
+                      size={16} 
+                      color={selectedType === type.key ? colors.white : type.color} 
+                    />
+                    <Text style={[
+                      styles.typeButtonText,
+                      selectedType === type.key && styles.typeButtonTextActive
+                    ]}>
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Content */}
+              {/* Content */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleContainer}>
+                    <Text style={styles.sectionTitle}>
+                      {selectedType === 'installments' ? 'Parcelamentos' : 'Assinaturas'}
+                    </Text>
+                    {getActiveFiltersCount() > 0 && (
+                      <Text style={styles.sectionSubtitle}>
+                        {getActiveFiltersCount()} filtro{getActiveFiltersCount() > 1 ? 's' : ''} aplicado{getActiveFiltersCount() > 1 ? 's' : ''}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                {renderContent()}
+              </View>
+            </>
+          )}
+          keyExtractor={(item) => item.key}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.flatListContent}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+        />
+
+        {/* FAB */}
+        <FAB
+          icon="add"
+          onPress={() => navigation.navigate(getCurrentConfig().addScreen)}
+        />
+
+        {/* Modal de Filtros */}
+        <Modal
+          visible={showFiltersModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowFiltersModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Filtros e Busca</Text>
                 <TouchableOpacity 
-                  style={styles.filterToggleButton}
-                  onPress={() => {
-                    const toValue = showFilters ? 0 : 1;
-                    Animated.timing(filterAnimation, {
-                      toValue,
-                      duration: 300,
-                      useNativeDriver: false,
-                    }).start(() => {
-                      setShowFilters(!showFilters);
-                    });
-                  }}
+                  onPress={() => setShowFiltersModal(false)}
+                  style={styles.closeButton}
                 >
-                  <Ionicons 
-                    name={showFilters ? "filter" : "filter-outline"} 
-                    size={20} 
-                    color={colors.primary} 
-                  />
+                  <Ionicons name="close" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                {/* Busca */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterSectionTitle}>Buscar:</Text>
+                  <View style={styles.searchInputContainer}>
+                    <Ionicons name="search" size={20} color={colors.textSecondary} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder={`${selectedType === 'installments' ? 'Parcelamentos' : 'Assinaturas'}...`}
+                      placeholderTextColor={colors.textSecondary}
+                      value={searchText}
+                      onChangeText={setSearchText}
+                    />
+                    {searchText.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearchText('')}>
+                        <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
+                {/* Filtro de Status */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterSectionTitle}>
+                    {selectedType === 'installments' ? 'Status dos Parcelamentos:' : 'Status das Assinaturas:'}
+                  </Text>
+                  <View style={styles.filterButtons}>
+                    {selectedType === 'installments' ? (
+                      <>
+                        <TouchableOpacity 
+                          style={[styles.statusButton, installmentFilter === 'all' && styles.statusButtonActive]}
+                          onPress={() => setInstallmentFilter('all')}
+                        >
+                          <Text style={[styles.statusButtonText, installmentFilter === 'all' && styles.statusButtonTextActive]}>
+                            Todos
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.statusButton, installmentFilter === 'active' && styles.statusButtonActive]}
+                          onPress={() => setInstallmentFilter('active')}
+                        >
+                          <Text style={[styles.statusButtonText, installmentFilter === 'active' && styles.statusButtonTextActive]}>
+                            Ativos
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.statusButton, installmentFilter === 'completed' && styles.statusButtonActive]}
+                          onPress={() => setInstallmentFilter('completed')}
+                        >
+                          <Text style={[styles.statusButtonText, installmentFilter === 'completed' && styles.statusButtonTextActive]}>
+                            Concluídos
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <TouchableOpacity 
+                          style={[styles.statusButton, subscriptionFilter === 'all' && styles.statusButtonActive]}
+                          onPress={() => setSubscriptionFilter('all')}
+                        >
+                          <Text style={[styles.statusButtonText, subscriptionFilter === 'all' && styles.statusButtonTextActive]}>
+                            Todas
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.statusButton, subscriptionFilter === 'active' && styles.statusButtonActive]}
+                          onPress={() => setSubscriptionFilter('active')}
+                        >
+                          <Text style={[styles.statusButtonText, subscriptionFilter === 'active' && styles.statusButtonTextActive]}>
+                            Ativas
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.statusButton, subscriptionFilter === 'inactive' && styles.statusButtonActive]}
+                          onPress={() => setSubscriptionFilter('inactive')}
+                        >
+                          <Text style={[styles.statusButtonText, subscriptionFilter === 'inactive' && styles.statusButtonTextActive]}>
+                            Inativas
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity 
+                  style={styles.clearFiltersButton}
+                  onPress={clearFilters}
+                >
+                  <Text style={styles.clearFiltersText}>Limpar Filtros</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={styles.exportButton}
-                  onPress={() => navigation.navigate('Export')}
+                  style={styles.applyFiltersButton}
+                  onPress={() => setShowFiltersModal(false)}
                 >
-                  <Ionicons name="download" size={20} color={colors.primary} />
+                  <Text style={styles.applyFiltersText}>Aplicar</Text>
                 </TouchableOpacity>
               </View>
             </View>
-            
-            {/* Filtros */}
-            {showFilters && (
-              <Animated.View style={[
-                styles.filtersContainer,
-                {
-                  opacity: filterAnimation,
-                  transform: [{
-                    translateY: filterAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-20, 0],
-                    }),
-                  }],
-                },
-              ]}>
-                <Text style={styles.filterLabel}>Selecione o tipo de registro</Text>
-                <View style={styles.typeSelector}>
-                  {RECORD_TYPES.map(type => (
-                    <TouchableOpacity
-                      key={type.key}
-                      style={[
-                        styles.typeButton,
-                        selectedType === type.key && styles.typeButtonActive
-                      ]}
-                      onPress={() => {
-                        setSelectedType(type.key);
-                        setSearchText('');
-                      }}
-                    >
-                      <Ionicons 
-                        name={type.icon as any} 
-                        size={16} 
-                        color={selectedType === type.key ? colors.white : type.color} 
-                      />
-                      <Text style={[
-                        styles.typeButtonText,
-                        selectedType === type.key && styles.typeButtonTextActive
-                      ]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                
-                {/* Filtro de Status */}
-                <Text style={styles.filterLabel}>
-                  {selectedType === 'installments' ? 'Filtrar parcelamentos' : 'Filtrar assinaturas'}
-                </Text>
-                <View style={styles.statusFilterContainer}>
-                  {selectedType === 'installments' ? (
-                    <>
-                      <TouchableOpacity
-                        style={[styles.statusFilterButton, installmentFilter === 'all' && styles.statusFilterButtonActive]}
-                        onPress={() => setInstallmentFilter('all')}
-                      >
-                        <Text style={[styles.statusFilterText, installmentFilter === 'all' && styles.statusFilterTextActive]}>
-                          Todos
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.statusFilterButton, installmentFilter === 'active' && styles.statusFilterButtonActive]}
-                        onPress={() => setInstallmentFilter('active')}
-                      >
-                        <Text style={[styles.statusFilterText, installmentFilter === 'active' && styles.statusFilterTextActive]}>
-                          Ativos
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.statusFilterButton, installmentFilter === 'completed' && styles.statusFilterButtonActive]}
-                        onPress={() => setInstallmentFilter('completed')}
-                      >
-                        <Text style={[styles.statusFilterText, installmentFilter === 'completed' && styles.statusFilterTextActive]}>
-                          Concluídos
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <>
-                      <TouchableOpacity
-                        style={[styles.statusFilterButton, subscriptionFilter === 'all' && styles.statusFilterButtonActive]}
-                        onPress={() => setSubscriptionFilter('all')}
-                      >
-                        <Text style={[styles.statusFilterText, subscriptionFilter === 'all' && styles.statusFilterTextActive]}>
-                          Todas
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.statusFilterButton, subscriptionFilter === 'active' && styles.statusFilterButtonActive]}
-                        onPress={() => setSubscriptionFilter('active')}
-                      >
-                        <Text style={[styles.statusFilterText, subscriptionFilter === 'active' && styles.statusFilterTextActive]}>
-                          Ativas
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.statusFilterButton, subscriptionFilter === 'inactive' && styles.statusFilterButtonActive]}
-                        onPress={() => setSubscriptionFilter('inactive')}
-                      >
-                        <Text style={[styles.statusFilterText, subscriptionFilter === 'inactive' && styles.statusFilterTextActive]}>
-                          Inativas
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
-
-                <Text style={styles.filterLabel}>Buscar registros</Text>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="search" size={18} color={colors.textSecondary} />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder={`Buscar ${selectedType === 'installments' ? 'parcelamentos' : 'assinaturas'}...`}
-                    placeholderTextColor={colors.textSecondary}
-                    value={searchText}
-                    onChangeText={setSearchText}
-                  />
-                  {searchText.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchText('')}>
-                      <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </Animated.View>
-            )}
           </View>
-
-
-          {/* Lista de Conteúdo */}
-          <View style={styles.contentSection}>
-            {renderContent()}
-          </View>
-        </View>
-
-        {/* FAB para adicionar */}
-        <FAB
-          icon="add"
-          onPress={() => navigation.navigate(currentConfig.addScreen)}
-          style={styles.fab}
-        />
+        </Modal>
       </LoadingWrapper>
     </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  flatListContent: {
+    paddingBottom: 100,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: colors.white,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary + '20',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+    backgroundColor: colors.primary,
   },
-  titleRow: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 24,
+    fontSize: FONT_SIZES.xxl,
     fontWeight: 'bold',
-    color: colors.text,
+    color: colors.white,
+    marginBottom: 4,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 8,
+  subtitle: {
+    fontSize: FONT_SIZES.sm,
+    color: 'rgba(255,255,255,0.8)',
   },
-  filterToggleButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
+  filterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  filterButtonWithFilters: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.danger,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  filtersContainer: {
-    paddingTop: 12,
-    paddingBottom: 8,
-    marginTop: 8,
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  exportButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    marginTop: 8,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text,
+  filterBadgeText: {
+    fontSize: 10,
+    color: colors.white,
+    fontWeight: 'bold',
   },
   typeSelector: {
     flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 16,
-    justifyContent: 'space-between',
+    marginTop: -16,
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.xs,
+    marginBottom: SPACING.xs,
   },
   typeButton: {
     flex: 1,
@@ -690,220 +635,131 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    borderRadius: 8,
-    marginHorizontal: 2,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   typeButtonActive: {
     backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
   typeButtonText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.textSecondary,
   },
   typeButtonTextActive: {
     color: colors.white,
   },
-  typeButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 2,
+  summaryCards: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.xs,
+    marginBottom: SPACING.md,
   },
-  typeButtonDescription: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  typeButtonDescriptionActive: {
-    color: colors.white + '90',
-  },
-  typeButtonTextActive: {
-    color: colors.white,
-  },
-  // Estilos do card de resumo removidos (summaryCard, summaryHeader, etc.)
-  contentSection: {
-    marginTop: 16,
+  summaryCard: {
     flex: 1,
-  },
-  totalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: 8,
+    minWidth: 0,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
   },
-  totalLabel: {
-    fontSize: 14,
+  summaryLabel: {
+    fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  totalExpense: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.danger,
-  },
-  listContentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-    flexGrow: 1,
-  },
-  installmentCard: {
-    marginBottom: 12,
-    marginHorizontal: 0,
-  },
-  installmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  installmentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-  },
-  installmentStatus: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  installmentStatusText: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  installmentStore: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  installmentDetails: {
-    marginTop: 12,
-  },
-  installmentValues: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  installmentValue: {
-    fontWeight: '700',
-  },
-  installmentTotal: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  installmentProgressInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  installmentProgress: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  installmentRemaining: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  progressContainer: {
-    marginTop: 8,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: colors.background,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 10,
-    color: colors.textSecondary,
+    marginBottom: SPACING.xs / 2,
     textAlign: 'center',
   },
-  installmentStats: {
-    marginBottom: 8,
+  summaryValue: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: 'bold',
+    color: colors.text,
+    textAlign: 'center',
   },
-  installmentStatusCompleted: {
-    backgroundColor: colors.success + '20',
+  summaryAmount: {
+    color: colors.primary,
+    textAlign: 'center',
+    flexShrink: 1,
   },
-  installmentStatusTextCompleted: {
-    color: colors.success,
-  },
-  subscriptionCard: {
-    marginBottom: 12,
-    marginHorizontal: 0,
-  },
-  subscriptionHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.xs,
+    flexWrap: 'wrap',
   },
-  subscriptionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+  sectionTitleContainer: {
     flex: 1,
   },
-  subscriptionStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  subscriptionStatusText: {
-    fontSize: 12,
-    color: colors.success,
+  sectionTitle: {
+    fontSize: FONT_SIZES.xl,
     fontWeight: '600',
+    color: colors.text,
+    flexShrink: 1,
   },
-  subscriptionDescription: {
-    fontSize: 14,
+  sectionSubtitle: {
+    fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
-    marginBottom: 8,
+    marginTop: 2,
   },
-  subscriptionDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  section: {
+    marginTop: SPACING.md,
+  },
+  timelineContainer: {
+    backgroundColor: colors.white,
+    marginHorizontal: SPACING.md,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  timelineIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  subscriptionBilling: {
-    fontSize: 12,
+  timelineItemCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.sm,
+  },
+  timelineItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  timelineContent: {
+    flex: 1,
+  },
+  timelineTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 1,
+  },
+  timelineDate: {
+    fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
+    marginBottom: 1,
   },
-  subscriptionStats: {
-    marginBottom: 8,
-  },
-  subscriptionStatusInactive: {
-    backgroundColor: colors.background,
-  },
-  subscriptionStatusTextInactive: {
+  timelineCategory: {
+    fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
+    fontStyle: 'italic',
   },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
+  timelineAmount: {
+    fontWeight: '700',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -947,29 +803,125 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  statusFilterContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    padding: 4,
-    marginBottom: 16,
-  },
-  statusFilterButton: {
+  modalOverlay: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  statusFilterButtonActive: {
-    backgroundColor: colors.primary,
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
-  statusFilterText: {
-    fontSize: 12,
+  filterSection: {
+    marginBottom: 24,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: colors.text,
+    marginBottom: 12,
   },
-  statusFilterTextActive: {
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+  },
+  filterButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  statusButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    minWidth: '30%',
+  },
+  statusButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  statusButtonText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  statusButtonTextActive: {
     color: colors.white,
+    fontWeight: '600',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  clearFiltersButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  applyFiltersButton: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+  },
+  applyFiltersText: {
+    fontSize: 14,
+    color: colors.white,
+    fontWeight: '600',
   },
 }); 

@@ -85,19 +85,6 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
               </>
             )}
           </View>
-          <View style={styles.paymentInfo}>
-            <Ionicons 
-              name={getPaymentMethodIcon(transaction.paymentMethod) as any} 
-              size={ICON_SIZES.xs} 
-              color={colors.textSecondary} 
-            />
-            <Text style={styles.paymentMethod}>
-              {transaction.paymentMethod === 'cash' ? 'Dinheiro' :
-               transaction.paymentMethod === 'debit' ? 'Débito' :
-               transaction.paymentMethod === 'credit' ? 'Crédito' :
-               transaction.paymentMethod === 'pix' ? 'PIX' : 'Outro'}
-            </Text>
-          </View>
         </View>
       </View>
 
@@ -108,20 +95,15 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           showSign={false}
           style={transaction.type === 'income' ? styles.incomeAmount : styles.expenseAmount}
         />
-        <View style={styles.timeContainer}>
-          <Text style={styles.time}>
-            {formatTime(transaction.date)}
-          </Text>
-          <Text style={styles.date}>
-            {formatDate(transaction.date)}
-          </Text>
-        </View>
+        <Text style={styles.time}>
+          {formatTime(transaction.date)}
+        </Text>
       </View>
     </TouchableOpacity>
   );
 };
 
-const iconContainerSize = moderateScale(40);
+const iconContainerSize = moderateScale(32);
 
 const styles = StyleSheet.create({
   container: {
@@ -129,19 +111,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     marginHorizontal: SPACING.md,
-    marginVertical: SPACING.xs,
-    padding: SPACING.md,
-    borderRadius: moderateScale(12),
-    borderLeftWidth: 4,
+    marginVertical: SPACING.xs / 2,
+    padding: SPACING.sm,
+    borderRadius: moderateScale(8),
+    borderLeftWidth: 3,
     borderLeftColor: colors.danger,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 1,
+    elevation: 1,
   },
   incomeContainer: {
     borderLeftColor: colors.success,
@@ -171,15 +153,15 @@ const styles = StyleSheet.create({
     minWidth: 0, // Permite quebra de texto
   },
   description: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: FONT_SIZES.md,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: SPACING.xs / 2,
+    marginBottom: SPACING.xs / 3,
   },
   metadata: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.xs / 2,
+    marginBottom: SPACING.xs / 3,
   },
   category: {
     fontSize: FONT_SIZES.sm,
@@ -198,15 +180,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flexShrink: 1, // Permite compressão
   },
-  paymentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs / 2,
-  },
-  paymentMethod: {
-    fontSize: FONT_SIZES.xs,
-    color: colors.textSecondary,
-  },
   rightContent: {
     alignItems: 'flex-end',
   },
@@ -216,16 +189,9 @@ const styles = StyleSheet.create({
   expenseAmount: {
     color: colors.text,
   },
-  timeContainer: {
-    alignItems: 'flex-end',
-    marginTop: 4,
-  },
   time: {
     fontSize: 11,
     color: colors.textSecondary,
-  },
-  date: {
-    fontSize: 10,
-    color: colors.textTertiary,
+    marginTop: 4,
   },
 });
