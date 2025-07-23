@@ -588,7 +588,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           <CardHeader 
             title="Ações Rápidas" 
             icon="flash"
-            action={() => navigation.navigate('SelectTransactionType')}
           />
           <View style={styles.cardBody}>
             {quickActions.map((item, index) => (
@@ -626,7 +625,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           <CardHeader 
             title="Ferramentas" 
             icon="build"
-            action={() => navigation.navigate('Reports')}
           />
           <View style={styles.cardBody}>
             {toolsItems.map((item, index) => (
@@ -664,7 +662,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           <CardHeader 
             title="Dados e Backup" 
             icon="server"
-            action={() => navigation.navigate('Export')}
           />
           <View style={styles.cardBody}>
             {dataItems.map((item, index) => (

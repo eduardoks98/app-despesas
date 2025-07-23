@@ -26,6 +26,7 @@ import { TransactionsScreen } from './src/screens/Transactions/TransactionsScree
 import { SubscriptionDetailScreen } from './src/screens/SubscriptionDetail/SubscriptionDetailScreen';
 import { ExportScreen } from './src/screens/Export/ExportScreen';
 import { CategoriesScreen } from './src/screens/Categories/CategoriesScreen';
+import { CategoryTransactionsScreen } from './src/screens/CategoryTransactions/CategoryTransactionsScreen';
 import { SplashScreen } from './src/screens/Splash/SplashScreen';
 import { OnboardingScreen } from './src/screens/Onboarding/OnboardingScreen';
 
@@ -285,6 +286,13 @@ function AppNavigator() {
         <Stack.Screen 
           name="Categories" 
           component={CategoriesScreen}
+          options={{ 
+            headerShown: false
+          }}
+        />
+        <Stack.Screen 
+          name="CategoryTransactions" 
+          component={CategoryTransactionsScreen}
           options={{ 
             headerShown: false
           }}

@@ -64,7 +64,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    if (transactions.length > 0) {
+    if (transactions.length > 0 || installments.length > 0 || subscriptions.length > 0) {
       console.log('🔄 Gerando relatórios para período:', selectedPeriod, 'data:', currentMonth.toISOString());
       generateReports();
     }
@@ -863,9 +863,13 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
             ]}
             onPress={async () => {
               await HapticService.buttonPress();
-              navigation.navigate('Transactions', {
-                filterByCategory: category.name,
-                filterByType: 'expense'
+              navigation.navigate('CategoryTransactions', {
+                category: category.name,
+                type: 'expense',
+                period: selectedPeriod,
+                currentMonth: currentMonth.toISOString(),
+                customStartDate: customStartDate?.toISOString(),
+                customEndDate: customEndDate?.toISOString()
               });
             }}
           >
@@ -919,9 +923,13 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
             ]}
             onPress={async () => {
               await HapticService.buttonPress();
-              navigation.navigate('Transactions', {
-                filterByCategory: category.name,
-                filterByType: 'income'
+              navigation.navigate('CategoryTransactions', {
+                category: category.name,
+                type: 'income',
+                period: selectedPeriod,
+                currentMonth: currentMonth.toISOString(),
+                customStartDate: customStartDate?.toISOString(),
+                customEndDate: customEndDate?.toISOString()
               });
             }}
           >
@@ -979,9 +987,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         loading={loading}
         error={error}
         retry={loadData}
-        empty={!loading && !error && transactions.length === 0}
+        empty={!loading && !error && transactions.length === 0 && installments.length === 0 && subscriptions.length === 0}
         emptyTitle="Nenhum dado para relatórios"
-        emptyMessage="Adicione algumas transações para ver seus relatórios financeiros!"
+        emptyMessage="Adicione algumas transações, assinaturas ou parcelamentos para ver seus relatórios financeiros!"
         emptyIcon="bar-chart"
         skeleton={renderReportsSkeleton()}
       >
@@ -1075,7 +1083,6 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
             title="Receitas por categoria" 
             subtitle={`${incomeCategoryData.length} categoria${incomeCategoryData.length !== 1 ? 's' : ''}`}
             icon="trending-up"
-            action={() => navigation.navigate('Transactions', { filterByType: 'income' })}
           />
           <View style={styles.cardBody}>
             {renderIncomeCategoryChart()}
@@ -1088,7 +1095,6 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
             title="Despesas por categoria" 
             subtitle={`${categoryData.length} categoria${categoryData.length !== 1 ? 's' : ''}`}
             icon="pie-chart"
-            action={() => navigation.navigate('Transactions', { filterByType: 'expense' })}
           />
           <View style={styles.cardBody}>
             {renderCategoryChart()}
