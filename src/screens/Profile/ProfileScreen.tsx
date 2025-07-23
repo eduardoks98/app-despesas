@@ -10,6 +10,7 @@ import {
   Switch,
   Share
 } from 'react-native';
+import { useWebAlert } from '../../components/common/PlatformAlert';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
 import { CardHeader } from '../../components/common/CardHeader';
@@ -17,7 +18,6 @@ import { Button } from '../../components/common/Button';
 import { StorageService } from '../../services/storage/StorageService';
 import { InstallmentCalculations } from '../../services/calculations/InstallmentCalculations';
 import { ErrorHandler } from '../../services/error/ErrorHandler';
-import { QuickTour } from '../../components/onboarding/QuickTour';
 import { HapticService } from '../../services/haptic/HapticService';
 import { useColors } from '../../hooks/useColors';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -30,14 +30,8 @@ interface ProfileScreenProps {
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const colors = useColors();
   const { theme, setTheme, isDarkMode } = useTheme();
+  const { showAlert, AlertComponent } = useWebAlert();
   
-  const [stats, setStats] = useState({
-    totalTransactions: 0,
-    totalInstallments: 0,
-    totalIncome: 0,
-    totalExpenses: 0,
-    activeInstallments: 0,
-  });
 
   const [settings, setSettings] = useState({
     hideValues: false,
@@ -47,13 +41,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [showQuickTour, setShowQuickTour] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadStats();
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadSettings();
+    });
+
     loadSettings();
-  }, []);
+    return unsubscribe;
+  }, [navigation]);
 
   const loadSettings = async () => {
     try {
@@ -65,54 +62,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     }
   };
 
-  const loadStats = async () => {
-    const result = await ErrorHandler.withErrorHandling(
-      'carregar estatísticas do usuário',
-      async () => {
-        const [transactions, installments] = await Promise.all([
-          StorageService.getTransactions(),
-          StorageService.getInstallments()
-        ]);
-
-        const totalIncome = transactions
-          .filter(t => t.type === 'income')
-          .reduce((sum, t) => sum + t.amount, 0);
-
-        const totalExpenses = transactions
-          .filter(t => t.type === 'expense')
-          .reduce((sum, t) => sum + t.amount, 0);
-
-        const activeInstallments = installments.filter(i => i.status === 'active').length;
-
-        const statsData = {
-          totalTransactions: transactions.length,
-          totalInstallments: installments.length,
-          totalIncome,
-          totalExpenses,
-          activeInstallments,
-        };
-
-        setStats(statsData);
-        return statsData;
-      },
-      false // Não mostrar erro para o usuário - apenas loggar
-    );
-    
-    // Se falhou, manter estado de carregamento atual
-    if (!result) {
-      setStats({
-        totalTransactions: 0,
-        totalInstallments: 0,
-        totalIncome: 0,
-        totalExpenses: 0,
-        activeInstallments: 0,
-      });
-    }
-  };
-
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadStats();
+    await loadSettings();
     setRefreshing(false);
   };
 
@@ -139,14 +91,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
     if (result) {
       await HapticService.success();
-      Alert.alert('Sucesso', 'Backup exportado com sucesso!');
+      showAlert('Sucesso', 'Backup exportado com sucesso!', [{ text: 'OK' }]);
     } else {
       await HapticService.error();
     }
   };
 
   const handleClearAllData = () => {
-    Alert.alert(
+    showAlert(
       'Confirmar Limpeza',
       'Esta ação irá remover TODOS os seus dados (transações, parcelamentos, etc.). Esta ação não pode ser desfeita.\n\nDeseja continuar?',
       [
@@ -170,14 +122,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             
             if (result) {
               await HapticService.success();
-              setStats({
-                totalTransactions: 0,
-                totalInstallments: 0,
-                totalIncome: 0,
-                totalExpenses: 0,
-                activeInstallments: 0,
-              });
-              Alert.alert('Sucesso', 'Todos os dados foram removidos');
+              showAlert('Sucesso', 'Todos os dados foram removidos', [{ text: 'OK' }]);
             } else {
               await HapticService.error();
             }
@@ -188,7 +133,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   };
 
   const handleGenerateSampleData = async () => {
-    Alert.alert(
+    showAlert(
       'Gerar Dados de Teste',
       'Isso irá adicionar transações e parcelamentos de exemplo para testar o app. Deseja continuar?',
       [
@@ -202,7 +147,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               'gerar dados de teste',
               async () => {
                 await generateSampleData();
-                await loadStats();
                 return true;
               }
             );
@@ -211,7 +155,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             
             if (result) {
               await HapticService.success();
-              Alert.alert('Sucesso', 'Dados de teste gerados com sucesso!');
+              showAlert('Sucesso', 'Dados de teste gerados com sucesso!', [{ text: 'OK' }]);
             } else {
               await HapticService.error();
             }
@@ -310,7 +254,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const handleThemePress = async () => {
     await HapticService.buttonPress();
-    Alert.alert(
+    showAlert(
       'Selecionar Tema',
       'Escolha o tema do aplicativo',
       [
@@ -350,37 +294,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     await StorageService.saveHapticEnabled(value);
   };
 
-  const quickActions = [
-    {
-      icon: 'add-circle',
-      title: 'Nova Transação',
-      subtitle: 'Adicionar receita ou despesa',
-      onPress: async () => {
-        await HapticService.buttonPress();
-        navigation.navigate('SelectTransactionType');
-      },
-    },
-    {
-      icon: 'card-outline',
-      title: 'Novo Parcelamento',
-      subtitle: 'Compra parcelada',
-      onPress: async () => {
-        await HapticService.buttonPress();
-        navigation.navigate('AddInstallment');
-      },
-    },
-    {
-      icon: 'repeat',
-      title: 'Nova Assinatura',
-      subtitle: 'Serviço recorrente mensal',
-      onPress: async () => {
-        await HapticService.buttonPress();
-        navigation.navigate('AddSubscription');
-      },
-    },
-  ];
-
-  const toolsItems = [
+  const cadastrosItems = [
     {
       icon: 'list',
       title: 'Gerenciar Categorias',
@@ -390,13 +304,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         navigation.navigate('Categories');
       },
     },
+  ];
+
+  const helpItems = [
     {
-      icon: 'bar-chart',
-      title: 'Relatórios',
-      subtitle: 'Análises e gráficos financeiros',
+      icon: 'help-circle',
+      title: 'Tour do App',
+      subtitle: 'Revisar recursos e funcionalidades',
       onPress: async () => {
         await HapticService.buttonPress();
-        navigation.navigate('Reports');
+        navigation.navigate('Onboarding');
       },
     },
     {
@@ -406,15 +323,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       onPress: async () => {
         await HapticService.buttonPress();
         navigation.navigate('Export');
-      },
-    },
-    {
-      icon: 'help-circle',
-      title: 'Tour do App',
-      subtitle: 'Revisar recursos e funcionalidades',
-      onPress: async () => {
-        await HapticService.buttonPress();
-        setShowQuickTour(true);
       },
     },
   ];
@@ -466,40 +374,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           <Text style={styles.subtitle}>App Despesas</Text>
         </View>
 
-        {/* Estatísticas */}
-        <View style={styles.statsCard}>
-          <CardHeader 
-            title="Suas Estatísticas" 
-            icon="stats-chart"
-          />
-          <View style={styles.cardBody}>
-            <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.totalTransactions}</Text>
-              <Text style={styles.statLabel}>Transações</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.totalInstallments}</Text>
-              <Text style={styles.statLabel}>Parcelamentos</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, styles.incomeValue]}>
-                R$ {stats.totalIncome.toFixed(0)}
-              </Text>
-              <Text style={styles.statLabel}>Receitas</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                R$ {stats.totalExpenses.toFixed(0)}
-              </Text>
-              <Text style={styles.statLabel}>Despesas</Text>
-            </View>
-          </View>
-          </View>
-        </View>
 
         {/* Configurações */}
         <View style={styles.cardContainer}>
@@ -583,14 +457,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Ações Rápidas */}
+        {/* Cadastros */}
         <View style={styles.cardContainer}>
           <CardHeader 
-            title="Ações Rápidas" 
-            icon="flash"
+            title="Cadastros" 
+            icon="folder"
           />
           <View style={styles.cardBody}>
-            {quickActions.map((item, index) => (
+            {cadastrosItems.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
@@ -620,14 +494,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Ferramentas */}
+        {/* Ajuda e Ferramentas */}
         <View style={styles.cardContainer}>
           <CardHeader 
-            title="Ferramentas" 
-            icon="build"
+            title="Ajuda e Ferramentas" 
+            icon="help-circle"
           />
           <View style={styles.cardBody}>
-            {toolsItems.map((item, index) => (
+            {helpItems.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
@@ -725,11 +599,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Quick Tour Modal */}
-      <QuickTour
-        visible={showQuickTour}
-        onClose={() => setShowQuickTour(false)}
-      />
+      {/* Web Alert Component */}
+      {AlertComponent}
     </Container>
   );
 };
@@ -762,15 +633,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  statsCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
   cardContainer: {
     marginHorizontal: 16,
     marginBottom: 16,
@@ -782,36 +644,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   cardBody: {
     padding: 0,
-  },
-  statsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 16,
-  },
-  statItem: {
-    width: '50%',
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  incomeValue: {
-    color: colors.success,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
   },
   cardTitle: {
     fontSize: 16,

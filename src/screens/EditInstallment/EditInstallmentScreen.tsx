@@ -22,6 +22,7 @@ import { Installment, Category } from '../../types';
 import { colors } from '../../styles/colors';
 import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { HapticService } from '../../services/haptic/HapticService';
+import { safeParseDate } from '../../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 
 interface EditInstallmentScreenProps {
@@ -74,8 +75,8 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
           totalAmount: found.totalAmount.toString(),
           totalInstallments: found.totalInstallments.toString(),
           installmentValue: found.installmentValue.toString(),
-          startDate: new Date(found.startDate),
-          endDate: new Date(found.endDate),
+          startDate: safeParseDate(found.startDate),
+          endDate: safeParseDate(found.endDate),
           category: found.category,
           paymentMethod: found.paymentMethod,
         });

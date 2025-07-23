@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
   TextInput, 
+  FlatList,
   ScrollView, 
   StyleSheet,
   Alert,
-  TouchableOpacity
+  TouchableOpacity,
+  Modal
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
-import { Installment, Transaction } from '../../types';
+import { ValidationService } from '../../services/validation/ValidationService';
+import { ErrorHandler } from '../../services/error/ErrorHandler';
+import { HapticService } from '../../services/haptic/HapticService';
+import { Installment, Transaction, Category } from '../../types';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { Ionicons } from '@expo/vector-icons';
 
 interface AddInstallmentScreenProps {
@@ -26,11 +33,47 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
     store: '',
     totalAmount: '',
     totalInstallments: '',
-    category: 'Compras',
+    category: '',
     startDate: new Date(),
   });
 
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      console.log('Carregando categorias...');
+      const categories = await StorageService.getCategories();
+      console.log('Categorias carregadas:', categories);
+      setCategories(categories || []);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+      // Se falhou, usar categorias padrão
+      const defaultCategories: Category[] = [
+        { id: '1', name: 'Compras', icon: '🛍️', type: 'expense', color: '#FF6B6B', isCustom: false },
+        { id: '2', name: 'Eletrônicos', icon: '📱', type: 'expense', color: '#4ECDC4', isCustom: false },
+        { id: '3', name: 'Casa', icon: '🏠', type: 'expense', color: '#45B7D1', isCustom: false },
+        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
+      ];
+      setCategories(defaultCategories);
+    }
+  };
+
+  const getFilteredCategories = () => {
+    return categories.filter(cat => 
+      cat.type === 'expense' || cat.type === 'both'
+    );
+  };
+
+  const getSelectedCategory = () => {
+    return categories.find(cat => cat.name === formData.category);
+  };
 
   const calculateInstallmentValue = () => {
     const total = parseFloat(formData.totalAmount.replace(',', '.')) || 0;
@@ -38,28 +81,53 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
     return total / installments;
   };
 
+  const formatAmount = (value: string) => {
+    const cleaned = value.replace(/[^0-9,]/g, '');
+    return cleaned;
+  };
+
+  const validateForm = () => {
+    console.log('=== VALIDANDO FORMULARIO ===');
+    setValidationErrors([]);
+
+    const amount = formData.totalAmount ? parseFloat(formData.totalAmount.replace(',', '.')) : 0;
+    const installments = formData.totalInstallments ? parseInt(formData.totalInstallments) : 0;
+    console.log('Amount parsed:', amount);
+    console.log('Installments parsed:', installments);
+
+    const installmentData = {
+      description: formData.description,
+      store: formData.store,
+      totalAmount: amount,
+      totalInstallments: installments,
+      category: formData.category,
+      startDate: formData.startDate.toISOString(),
+    };
+
+    console.log('Installment data para validação:', installmentData);
+    const validationResult = ValidationService.validateInstallment(installmentData);
+    console.log('Resultado da validação:', validationResult);
+    
+    const errors = validationResult.errors || [];
+    setValidationErrors(errors);
+    const isValid = validationResult.isValid || errors.length === 0;
+    console.log('Formulário válido:', isValid);
+    return isValid;
+  };
+
   const handleSave = async () => {
-    if (!formData.description.trim()) {
-      Alert.alert('Erro', 'Por favor, informe a descrição');
+    console.log('=== HANDLE SAVE INICIADO ===');
+    console.log('FormData atual:', formData);
+    
+    if (!validateForm()) {
+      console.log('Validação falhou, parando execução');
+      HapticService.error();
       return;
     }
 
-    if (!formData.store.trim()) {
-      Alert.alert('Erro', 'Por favor, informe a loja');
-      return;
-    }
-
-    if (!formData.totalAmount || parseFloat(formData.totalAmount.replace(',', '.')) <= 0) {
-      Alert.alert('Erro', 'Por favor, informe um valor válido');
-      return;
-    }
-
-    if (!formData.totalInstallments || parseInt(formData.totalInstallments) <= 0) {
-      Alert.alert('Erro', 'Por favor, informe o número de parcelas');
-      return;
-    }
-
+    console.log('Validação passou, continuando...');
     setIsLoading(true);
+    HapticService.light();
 
     try {
       const totalAmount = parseFloat(formData.totalAmount.replace(',', '.'));
@@ -89,6 +157,7 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
       
       // REMOVIDO: Não criar transação automática da primeira parcela
 
+      HapticService.success();
       Alert.alert(
         'Sucesso',
         'Parcelamento adicionado com sucesso!',
@@ -96,16 +165,46 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
       );
     } catch (error) {
       console.error('Erro ao salvar parcelamento:', error);
-      Alert.alert('Erro', 'Erro ao salvar parcelamento');
+      const errorMessage = ErrorHandler.handle(error, 'Erro ao salvar parcelamento');
+      HapticService.error();
+      Alert.alert('Erro', errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleDeleteConfirm = () => {
+    Alert.alert(
+      'Cancelar Parcelamento',
+      'Tem certeza que deseja cancelar? Os dados não salvos serão perdidos.',
+      [
+        { text: 'Não', style: 'cancel' },
+        { 
+          text: 'Sim', 
+          style: 'destructive',
+          onPress: () => {
+            HapticService.light();
+            navigation.goBack();
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <Container>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Novo Parcelamento</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Novo Parcelamento</Text>
+          <View style={styles.placeholder} />
+        </View>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
@@ -130,6 +229,36 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
             />
           </View>
 
+          {/* Category Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Categoria</Text>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowCategoryModal(true)}
+            >
+              <View style={styles.categoryContent}>
+                {getSelectedCategory() ? (
+                  <>
+                    <Text style={styles.categoryEmoji}>{getSelectedCategory()?.icon}</Text>
+                    <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Selecionar categoria</Text>
+                )}
+              </View>
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Date Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Data de Início</Text>
+            <DatePicker
+              date={formData.startDate}
+              onDateChange={(date) => setFormData({...formData, startDate: date})}
+            />
+          </View>
+
           <View style={styles.row}>
             <View style={[styles.inputGroup, styles.flex1]}>
               <Text style={styles.label}>Valor Total</Text>
@@ -138,7 +267,7 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
                 <TextInput
                   style={[styles.input, styles.currencyInput]}
                   value={formData.totalAmount}
-                  onChangeText={(text) => setFormData({...formData, totalAmount: text})}
+                  onChangeText={(text) => setFormData({...formData, totalAmount: formatAmount(text)})}
                   placeholder="0,00"
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="decimal-pad"
@@ -180,42 +309,128 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
             </Card>
           )}
 
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <Card style={styles.errorCard}>
+              <View style={styles.errorHeader}>
+                <Ionicons name="alert-circle" size={20} color={colors.error} />
+                <Text style={styles.errorTitle}>Erros encontrados:</Text>
+              </View>
+              {validationErrors.map((error, index) => (
+                <Text key={index} style={styles.errorText}>• {error}</Text>
+              ))}
+            </Card>
+          )}
+
           <View style={styles.infoCard}>
             <View style={styles.infoHeader}>
               <Ionicons name="information-circle" size={20} color={colors.info} />
               <Text style={styles.infoTitle}>Informação</Text>
             </View>
             <Text style={styles.infoText}>
-              A primeira parcela será registrada automaticamente como paga na data de hoje.
+              As parcelas serão organizadas automaticamente no calendário a partir da data de início.
             </Text>
           </View>
 
-          <Button 
-            title={isLoading ? "Salvando..." : "Salvar Parcelamento"}
-            onPress={handleSave}
-            style={styles.button}
-            disabled={isLoading}
-          />
+          <View style={styles.buttonContainer}>
+            <Button 
+              title="Cancelar"
+              onPress={handleDeleteConfirm}
+              style={[styles.button, styles.cancelButton]}
+              textStyle={styles.cancelButtonText}
+            />
+            <Button 
+              title={isLoading ? "Salvando..." : "Salvar"}
+              onPress={handleSave}
+              style={[styles.button, styles.saveButton]}
+              disabled={isLoading}
+            />
+          </View>
         </View>
       </ScrollView>
+
+      {/* Category Selection Modal */}
+      <Modal
+        visible={showCategoryModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Selecionar Categoria</Text>
+            <View style={styles.modalSpacer} />
+          </View>
+
+          <FlatList
+            data={getFilteredCategories()}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.category === item.name && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData({...formData, category: item.name});
+                  setShowCategoryModal(false);
+                  HapticService.light();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryItemEmoji}>{item.icon}</Text>
+                  <Text style={styles.categoryItemName}>{item.name}</Text>
+                </View>
+                {formData.category === item.name && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
     </Container>
   );
 };
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40,
+    height: 40,
+  },
   container: {
     flex: 1,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 24,
-    color: colors.text,
-  },
   form: {
     paddingHorizontal: 16,
+    paddingTop: 20,
   },
   inputGroup: {
     marginBottom: 20,
@@ -311,7 +526,117 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-  button: {
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 100,
+  },
+  button: {
+    flex: 1,
+  },
+  cancelButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
+    color: colors.text,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+  },
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: colors.surface,
+  },
+  categoryContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryEmoji: {
+    fontSize: 20,
+  },
+  categoryText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  categoryPlaceholder: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  errorCard: {
+    backgroundColor: colors.errorLight,
+    marginBottom: 16,
+  },
+  errorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.error,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginBottom: 4,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modalCancel: {
+    fontSize: 16,
+    color: colors.primary,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalSpacer: {
+    width: 60,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  categoryItemSelected: {
+    backgroundColor: colors.primaryLight,
+  },
+  categoryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  categoryItemEmoji: {
+    fontSize: 24,
+  },
+  categoryItemName: {
+    fontSize: 16,
+    color: colors.text,
   },
 });

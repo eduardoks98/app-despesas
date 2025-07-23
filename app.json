@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "App Despesas",
-    "slug": "app-despesas",
+    "slug": "controle-financeiro",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -30,7 +30,15 @@
         "WRITE_EXTERNAL_STORAGE",
         "READ_EXTERNAL_STORAGE",
         "VIBRATE"
-      ]
+      ],
+      "navigationBar": {
+        "backgroundColor": "#000000",
+        "barStyle": "light-content"
+      },
+      "statusBar": {
+        "backgroundColor": "#6B46C1",
+        "barStyle": "light-content"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -42,7 +50,8 @@
       }
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-navigation-bar"
     ]
   }
 }

@@ -172,13 +172,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       });
     } else {
       // Finalizar onboarding
-      navigation.replace('MainTabs');
+      navigation.replace('Main');
     }
   };
 
   const handleSkip = async () => {
     await markOnboardingComplete();
-    navigation.replace('MainTabs');
+    navigation.replace('Main');
   };
 
   const handlePrevious = () => {

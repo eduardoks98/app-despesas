@@ -3,6 +3,7 @@ import {
   View, 
   Text, 
   TextInput, 
+  FlatList,
   ScrollView, 
   StyleSheet,
   Alert,
@@ -12,15 +13,15 @@ import {
 import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
-import { CardHeader } from '../../components/common/CardHeader';
 import { TabSelector } from '../../components/common/TabSelector';
-import { MoneyText } from '../../components/common/MoneyText';
 import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
 import { ValidationService } from '../../services/validation/ValidationService';
 import { ErrorHandler } from '../../services/error/ErrorHandler';
+import { HapticService } from '../../services/haptic/HapticService';
 import { Transaction, Category } from '../../types';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { Ionicons } from '@expo/vector-icons';
 
 interface AddTransactionScreenProps {
@@ -35,12 +36,13 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
     category: '',
     paymentMethod: 'cash' as 'cash' | 'debit' | 'credit' | 'pix',
     date: new Date(),
-    isPaid: true, // Por padrão, considera como já pago
-    paidDate: new Date(), // Data do pagamento (igual à data da transação por padrão)
+    isPaid: true,
+    paidDate: new Date(),
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
@@ -49,31 +51,19 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
   }, []);
 
   const loadCategories = async () => {
-    const data = await ErrorHandler.withErrorHandling(
-      'carregar categorias',
-      async () => {
-        const categories = await StorageService.getCategories();
-        setCategories(categories);
-        
-        // Definir categoria padrão baseada no tipo
-        const defaultCategory = categories.find(cat => 
-          cat.type === formData.type || cat.type === 'both'
-        );
-        if (defaultCategory && !formData.category) {
-          setFormData(prev => ({ ...prev, category: defaultCategory.name }));
-        }
-        
-        return categories;
-      }
-    );
-    
-    if (!data) {
+    try {
+      console.log('Carregando categorias...');
+      const categories = await StorageService.getCategories();
+      console.log('Categorias carregadas:', categories);
+      setCategories(categories || []);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
       // Se falhou, usar categorias padrão
       const defaultCategories: Category[] = [
-        { id: '1', name: 'Alimentação', icon: 'restaurant', type: 'expense', color: '#FF6B6B', isCustom: false },
-        { id: '2', name: 'Transporte', icon: 'car', type: 'expense', color: '#4ECDC4', isCustom: false },
-        { id: '3', name: 'Salário', icon: 'briefcase', type: 'income', color: '#45B7D1', isCustom: false },
-        { id: '4', name: 'Outros', icon: 'folder', type: 'both', color: '#96CEB4', isCustom: false },
+        { id: '1', name: 'Alimentação', icon: '🍔', type: 'expense', color: '#FF6B6B', isCustom: false },
+        { id: '2', name: 'Transporte', icon: '🚗', type: 'expense', color: '#4ECDC4', isCustom: false },
+        { id: '3', name: 'Salário', icon: '💰', type: 'income', color: '#45B7D1', isCustom: false },
+        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
       ];
       setCategories(defaultCategories);
     }
@@ -89,11 +79,26 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
     return categories.find(cat => cat.name === formData.category);
   };
 
+  const formatAmount = (value: string) => {
+    const cleaned = value.replace(/[^0-9,]/g, '');
+    return cleaned;
+  };
+
+  const handleTypeChange = (newType: 'income' | 'expense') => {
+    setFormData(prev => ({
+      ...prev,
+      type: newType,
+      category: '' // Limpar categoria ao trocar tipo
+    }));
+    HapticService.light();
+  };
+
   const validateForm = () => {
-    // Limpar erros anteriores
+    console.log('=== VALIDANDO FORMULARIO ===');
     setValidationErrors([]);
 
     const amount = formData.amount ? parseFloat(formData.amount.replace(',', '.')) : 0;
+    console.log('Amount parsed:', amount);
 
     const transactionData = {
       description: formData.description,
@@ -101,124 +106,118 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
       type: formData.type,
       category: formData.category,
       date: formData.date.toISOString(),
-      paymentMethod: formData.isPaid ? formData.paymentMethod : undefined,
+      paymentMethod: formData.paymentMethod,
       isPaid: formData.isPaid,
-      paidDate: formData.isPaid ? formData.paidDate.toISOString() : undefined,
+      paidDate: formData.paidDate.toISOString(),
     };
 
-    // Sanitizar dados
-    const sanitizedData = ValidationService.sanitizeTransaction(transactionData);
+    console.log('Transaction data para validação:', transactionData);
+    const validationResult = ValidationService.validateTransaction(transactionData);
+    console.log('Resultado da validação:', validationResult);
     
-    // Validar transação
-    const validation = ValidationService.validateTransaction(sanitizedData);
-
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
-      ErrorHandler.handleValidationError(validation.errors, 'Nova Transação');
-      return null;
-    }
-
-    // Mostrar avisos se existirem
-    if (validation.warnings && validation.warnings.length > 0) {
-      Alert.alert(
-        'Atenção',
-        validation.warnings.join('\n'),
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Continuar Mesmo Assim', onPress: () => saveTransaction(sanitizedData) }
-        ]
-      );
-      return 'warnings';
-    }
-
-    return sanitizedData;
+    const errors = validationResult.errors || [];
+    setValidationErrors(errors);
+    const isValid = validationResult.isValid || errors.length === 0;
+    console.log('Formulário válido:', isValid);
+    return isValid;
   };
 
-  const saveTransaction = async (transactionData: any) => {
+  const handleSave = async () => {
+    console.log('=== HANDLE SAVE INICIADO ===');
+    console.log('FormData atual:', formData);
+    
+    if (!validateForm()) {
+      console.log('Validação falhou, parando execução');
+      HapticService.error();
+      return;
+    }
+
+    console.log('Validação passou, continuando...');
     setIsLoading(true);
+    HapticService.light();
 
-    const result = await ErrorHandler.withErrorHandling(
-      'salvar transação',
-      async () => {
-        const newTransaction: Transaction = {
-          id: `transaction_${Date.now()}`,
-          ...transactionData,
-        };
+    try {
+      const amount = parseFloat(formData.amount.replace(',', '.'));
+      console.log('Amount final:', amount);
+      
+      const newTransaction: Transaction = {
+        id: `transaction_${Date.now()}`,
+        description: formData.description,
+        amount: amount,
+        type: formData.type,
+        category: formData.category,
+        date: formData.date.toISOString(),
+        paymentMethod: formData.paymentMethod,
+        isPaid: formData.isPaid,
+        paidDate: formData.paidDate.toISOString(),
+      };
 
-        await StorageService.saveTransaction(newTransaction);
-        return newTransaction;
-      }
-    );
+      console.log('Nova transação criada:', newTransaction);
+      await StorageService.saveTransaction(newTransaction);
+      console.log('Transação salva com sucesso!');
 
-    setIsLoading(false);
-
-    if (result) {
+      HapticService.success();
       Alert.alert(
         'Sucesso',
         'Transação adicionada com sucesso!',
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
+    } catch (error) {
+      console.error('Erro ao salvar transação:', error);
+      const errorMessage = ErrorHandler.handle(error, 'Erro ao salvar transação');
+      HapticService.error();
+      Alert.alert('Erro', errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSave = async () => {
-    const validatedData = validateForm();
-    
-    if (validatedData && validatedData !== 'warnings') {
-      await saveTransaction(validatedData);
-    }
+  const handleDeleteConfirm = () => {
+    Alert.alert(
+      'Cancelar Transação',
+      'Tem certeza que deseja cancelar? Os dados não salvos serão perdidos.',
+      [
+        { text: 'Não', style: 'cancel' },
+        { 
+          text: 'Sim', 
+          style: 'destructive',
+          onPress: () => {
+            HapticService.light();
+            navigation.goBack();
+          }
+        }
+      ]
+    );
   };
 
-  const formatAmount = (value: string) => {
-    // Remove tudo exceto números e vírgula
-    const cleaned = value.replace(/[^0-9,]/g, '');
-    
-    // Garantir apenas uma vírgula
-    const parts = cleaned.split(',');
-    if (parts.length > 2) {
-      return parts[0] + ',' + parts.slice(1).join('');
-    }
-    
-    return cleaned;
-  };
-
-  const handleAmountChange = (value: string) => {
-    const formatted = formatAmount(value);
-    setFormData(prev => ({ ...prev, amount: formatted }));
-  };
-
-  const getTypeButtonStyle = (type: 'income' | 'expense') => [
-    styles.typeButton,
-    formData.type === type && styles.typeButtonActive,
-    type === 'income' && formData.type === type && styles.typeButtonIncomeActive,
+  const paymentMethods = [
+    { label: 'Dinheiro', value: 'cash', icon: '💵' },
+    { label: 'Cartão de Débito', value: 'debit', icon: '💳' },
+    { label: 'Cartão de Crédito', value: 'credit', icon: '💳' },
+    { label: 'PIX', value: 'pix', icon: '📱' },
   ];
 
-  const getTypeTextStyle = (type: 'income' | 'expense') => [
-    styles.typeButtonText,
-    formData.type === type && styles.typeButtonTextActive,
-  ];
-
-  const getPaymentMethodIcon = (method: string) => {
-    const iconMap: { [key: string]: string } = {
-      'cash': 'cash',
-      'debit': 'card',
-      'credit': 'card',
-      'pix': 'flash',
-    };
-    return iconMap[method] || 'card';
+  const getSelectedPaymentMethod = () => {
+    return paymentMethods.find(method => method.value === formData.paymentMethod);
   };
 
   return (
     <Container>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <Card>
-          <CardHeader 
-            title="Nova Transação" 
-            icon="add-circle"
-          />
-          <View style={styles.cardBody}>
-            <View style={styles.form}>
-          {/* Tipo de transação */}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Nova Transação</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        <View style={styles.form}>
+          {/* Type Selection */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Tipo</Text>
             <TabSelector
@@ -226,283 +225,211 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
                 { 
                   key: 'expense', 
                   label: 'Despesa', 
-                  icon: 'remove-circle',
+                  icon: 'trending-down',
                   color: colors.danger
                 },
                 { 
                   key: 'income', 
                   label: 'Receita', 
-                  icon: 'add-circle',
+                  icon: 'trending-up',
                   color: colors.success
                 }
               ]}
               selectedValue={formData.type}
-              onValueChange={(value) => {
-                setFormData(prev => ({ ...prev, type: value as 'expense' | 'income', category: '' }));
-                setTimeout(loadCategories, 100);
-              }}
-              style={styles.tabSelector}
+              onValueChange={handleTypeChange}
             />
           </View>
 
-          {/* Valor */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Descrição</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.description}
+              onChangeText={(text) => setFormData({...formData, description: text})}
+              placeholder="Ex: Almoço no restaurante"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Valor</Text>
-            <View style={[
-              styles.amountContainer,
-              validationErrors.some(e => e.includes('Valor') || e.includes('valor')) && styles.inputError
-            ]}>
+            <View style={styles.inputContainer}>
               <Text style={styles.currency}>R$</Text>
               <TextInput
-                style={styles.amountInput}
+                style={[styles.input, styles.currencyInput]}
                 value={formData.amount}
-                onChangeText={(value) => {
-                  handleAmountChange(value);
-                  // Limpar erros de valor ao digitar
-                  if (validationErrors.some(e => e.includes('Valor') || e.includes('valor'))) {
-                    setValidationErrors(prev => prev.filter(e => !e.includes('Valor') && !e.includes('valor')));
-                  }
-                }}
+                onChangeText={(text) => setFormData({...formData, amount: formatAmount(text)})}
                 placeholder="0,00"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
               />
             </View>
-            {validationErrors.filter(e => e.includes('Valor') || e.includes('valor')).map((error, index) => (
-              <Text key={index} style={styles.errorText}>{error}</Text>
-            ))}
-            {formData.amount && (
-              <View style={styles.amountPreview}>
-                <MoneyText 
-                  value={parseFloat(formData.amount.replace(',', '.')) || 0}
-                  size="large"
-                  showSign={false}
-                  style={formData.type === 'income' ? styles.incomePreview : styles.expensePreview}
-                />
-              </View>
-            )}
           </View>
 
-          {/* Descrição */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Descrição</Text>
-            <TextInput
-              style={[
-                styles.input,
-                validationErrors.some(e => e.includes('Descrição')) && styles.inputError
-              ]}
-              value={formData.description}
-              onChangeText={(text) => {
-                setFormData(prev => ({ ...prev, description: text }));
-                // Limpar erros de descrição ao digitar
-                if (validationErrors.some(e => e.includes('Descrição'))) {
-                  setValidationErrors(prev => prev.filter(e => !e.includes('Descrição')));
-                }
-              }}
-              placeholder="Ex: Almoço no restaurante"
-              placeholderTextColor={colors.textSecondary}
-              multiline
-              numberOfLines={2}
-            />
-            {validationErrors.filter(e => e.includes('Descrição')).map((error, index) => (
-              <Text key={index} style={styles.errorText}>{error}</Text>
-            ))}
-          </View>
-
-          {/* Categoria */}
+          {/* Category Selection */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Categoria</Text>
-            <TouchableOpacity
-              style={styles.categorySelector}
+            <TouchableOpacity 
+              style={styles.categoryButton}
               onPress={() => setShowCategoryModal(true)}
             >
-              {formData.category ? (
-                <View style={styles.selectedCategory}>
-                  <View style={[
-                    styles.categoryIconContainer,
-                    { backgroundColor: (getSelectedCategory()?.color || '#96CEB4') + '20' }
-                  ]}>
-                    <Ionicons 
-                      name={(getSelectedCategory()?.icon || 'folder') as any} 
-                      size={16} 
-                      color={getSelectedCategory()?.color || '#96CEB4'} 
-                    />
-                  </View>
-                  <Text style={styles.categoryName}>{formData.category}</Text>
-                </View>
-              ) : (
-                <Text style={styles.placeholderText}>Selecione uma categoria</Text>
-              )}
+              <View style={styles.categoryContent}>
+                {getSelectedCategory() ? (
+                  <>
+                    <Text style={styles.categoryEmoji}>{getSelectedCategory()?.icon}</Text>
+                    <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Selecionar categoria</Text>
+                )}
+              </View>
               <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {/* Status de Pagamento */}
+          {/* Payment Method Selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Status</Text>
-            <View style={styles.statusButtons}>
-              <TouchableOpacity 
-                style={[
-                  styles.statusButton,
-                  formData.isPaid && styles.statusButtonActive
-                ]}
-                onPress={() => setFormData(prev => ({ 
-                  ...prev, 
-                  isPaid: true,
-                  paidDate: prev.date // Usar a data da transação como padrão
-                }))}
-              >
-                <Ionicons 
-                  name="checkmark-circle" 
-                  size={20} 
-                  color={formData.isPaid ? colors.white : colors.success} 
-                />
-                <Text style={[
-                  styles.statusButtonText,
-                  formData.isPaid && styles.statusButtonTextActive
-                ]}>
-                  Já {formData.type === 'income' ? 'Recebido' : 'Pago'}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[
-                  styles.statusButton,
-                  !formData.isPaid && styles.statusButtonPendingActive
-                ]}
-                onPress={() => setFormData(prev => ({ 
-                  ...prev, 
-                  isPaid: false 
-                }))}
-              >
-                <Ionicons 
-                  name="time" 
-                  size={20} 
-                  color={!formData.isPaid ? colors.white : colors.warning} 
-                />
-                <Text style={[
-                  styles.statusButtonText,
-                  !formData.isPaid && styles.statusButtonTextActive
-                ]}>
-                  {formData.type === 'income' ? 'A Receber' : 'A Pagar'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.label}>Método de Pagamento</Text>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowPaymentMethodModal(true)}
+            >
+              <View style={styles.categoryContent}>
+                {getSelectedPaymentMethod() ? (
+                  <>
+                    <Text style={styles.categoryEmoji}>{getSelectedPaymentMethod()?.icon}</Text>
+                    <Text style={styles.categoryText}>{getSelectedPaymentMethod()?.label}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Selecionar método</Text>
+                )}
+              </View>
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
-          {/* Método de pagamento - só aparece se já foi pago */}
-          {formData.isPaid && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Método de Pagamento</Text>
-              <View style={styles.paymentMethods}>
-                {[
-                  { key: 'cash', label: 'Dinheiro' },
-                  { key: 'debit', label: 'Débito' },
-                  { key: 'credit', label: 'Crédito' },
-                  { key: 'pix', label: 'PIX' },
-                ].map(method => (
-                  <TouchableOpacity
-                    key={method.key}
-                    style={[
-                      styles.paymentMethod,
-                      formData.paymentMethod === method.key && styles.paymentMethodActive
-                    ]}
-                    onPress={() => setFormData(prev => ({ 
-                      ...prev, 
-                      paymentMethod: method.key as any 
-                    }))}
-                  >
-                    <Ionicons 
-                      name={getPaymentMethodIcon(method.key) as any} 
-                      size={16} 
-                      color={formData.paymentMethod === method.key ? colors.white : colors.textSecondary} 
-                    />
-                    <Text style={[
-                      styles.paymentMethodText,
-                      formData.paymentMethod === method.key && styles.paymentMethodTextActive
-                    ]}>
-                      {method.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+          {/* Date Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Data</Text>
+            <DatePicker
+              date={formData.date}
+              onDateChange={(date) => setFormData({...formData, date: date})}
+            />
+          </View>
+
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <Card style={styles.errorCard}>
+              <View style={styles.errorHeader}>
+                <Ionicons name="alert-circle" size={20} color={colors.error} />
+                <Text style={styles.errorTitle}>Erros encontrados:</Text>
               </View>
-            </View>
+              {validationErrors.map((error, index) => (
+                <Text key={index} style={styles.errorText}>• {error}</Text>
+              ))}
+            </Card>
           )}
 
-          {/* Data */}
-          <View style={styles.inputGroup}>
-            <DatePicker
-              label="Data"
-              value={formData.date}
-              onChange={(date) => setFormData(prev => ({ ...prev, date }))}
+          <View style={styles.buttonContainer}>
+            <Button 
+              title="Cancelar"
+              onPress={handleDeleteConfirm}
+              style={[styles.button, styles.cancelButton]}
+              textStyle={styles.cancelButtonText}
+            />
+            <Button 
+              title={isLoading ? "Salvando..." : "Salvar"}
+              onPress={handleSave}
+              style={[styles.button, styles.saveButton]}
+              disabled={isLoading}
             />
           </View>
-
-              <Button 
-                title={isLoading ? "Salvando..." : "Salvar Transação"}
-                onPress={handleSave}
-                style={styles.button}
-                disabled={isLoading}
-              />
-            </View>
-          </View>
-        </Card>
+        </View>
       </ScrollView>
 
-      {/* Modal de categorias */}
+      {/* Category Selection Modal */}
       <Modal
         visible={showCategoryModal}
-        transparent
         animationType="slide"
-        onRequestClose={() => setShowCategoryModal(false)}
+        presentationStyle="pageSheet"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
             <Text style={styles.modalTitle}>Selecionar Categoria</Text>
-            
-            <ScrollView style={styles.categoriesList}>
-              {getFilteredCategories().map(category => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.categoryItem,
-                    formData.category === category.name && styles.categoryItemSelected
-                  ]}
-                  onPress={() => {
-                    setFormData(prev => ({ ...prev, category: category.name }));
-                    setShowCategoryModal(false);
-                  }}
-                >
-                  <View style={[
-                    styles.categoryItemIconContainer,
-                    { backgroundColor: category.color + '20' }
-                  ]}>
-                    <Ionicons 
-                      name={category.icon as any} 
-                      size={16} 
-                      color={category.color} 
-                    />
-                  </View>
-                  <Text style={[
-                    styles.categoryItemName,
-                    formData.category === category.name && styles.categoryItemNameSelected
-                  ]}>
-                    {category.name}
-                  </Text>
-                  {formData.category === category.name && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Button
-              title="Cancelar"
-              onPress={() => setShowCategoryModal(false)}
-              variant="outline"
-              style={styles.modalButton}
-            />
+            <View style={styles.modalSpacer} />
           </View>
+
+          <FlatList
+            data={getFilteredCategories()}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.category === item.name && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData({...formData, category: item.name});
+                  setShowCategoryModal(false);
+                  HapticService.light();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryItemEmoji}>{item.icon}</Text>
+                  <Text style={styles.categoryItemName}>{item.name}</Text>
+                </View>
+                {formData.category === item.name && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
+
+      {/* Payment Method Selection Modal */}
+      <Modal
+        visible={showPaymentMethodModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowPaymentMethodModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Método de Pagamento</Text>
+            <View style={styles.modalSpacer} />
+          </View>
+
+          <FlatList
+            data={paymentMethods}
+            keyExtractor={(item) => item.value}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.paymentMethod === item.value && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData({...formData, paymentMethod: item.value as any});
+                  setShowPaymentMethodModal(false);
+                  HapticService.light();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryItemEmoji}>{item.icon}</Text>
+                  <Text style={styles.categoryItemName}>{item.label}</Text>
+                </View>
+                {formData.paymentMethod === item.value && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
         </View>
       </Modal>
     </Container>
@@ -510,23 +437,41 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  cardBody: {
-    padding: 16,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40,
+    height: 40,
   },
   form: {
-    flex: 1,
-  },
-  tabSelector: {
-    marginHorizontal: 0,
-    marginVertical: 0,
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
@@ -542,9 +487,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: colors.surface,
     color: colors.text,
-    textAlignVertical: 'top',
   },
-  amountContainer: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
@@ -554,28 +498,34 @@ const styles = StyleSheet.create({
   },
   currency: {
     paddingLeft: 16,
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
     color: colors.textSecondary,
   },
-  amountInput: {
+  currencyInput: {
     flex: 1,
-    padding: 16,
-    fontSize: 18,
-    fontWeight: '600',
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 100,
+  },
+  button: {
+    flex: 1,
+  },
+  cancelButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
     color: colors.text,
   },
-  amountPreview: {
-    alignItems: 'center',
-    marginTop: 8,
+  saveButton: {
+    backgroundColor: colors.primary,
   },
-  incomePreview: {
-    color: colors.success,
-  },
-  expensePreview: {
-    color: colors.text,
-  },
-  categorySelector: {
+  categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -585,132 +535,88 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: colors.surface,
   },
-  selectedCategory: {
+  categoryContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  categoryIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+  categoryEmoji: {
+    fontSize: 20,
   },
-  categoryName: {
+  categoryText: {
     fontSize: 16,
     color: colors.text,
   },
-  placeholderText: {
+  categoryPlaceholder: {
     fontSize: 16,
     color: colors.textSecondary,
   },
-  paymentMethods: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  errorCard: {
+    backgroundColor: colors.errorLight,
+    marginBottom: 16,
   },
-  paymentMethod: {
+  errorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    marginBottom: 8,
     gap: 8,
   },
-  paymentMethodActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  paymentMethodText: {
+  errorTitle: {
     fontSize: 14,
-    color: colors.textSecondary,
+    fontWeight: '600',
+    color: colors.error,
   },
-  paymentMethodTextActive: {
-    color: colors.white,
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginBottom: 4,
   },
-  dateContainer: {
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    justifyContent: 'space-between',
     padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
     backgroundColor: colors.surface,
-    gap: 12,
   },
-  dateText: {
+  modalCancel: {
     fontSize: 16,
-    color: colors.text,
-  },
-  button: {
-    marginBottom: 100,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxHeight: '70%',
+    color: colors.primary,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.text,
-    marginBottom: 20,
-    textAlign: 'center',
   },
-  categoriesList: {
-    maxHeight: 300,
+  modalSpacer: {
+    width: 60,
   },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   categoryItemSelected: {
     backgroundColor: colors.primaryLight,
   },
-  categoryItemIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
+  categoryInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    gap: 12,
+  },
+  categoryItemEmoji: {
+    fontSize: 24,
   },
   categoryItemName: {
-    flex: 1,
     fontSize: 16,
     color: colors.text,
-  },
-  categoryItemNameSelected: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  modalButton: {
-    marginTop: 16,
-  },
-  inputError: {
-    borderColor: colors.danger,
-    borderWidth: 2,
-  },
-  errorText: {
-    fontSize: 12,
-    color: colors.danger,
-    marginTop: 4,
-    marginLeft: 4,
   },
 });

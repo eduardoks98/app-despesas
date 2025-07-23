@@ -3,9 +3,9 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   StyleSheet,
-  ScrollView
+  ScrollView,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, getDay } from 'date-fns';
@@ -13,8 +13,10 @@ import { ptBR } from 'date-fns/locale';
 import { colors } from '../../styles/colors';
 
 interface DatePickerProps {
-  value: Date;
-  onChange: (date: Date) => void;
+  value?: Date;
+  onChange?: (date: Date) => void;
+  date?: Date;
+  onDateChange?: (date: Date) => void;
   label?: string;
   placeholder?: string;
   style?: any;
@@ -24,17 +26,23 @@ interface DatePickerProps {
 export const DatePicker: React.FC<DatePickerProps> = ({
   value,
   onChange,
+  date,
+  onDateChange,
   label,
   placeholder = 'Selecione uma data',
   style,
   compact = false
 }) => {
+  // Support both prop formats
+  const currentValue = value || date || new Date();
+  const handleChange = onChange || onDateChange || (() => {});
+  
   const [show, setShow] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(value);
-  const [selectedDate, setSelectedDate] = useState(value);
+  const [currentMonth, setCurrentMonth] = useState(currentValue);
+  const [selectedDate, setSelectedDate] = useState(currentValue);
 
   const handleConfirm = () => {
-    onChange(selectedDate);
+    handleChange(selectedDate);
     setShow(false);
   };
 
@@ -74,7 +82,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       >
         <Ionicons name="calendar" size={compact ? 16 : 20} color={colors.textSecondary} />
         <Text style={compact ? styles.compactDateText : styles.dateText}>
-          {compact ? format(value, 'dd/MM/yyyy') : format(value, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          {compact ? format(currentValue, 'dd/MM/yyyy') : format(currentValue, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
         </Text>
       </TouchableOpacity>
 

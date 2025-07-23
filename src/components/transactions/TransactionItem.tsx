@@ -93,11 +93,21 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           value={transaction.type === 'income' ? transaction.amount : -transaction.amount}
           size="medium"
           showSign={false}
-          style={transaction.type === 'income' ? styles.incomeAmount : styles.expenseAmount}
+          style={[
+            transaction.type === 'income' ? styles.incomeAmount : styles.expenseAmount,
+            (transaction.isPaid === false) && styles.unpaidAmount
+          ]}
         />
-        <Text style={styles.time}>
-          {formatTime(transaction.date)}
-        </Text>
+        <View style={styles.bottomRow}>
+          <Text style={styles.time}>
+            {formatTime(transaction.date)}
+          </Text>
+          {(transaction.isPaid === false) ? (
+            <Ionicons name="time" size={16} color={colors.warning} />
+          ) : (
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -193,5 +203,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 4,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.xs,
+    minWidth: 60,
+    marginTop: 4,
+  },
+  unpaidAmount: {
+    color: colors.warning,
   },
 });

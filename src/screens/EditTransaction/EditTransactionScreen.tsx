@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -23,6 +23,7 @@ import { Transaction, Category } from '../../types';
 import { colors } from '../../styles/colors';
 import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { HapticService } from '../../services/haptic/HapticService';
+import { safeParseDate } from '../../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 
 interface EditTransactionScreenProps {
@@ -47,6 +48,8 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
     category: '',
     paymentMethod: 'cash' as 'cash' | 'debit' | 'credit' | 'pix',
     date: new Date(),
+    isPaid: true,
+    paidDate: new Date(),
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -59,21 +62,7 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
     loadCategories();
   }, []);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity 
-          style={{ marginRight: 15 }}
-          onPress={async () => {
-            await HapticService.buttonPress();
-            handleDelete();
-          }}
-        >
-          <Ionicons name="trash" size={24} color="white" />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
+
 
   const loadTransaction = async () => {
     try {
@@ -89,7 +78,9 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
           description: found.description || '',
           category: found.category || '',
           paymentMethod: found.paymentMethod || 'cash',
-          date: new Date(found.date || new Date()),
+          date: safeParseDate(found.date),
+          isPaid: found.isPaid ?? false,
+          paidDate: safeParseDate(found.paidDate),
         });
       } else {
         Alert.alert('Erro', 'Transação não encontrada');
@@ -216,6 +207,8 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
         category: formData.category,
         date: formData.date.toISOString(),
         paymentMethod: formData.paymentMethod,
+        isPaid: formData.isPaid,
+        paidDate: formData.paidDate.toISOString(),
       };
 
       console.log('Transaction data final:', transactionData);
@@ -316,10 +309,29 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
 
   return (
     <Container>
-      <FlatList
-        data={[{ key: 'content' }]}
-        renderItem={() => (
-          <>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Editar Transação</Text>
+          <TouchableOpacity 
+            style={styles.deleteButton}
+            onPress={async () => {
+              await HapticService.buttonPress();
+              handleDelete();
+            }}
+          >
+            <Ionicons name="trash" size={24} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.container}>
+          <View style={styles.form}>
             {/* Tipo de Transação */}
             <Card style={styles.card}>
               <Text style={styles.label}>Tipo de Transação</Text>
@@ -402,36 +414,91 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
               />
             </Card>
 
-            {/* Forma de Pagamento */}
+            {/* Status de Pagamento */}
             <Card style={styles.card}>
-              <Text style={styles.label}>Forma de Pagamento</Text>
-              <View style={styles.paymentMethods}>
-                {['cash', 'debit', 'credit', 'pix'].map((method) => (
-                  <TouchableOpacity
-                    key={method}
-                    style={[
-                      styles.paymentMethodButton,
-                      formData.paymentMethod === method && styles.paymentMethodButtonActive
-                    ]}
-                    onPress={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
-                  >
-                    <Ionicons 
-                      name={getPaymentMethodIcon(method) as any} 
-                      size={20} 
-                      color={formData.paymentMethod === method ? colors.white : colors.textSecondary} 
-                    />
-                    <Text style={[
-                      styles.paymentMethodText,
-                      formData.paymentMethod === method && styles.paymentMethodTextActive
-                    ]}>
-                      {method === 'cash' ? 'Dinheiro' : 
-                       method === 'debit' ? 'Débito' : 
-                       method === 'credit' ? 'Crédito' : 'PIX'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <Text style={styles.label}>Status</Text>
+              <View style={styles.statusButtons}>
+                <TouchableOpacity 
+                  style={[
+                    styles.statusButton,
+                    formData.isPaid && styles.statusButtonActive
+                  ]}
+                  onPress={() => setFormData(prev => ({ 
+                    ...prev, 
+                    isPaid: true,
+                    paidDate: prev.date
+                  }))}
+                >
+                  <Ionicons 
+                    name="checkmark-circle" 
+                    size={20} 
+                    color={formData.isPaid ? colors.white : colors.success} 
+                  />
+                  <Text style={[
+                    styles.statusButtonText,
+                    formData.isPaid && styles.statusButtonTextActive
+                  ]}>
+                    Já {formData.type === 'income' ? 'Recebido' : 'Pago'}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.statusButton,
+                    !formData.isPaid && styles.statusButtonPendingActive
+                  ]}
+                  onPress={() => setFormData(prev => ({ 
+                    ...prev, 
+                    isPaid: false 
+                  }))}
+                >
+                  <Ionicons 
+                    name="time" 
+                    size={20} 
+                    color={!formData.isPaid ? colors.white : colors.warning} 
+                  />
+                  <Text style={[
+                    styles.statusButtonText,
+                    !formData.isPaid && styles.statusButtonTextActive
+                  ]}>
+                    {formData.type === 'income' ? 'A Receber' : 'A Pagar'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </Card>
+
+            {/* Forma de Pagamento - só aparece se já foi pago */}
+            {formData.isPaid && (
+              <Card style={styles.card}>
+                <Text style={styles.label}>Forma de Pagamento</Text>
+                <View style={styles.paymentMethods}>
+                  {['cash', 'debit', 'credit', 'pix'].map((method) => (
+                    <TouchableOpacity
+                      key={method}
+                      style={[
+                        styles.paymentMethodButton,
+                        formData.paymentMethod === method && styles.paymentMethodButtonActive
+                      ]}
+                      onPress={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
+                    >
+                      <Ionicons 
+                        name={getPaymentMethodIcon(method) as any} 
+                        size={20} 
+                        color={formData.paymentMethod === method ? colors.white : colors.textSecondary} 
+                      />
+                      <Text style={[
+                        styles.paymentMethodText,
+                        formData.paymentMethod === method && styles.paymentMethodTextActive
+                      ]}>
+                        {method === 'cash' ? 'Dinheiro' : 
+                         method === 'debit' ? 'Débito' : 
+                         method === 'credit' ? 'Crédito' : 'PIX'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Card>
+            )}
 
             {/* Erros de Validação */}
             {validationErrors.length > 0 && (
@@ -459,12 +526,9 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
             </View>
 
             <View style={styles.bottomSpacer} />
-          </>
-        )}
-        keyExtractor={(item) => item.key}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.flatListContent}
-      />
+          </View>
+        </View>
+      </ScrollView>
 
       {/* Modal de Categorias */}
       <Modal
@@ -508,8 +572,50 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  flatListContent: {
-    paddingBottom: 100,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40,
+    height: 40,
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  form: {
+    flex: 1,
   },
   loading: {
     flex: 1,
@@ -683,5 +789,40 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: colors.text,
+  },
+  statusButtons: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  statusButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    marginHorizontal: 4,
+  },
+  statusButtonActive: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  statusButtonPendingActive: {
+    backgroundColor: colors.warning,
+    borderColor: colors.warning,
+  },
+  statusButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    marginLeft: 8,
+  },
+  statusButtonTextActive: {
+    color: colors.white,
+    fontWeight: '600',
   },
 }); 

@@ -276,7 +276,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <View style={styles.header}>
               <Text style={styles.greeting}>Olá! 👋</Text>
               <Text style={styles.balanceLabel}>Saldo disponível</Text>
-              <MoneyText value={balance} size="xlarge" showSign={false} style={styles.balanceValue} />
+              <MoneyText value={balance} size="xlarge" showSign={true} style={[styles.balanceValue, balance < 0 && styles.negativeBalance]} />
             </View>
 
             {/* Cards de Resumo */}
@@ -458,6 +458,9 @@ const styles = StyleSheet.create({
   },
   balanceValue: {
     color: colors.white,
+  },
+  negativeBalance: {
+    color: colors.dangerLight,
   },
   summaryCards: {
     flexDirection: 'row',

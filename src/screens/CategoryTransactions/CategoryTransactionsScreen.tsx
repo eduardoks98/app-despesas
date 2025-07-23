@@ -151,7 +151,7 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
         category: transaction.category || 'Outros',
         type: transaction.type,
         source: 'transaction',
-        status: 'paid',
+        status: (transaction.isPaid === false) ? 'pending' : 'paid',
         installmentId: transaction.installmentId,
         subscriptionId: transaction.subscriptionId
       });
@@ -337,7 +337,15 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
         ]}
         onPress={async () => {
           await HapticService.buttonPress();
-          // Aqui pode adicionar navegação para detalhes se necessário
+          
+          // Navegar para a tela apropriada baseado no tipo de transação
+          if (transaction.source === 'transaction') {
+            navigation.navigate('EditTransaction', { transactionId: transaction.id });
+          } else if (transaction.source === 'installment' && transaction.installmentId) {
+            navigation.navigate('InstallmentDetail', { installmentId: transaction.installmentId });
+          } else if (transaction.source === 'subscription' && transaction.subscriptionId) {
+            navigation.navigate('SubscriptionDetail', { subscriptionId: transaction.subscriptionId });
+          }
         }}
         activeOpacity={0.7}
       >

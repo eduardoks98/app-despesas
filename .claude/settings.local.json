@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(find:*)",
+      "Bash(npm run:*)",
+      "Bash(npm start)",
+      "mcp__ide__getDiagnostics",
+      "Bash(cd \"C:\\Users\\eduardo.steffens\\Documents\\sftp-vscode\\app-despesas\")",
+      "Bash(npx expo start --dev-client)"
     ],
     "deny": []
   }

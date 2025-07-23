@@ -81,7 +81,6 @@ const styles = StyleSheet.create({
   rightContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   actionButton: {
     width: 24,

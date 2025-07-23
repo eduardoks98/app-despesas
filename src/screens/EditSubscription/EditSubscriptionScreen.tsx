@@ -19,6 +19,7 @@ import { ValidationService } from '../../services/validation/ValidationService';
 import { ErrorHandler } from '../../services/error/ErrorHandler';
 import { Subscription, Category } from '../../types';
 import { colors } from '../../styles/colors';
+import { safeParseDate } from '../../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 
 interface EditSubscriptionScreenProps {
@@ -70,7 +71,7 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
           billingDay: subscription.billingDay,
           paymentMethod: subscription.paymentMethod,
           status: subscription.status,
-          startDate: new Date(subscription.startDate),
+          startDate: safeParseDate(subscription.startDate),
         });
       } else {
         Alert.alert('Erro', 'Assinatura não encontrada');

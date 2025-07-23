@@ -1,18 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
+  FlatList,
   ScrollView,
   StyleSheet,
   Alert,
-  TouchableOpacity
+  TouchableOpacity,
+  Modal
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
+import { Card } from '../../components/common/Card';
+import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
-import { Subscription } from '../../types';
+import { ValidationService } from '../../services/validation/ValidationService';
+import { ErrorHandler } from '../../services/error/ErrorHandler';
+import { HapticService } from '../../services/haptic/HapticService';
+import { Subscription, Category } from '../../types';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { addMonths, setDate } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -28,9 +36,97 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
     category: '',
     billingDay: '1',
     paymentMethod: 'credit' as const,
+    nextPaymentDate: new Date(),
   });
 
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      console.log('Carregando categorias...');
+      const categories = await StorageService.getCategories();
+      console.log('Categorias carregadas:', categories);
+      setCategories(categories || []);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+      // Se falhou, usar categorias padrão
+      const defaultCategories: Category[] = [
+        { id: '1', name: 'Streaming', icon: '📺', type: 'expense', color: '#FF6B6B', isCustom: false },
+        { id: '2', name: 'Academia', icon: '💪', type: 'expense', color: '#4ECDC4', isCustom: false },
+        { id: '3', name: 'Software', icon: '💻', type: 'expense', color: '#45B7D1', isCustom: false },
+        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
+      ];
+      setCategories(defaultCategories);
+    }
+  };
+
+  const getFilteredCategories = () => {
+    return categories.filter(cat => 
+      cat.type === 'expense' || cat.type === 'both'
+    );
+  };
+
+  const getSelectedCategory = () => {
+    return categories.find(cat => cat.name === formData.category);
+  };
+
+  const formatAmount = (value: string) => {
+    const cleaned = value.replace(/[^0-9,]/g, '');
+    return cleaned;
+  };
+
+  const validateForm = () => {
+    console.log('=== VALIDANDO FORMULARIO ===');
+    setValidationErrors([]);
+
+    const amount = formData.amount ? parseFloat(formData.amount.replace(',', '.')) : 0;
+    const billingDay = formData.billingDay ? parseInt(formData.billingDay) : 0;
+    console.log('Amount parsed:', amount);
+    console.log('BillingDay parsed:', billingDay);
+
+    const subscriptionData = {
+      name: formData.name,
+      description: formData.description,
+      amount: amount,
+      category: formData.category,
+      billingDay: billingDay,
+      paymentMethod: formData.paymentMethod,
+      nextPaymentDate: formData.nextPaymentDate.toISOString(),
+    };
+
+    console.log('Subscription data para validação:', subscriptionData);
+    const validationResult = ValidationService.validateSubscription(subscriptionData);
+    console.log('Resultado da validação:', validationResult);
+    
+    const errors = validationResult.errors || [];
+    setValidationErrors(errors);
+    const isValid = validationResult.isValid || errors.length === 0;
+    console.log('Formulário válido:', isValid);
+    return isValid;
+  };
+
   const handleSave = async () => {
+    console.log('=== HANDLE SAVE INICIADO ===');
+    console.log('FormData atual:', formData);
+    
+    if (!validateForm()) {
+      console.log('Validação falhou, parando execução');
+      HapticService.error();
+      return;
+    }
+
+    console.log('Validação passou, continuando...');
+    setIsLoading(true);
+    HapticService.light();
+
     try {
       console.log('Salvando assinatura:', formData);
       
@@ -38,7 +134,7 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
       const billingDay = parseInt(formData.billingDay);
       
       // Calcular próxima data de pagamento
-      let nextPaymentDate = setDate(today, billingDay);
+      let nextPaymentDate = setDate(formData.nextPaymentDate, billingDay);
       if (nextPaymentDate <= today) {
         nextPaymentDate = addMonths(nextPaymentDate, 1);
       }
@@ -63,6 +159,7 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
       await StorageService.saveSubscription(newSubscription);
       console.log('Assinatura salva com sucesso no storage');
 
+      HapticService.success();
       Alert.alert(
         'Sucesso',
         'Assinatura adicionada com sucesso!',
@@ -70,8 +167,30 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
       );
     } catch (error) {
       console.error('Erro ao salvar assinatura:', error);
-      Alert.alert('Erro', 'Erro ao salvar assinatura: ' + (error as Error).message);
+      const errorMessage = ErrorHandler.handle(error, 'Erro ao salvar assinatura');
+      HapticService.error();
+      Alert.alert('Erro', errorMessage);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleDeleteConfirm = () => {
+    Alert.alert(
+      'Cancelar Assinatura',
+      'Tem certeza que deseja cancelar? Os dados não salvos serão perdidos.',
+      [
+        { text: 'Não', style: 'cancel' },
+        { 
+          text: 'Sim', 
+          style: 'destructive',
+          onPress: () => {
+            HapticService.light();
+            navigation.goBack();
+          }
+        }
+      ]
+    );
   };
 
   const paymentMethods = [
@@ -81,23 +200,34 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
     { label: 'Boleto', value: 'boleto' },
   ];
 
-  const categories = [
-    'Streaming', 'Academia', 'Software', 'Música', 'Jogos', 'Outros'
-  ];
+  const getSelectedPaymentMethod = () => {
+    return paymentMethods.find(method => method.value === formData.paymentMethod);
+  };
 
   return (
     <Container>
-      <ScrollView style={styles.container}>
-        <Text style={styles.title}>Nova Assinatura</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Nova Assinatura</Text>
+          <View style={styles.placeholder} />
+        </View>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nome da Assinatura*</Text>
+            <Text style={styles.label}>Nome da Assinatura</Text>
             <TextInput
               style={styles.input}
               value={formData.name}
               onChangeText={(text) => setFormData({...formData, name: text})}
-              placeholder="Ex: Netflix, Spotify, Academia"
+              placeholder="Ex: Netflix, Spotify..."
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
 
@@ -107,122 +237,250 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
               style={styles.input}
               value={formData.description}
               onChangeText={(text) => setFormData({...formData, description: text})}
-              placeholder="Ex: Plano Família, Premium"
+              placeholder="Detalhes sobre a assinatura..."
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              numberOfLines={3}
             />
           </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.flex2]}>
-              <Text style={styles.label}>Valor Mensal*</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Valor Mensal</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.currency}>R$</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.currencyInput]}
                 value={formData.amount}
-                onChangeText={(text) => setFormData({...formData, amount: text})}
+                onChangeText={(text) => setFormData({...formData, amount: formatAmount(text)})}
                 placeholder="0,00"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
               />
             </View>
+          </View>
 
+          {/* Category Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Categoria</Text>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowCategoryModal(true)}
+            >
+              <View style={styles.categoryContent}>
+                {getSelectedCategory() ? (
+                  <>
+                    <Text style={styles.categoryEmoji}>{getSelectedCategory()?.icon}</Text>
+                    <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Selecionar categoria</Text>
+                )}
+              </View>
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Payment Method Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Método de Pagamento</Text>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowPaymentMethodModal(true)}
+            >
+              <View style={styles.categoryContent}>
+                {getSelectedPaymentMethod() ? (
+                  <Text style={styles.categoryText}>{getSelectedPaymentMethod()?.label}</Text>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Selecionar método</Text>
+                )}
+              </View>
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.row}>
             <View style={[styles.inputGroup, styles.flex1]}>
-              <Text style={styles.label}>Dia do Vencimento*</Text>
+              <Text style={styles.label}>Dia da Cobrança</Text>
               <TextInput
                 style={styles.input}
                 value={formData.billingDay}
-                onChangeText={(text) => {
-                  const day = parseInt(text) || 1;
-                  if (day >= 1 && day <= 31) {
-                    setFormData({...formData, billingDay: text});
-                  }
-                }}
-                placeholder="1-31"
+                onChangeText={(text) => setFormData({...formData, billingDay: text})}
+                placeholder="1"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
-                maxLength={2}
+              />
+            </View>
+
+            <View style={[styles.inputGroup, styles.flex2]}>
+              <Text style={styles.label}>Próximo Pagamento</Text>
+              <DatePicker
+                date={formData.nextPaymentDate}
+                onDateChange={(date) => setFormData({...formData, nextPaymentDate: date})}
               />
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Categoria</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.categoriesScroll}
-            >
-              {categories.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.categoryButton,
-                    formData.category === cat && styles.categoryButtonActive
-                  ]}
-                  onPress={() => setFormData({...formData, category: cat})}
-                >
-                  <Text style={[
-                    styles.categoryText,
-                    formData.category === cat && styles.categoryTextActive
-                  ]}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <Card style={styles.errorCard}>
+              <View style={styles.errorHeader}>
+                <Ionicons name="alert-circle" size={20} color={colors.error} />
+                <Text style={styles.errorTitle}>Erros encontrados:</Text>
+              </View>
+              {validationErrors.map((error, index) => (
+                <Text key={index} style={styles.errorText}>• {error}</Text>
               ))}
-            </ScrollView>
-          </View>
+            </Card>
+          )}
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Forma de Pagamento*</Text>
-            <View style={styles.paymentMethods}>
-              {paymentMethods.map((method) => (
-                <TouchableOpacity
-                  key={method.value}
-                  style={[
-                    styles.paymentMethod,
-                    formData.paymentMethod === method.value && styles.paymentMethodActive
-                  ]}
-                  onPress={() => setFormData({...formData, paymentMethod: method.value as any})}
-                >
-                  <Text style={[
-                    styles.paymentMethodText,
-                    formData.paymentMethod === method.value && styles.paymentMethodTextActive
-                  ]}>
-                    {method.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          <View style={styles.infoCard}>
+            <View style={styles.infoHeader}>
+              <Ionicons name="information-circle" size={20} color={colors.info} />
+              <Text style={styles.infoTitle}>Informação</Text>
             </View>
-          </View>
-
-          <View style={styles.info}>
-            <Ionicons name="information-circle" size={20} color={colors.info} />
             <Text style={styles.infoText}>
-              A assinatura será cobrada todo dia {formData.billingDay || '?'} de cada mês
+              A assinatura será registrada e você receberá lembretes antes do vencimento.
             </Text>
           </View>
 
-          <Button
-            title="Salvar Assinatura"
-            onPress={handleSave}
-            style={styles.button}
-            disabled={!formData.name || !formData.amount}
-          />
+          <View style={styles.buttonContainer}>
+            <Button 
+              title="Cancelar"
+              onPress={handleDeleteConfirm}
+              style={[styles.button, styles.cancelButton]}
+              textStyle={styles.cancelButtonText}
+            />
+            <Button 
+              title={isLoading ? "Salvando..." : "Salvar"}
+              onPress={handleSave}
+              style={[styles.button, styles.saveButton]}
+              disabled={isLoading}
+            />
+          </View>
         </View>
       </ScrollView>
+
+      {/* Category Selection Modal */}
+      <Modal
+        visible={showCategoryModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Selecionar Categoria</Text>
+            <View style={styles.modalSpacer} />
+          </View>
+
+          <FlatList
+            data={getFilteredCategories()}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.category === item.name && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData({...formData, category: item.name});
+                  setShowCategoryModal(false);
+                  HapticService.light();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryItemEmoji}>{item.icon}</Text>
+                  <Text style={styles.categoryItemName}>{item.name}</Text>
+                </View>
+                {formData.category === item.name && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
+
+      {/* Payment Method Selection Modal */}
+      <Modal
+        visible={showPaymentMethodModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowPaymentMethodModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Método de Pagamento</Text>
+            <View style={styles.modalSpacer} />
+          </View>
+
+          <FlatList
+            data={paymentMethods}
+            keyExtractor={(item) => item.value}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.paymentMethod === item.value && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData({...formData, paymentMethod: item.value as any});
+                  setShowPaymentMethodModal(false);
+                  HapticService.light();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryItemName}>{item.label}</Text>
+                </View>
+                {formData.paymentMethod === item.value && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
     </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
     flex: 1,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 24,
+  placeholder: {
+    width: 40,
+    height: 40,
   },
   form: {
     paddingHorizontal: 16,
+    paddingTop: 20,
   },
   inputGroup: {
     marginBottom: 20,
@@ -231,7 +489,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
-    color: colors.textSecondary,
+    color: colors.text,
   },
   input: {
     borderWidth: 1,
@@ -240,6 +498,25 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     backgroundColor: colors.surface,
+    color: colors.text,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+  },
+  currency: {
+    paddingLeft: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  currencyInput: {
+    flex: 1,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
   },
   row: {
     flexDirection: 'row',
@@ -251,70 +528,139 @@ const styles = StyleSheet.create({
   flex2: {
     flex: 2,
   },
-  categoriesScroll: {
-    flexGrow: 0,
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 100,
+  },
+  button: {
+    flex: 1,
+  },
+  cancelButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
+    color: colors.text,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
   },
   categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: 8,
-    backgroundColor: colors.surface,
-  },
-  categoryButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  categoryText: {
-    fontSize: 14,
-    color: colors.text,
-  },
-  categoryTextActive: {
-    color: colors.white,
-    fontWeight: '600',
-  },
-  paymentMethods: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  paymentMethod: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
     backgroundColor: colors.surface,
   },
-  paymentMethodActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  paymentMethodText: {
-    fontSize: 14,
-    color: colors.text,
-  },
-  paymentMethodTextActive: {
-    color: colors.white,
-    fontWeight: '600',
-  },
-  info: {
+  categoryContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  categoryEmoji: {
+    fontSize: 20,
+  },
+  categoryText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  categoryPlaceholder: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  errorCard: {
+    backgroundColor: colors.errorLight,
+    marginBottom: 16,
+  },
+  errorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.error,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginBottom: 4,
+  },
+  infoCard: {
     backgroundColor: colors.infoLight,
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,
   },
-  infoText: {
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  infoTitle: {
     fontSize: 14,
+    fontWeight: '600',
     color: colors.info,
+  },
+  infoText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  modalContainer: {
     flex: 1,
+    backgroundColor: colors.background,
   },
-  button: {
-    marginBottom: 32,
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
-}); 
+  modalCancel: {
+    fontSize: 16,
+    color: colors.primary,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalSpacer: {
+    width: 60,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  categoryItemSelected: {
+    backgroundColor: colors.primaryLight,
+  },
+  categoryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  categoryItemEmoji: {
+    fontSize: 24,
+  },
+  categoryItemName: {
+    fontSize: 16,
+    color: colors.text,
+  },
+});

@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    gap: 6,
   },
   firstTab: {
     borderTopLeftRadius: 12,

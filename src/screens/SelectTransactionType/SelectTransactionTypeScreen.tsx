@@ -8,7 +8,9 @@ import {
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
+import { HapticService } from '../../services/haptic/HapticService';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SelectTransactionTypeScreenProps {
@@ -48,7 +50,9 @@ export const SelectTransactionTypeScreen: React.FC<SelectTransactionTypeScreenPr
     }
   ];
 
-  const handleSelectType = (typeId: string) => {
+  const handleSelectType = async (typeId: string) => {
+    await HapticService.buttonPress();
+    
     switch (typeId) {
       case 'transaction':
         navigation.navigate('AddTransaction');
@@ -62,172 +66,207 @@ export const SelectTransactionTypeScreen: React.FC<SelectTransactionTypeScreenPr
     }
   };
 
+  const renderTransactionType = ({ item }: { item: typeof transactionTypes[0] }) => (
+    <TouchableOpacity 
+      style={styles.typeCard}
+      onPress={() => handleSelectType(item.id)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.typeContent}>
+        <View style={[styles.iconContainer, { backgroundColor: item.color + '15' }]}>
+          <Ionicons name={item.icon as any} size={28} color={item.color} />
+        </View>
+        
+        <View style={styles.typeInfo}>
+          <Text style={styles.typeTitle}>{item.title}</Text>
+          <Text style={styles.typeSubtitle}>{item.subtitle}</Text>
+          <Text style={styles.typeDescription}>{item.description}</Text>
+          
+          <View style={styles.examplesContainer}>
+            <Text style={styles.examplesTitle}>Exemplos:</Text>
+            {item.examples.slice(0, 2).map((example, index) => (
+              <Text key={index} style={styles.exampleText}>• {example}</Text>
+            ))}
+            {item.examples.length > 2 && (
+              <Text style={styles.moreExamples}>+{item.examples.length - 2} mais</Text>
+            )}
+          </View>
+        </View>
+        
+        <View style={styles.arrowContainer}>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <Container>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Adicionar Nova Transação</Text>
-          <Text style={styles.headerSubtitle}>
-            Escolha o tipo de transação que deseja adicionar
-          </Text>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Selecione o Tipo de Transação</Text>
+          <View style={styles.placeholder} />
         </View>
 
         {/* Tipos de Transação */}
-        <View style={styles.typesContainer}>
+        <View style={styles.typesSection}>
           {transactionTypes.map((type) => (
-            <Card 
-              key={type.id}
-              style={styles.typeCard}
-              onPress={() => handleSelectType(type.id)}
-            >
-              <View style={styles.typeHeader}>
-                <View style={[styles.iconContainer, { backgroundColor: type.color + '20' }]}>
-                  <Ionicons name={type.icon as any} size={32} color={type.color} />
-                </View>
-                <View style={styles.typeInfo}>
-                  <Text style={styles.typeTitle}>{type.title}</Text>
-                  <Text style={styles.typeSubtitle}>{type.subtitle}</Text>
-                </View>
-              </View>
-              
-              <Text style={styles.typeDescription}>{type.description}</Text>
-              
-              <View style={styles.examplesContainer}>
-                <Text style={styles.examplesTitle}>Exemplos:</Text>
-                <View style={styles.examplesList}>
-                  {type.examples.map((example, index) => (
-                    <View key={index} style={styles.exampleItem}>
-                      <Ionicons name="checkmark-circle" size={16} color={type.color} />
-                      <Text style={styles.exampleText}>{example}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </Card>
+            <React.Fragment key={type.id}>
+              {renderTransactionType({ item: type })}
+            </React.Fragment>
           ))}
         </View>
 
-        {/* Dica */}
-        <Card style={styles.tipCard}>
-          <View style={styles.tipHeader}>
-            <Ionicons name="bulb" size={24} color={colors.warning} />
-            <Text style={styles.tipTitle}>Dica</Text>
+        {/* Informação adicional */}
+        <View style={styles.infoCard}>
+          <View style={styles.infoHeader}>
+            <Ionicons name="information-circle" size={20} color={colors.info} />
+            <Text style={styles.infoTitle}>Não tem certeza?</Text>
           </View>
-          <Text style={styles.tipText}>
-            Escolha o tipo que melhor representa sua transação. Você pode sempre editar ou excluir depois.
+          <Text style={styles.infoText}>
+            Use "Transação Direta" para a maioria dos casos. Você pode sempre converter para parcelamento ou assinatura depois.
           </Text>
-        </Card>
-
-        <View style={styles.bottomSpacer} />
+        </View>
       </ScrollView>
     </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    lineHeight: 22,
-  },
-  typesContainer: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
-  typeCard: {
-    padding: 20,
-  },
-  typeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+  },
+  title: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40,
+    height: 40,
+  },
+  typesSection: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.lg,
+  },
+  typeCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: SPACING.xs,
+    overflow: 'hidden',
+  },
+  typeContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: SPACING.md,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
   },
   typeInfo: {
     flex: 1,
+    paddingRight: SPACING.sm,
   },
   typeTitle: {
-    fontSize: 18,
+    fontSize: FONT_SIZES.lg,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs / 2,
   },
   typeSubtitle: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.sm,
     color: colors.textSecondary,
+    marginBottom: SPACING.xs,
   },
   typeDescription: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.sm,
     color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 16,
+    lineHeight: 18,
+    marginBottom: SPACING.sm,
   },
   examplesContainer: {
-    marginTop: 8,
+    marginTop: SPACING.xs,
   },
   examplesTitle: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.xs,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 8,
-  },
-  examplesList: {
-    gap: 6,
-  },
-  exampleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: SPACING.xs / 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   exampleText: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
+    lineHeight: 16,
   },
-  tipCard: {
-    marginHorizontal: 16,
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: colors.warningLight,
+  moreExamples: {
+    fontSize: FONT_SIZES.xs,
+    color: colors.primary,
+    fontWeight: '500',
+    marginTop: SPACING.xs / 2,
   },
-  tipHeader: {
+  arrowContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 24,
+    height: 24,
+  },
+  infoCard: {
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.xl,
+    backgroundColor: colors.infoLight,
+    borderRadius: 12,
+    padding: SPACING.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.info,
+  },
+  infoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: SPACING.xs,
   },
-  tipTitle: {
-    fontSize: 16,
+  infoTitle: {
+    fontSize: FONT_SIZES.md,
     fontWeight: '600',
-    color: colors.warning,
-    marginLeft: 8,
+    color: colors.info,
+    marginLeft: SPACING.xs,
   },
-  tipText: {
-    fontSize: 14,
+  infoText: {
+    fontSize: FONT_SIZES.sm,
     color: colors.textSecondary,
     lineHeight: 20,
   },
-  bottomSpacer: {
-    height: 100,
-  },
-}); 
+});

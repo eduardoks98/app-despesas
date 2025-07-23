@@ -1,11 +1,12 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as NavigationBar from 'expo-navigation-bar';
 
 // Screens
 import { HomeScreen } from './src/screens/Home/HomeScreen';
@@ -148,6 +149,33 @@ function AppNavigator() {
   const colors = useColors();
   const { isDarkMode } = useTheme();
   
+  useEffect(() => {
+    // Configurar a barra de navegação do sistema Android
+    if (Platform.OS === 'android') {
+      const configureNavigationBar = async () => {
+        try {
+          console.log('Configurando navigation bar...');
+          
+          // Aguardar um pouco para o app inicializar completamente
+          setTimeout(async () => {
+            try {
+              await NavigationBar.setBackgroundColorAsync('#000000');
+              await NavigationBar.setButtonStyleAsync('light');
+              console.log('✅ Navigation bar configurada: fundo preto, botões claros');
+            } catch (error) {
+              console.error('❌ Erro ao configurar navigation bar:', error);
+            }
+          }, 1000);
+          
+        } catch (error) {
+          console.error('Erro inicial:', error);
+        }
+      };
+      
+      configureNavigationBar();
+    }
+  }, []);
+  
   return (
     <SafeAreaProvider>
       <NavigationContainer>
@@ -172,45 +200,35 @@ function AppNavigator() {
           name="AddTransaction" 
           component={AddTransactionScreen}
           options={{ 
-            title: 'Nova Transação',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 
           name="AddInstallment" 
           component={AddInstallmentScreen}
           options={{ 
-            title: 'Novo Parcelamento',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 
           name="AddSubscription" 
           component={AddSubscriptionScreen}
           options={{ 
-            title: 'Nova Assinatura',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 
           name="SelectTransactionType" 
           component={SelectTransactionTypeScreen}
           options={{ 
-            title: 'Tipo de Transação',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 
           name="EditTransaction" 
           component={EditTransactionScreen}
           options={{ 
-            title: 'Editar Transação',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 

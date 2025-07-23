@@ -60,8 +60,13 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
   const { loading, error, startLoading, stopLoading, setErrorState } = useLoadingState(true);
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadData();
+    });
+
     loadData();
-  }, []);
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     if (transactions.length > 0 || installments.length > 0 || subscriptions.length > 0) {

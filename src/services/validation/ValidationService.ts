@@ -158,6 +158,61 @@ export class ValidationService {
     };
   }
 
+  // Validação de assinatura
+  static validateSubscription(subscription: Partial<Subscription>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Validações obrigatórias
+    if (!subscription.name?.trim()) {
+      errors.push('Nome da assinatura é obrigatório');
+    } else if (subscription.name.length > 100) {
+      errors.push('Nome não pode ter mais de 100 caracteres');
+    }
+
+    if (!subscription.amount || subscription.amount <= 0) {
+      errors.push('Valor deve ser maior que zero');
+    } else if (subscription.amount > 10000) {
+      warnings.push('Valor muito alto para uma assinatura - verifique se está correto');
+    }
+
+    if (!subscription.category?.trim()) {
+      errors.push('Categoria é obrigatória');
+    }
+
+    if (!subscription.billingDay || subscription.billingDay < 1 || subscription.billingDay > 31) {
+      errors.push('Dia de cobrança deve estar entre 1 e 31');
+    } else if (subscription.billingDay > 28) {
+      warnings.push('Dias 29-31 podem não existir em todos os meses');
+    }
+
+    // Validação de método de pagamento
+    const validPaymentMethods = ['credit', 'debit', 'pix', 'boleto'];
+    if (subscription.paymentMethod && !validPaymentMethods.includes(subscription.paymentMethod)) {
+      errors.push('Método de pagamento inválido');
+    }
+
+    // Validação de data
+    if (!subscription.nextPaymentDate) {
+      errors.push('Data do próximo pagamento é obrigatória');
+    } else {
+      const date = new Date(subscription.nextPaymentDate);
+      const now = new Date();
+      
+      if (isNaN(date.getTime())) {
+        errors.push('Data do próximo pagamento inválida');
+      } else if (date < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+        warnings.push('Data do próximo pagamento é anterior a hoje');
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings: warnings.length > 0 ? warnings : undefined
+    };
+  }
+
   // Validação de entrada numérica
   static validateNumericInput(value: string, options: {
     min?: number;

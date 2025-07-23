@@ -25,10 +25,10 @@ export const FAB: React.FC<FABProps> = ({
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.9,
+      toValue: 0.95,
       useNativeDriver: true,
-      tension: 150,
-      friction: 4,
+      tension: 200,
+      friction: 5,
     }).start();
   };
 
@@ -36,8 +36,8 @@ export const FAB: React.FC<FABProps> = ({
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 150,
-      friction: 4,
+      tension: 200,
+      friction: 5,
     }).start();
   };
 
@@ -59,13 +59,13 @@ export const FAB: React.FC<FABProps> = ({
   );
 };
 
-const fabSize = moderateScale(56);
+const fabSize = moderateScale(48);
 
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: SPACING.xxl + SPACING.md,
-    right: SPACING.md,
+    bottom:  SPACING.sm,
+    right: SPACING.sm,
   },
   button: {
     width: fabSize,
@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
     borderRadius: fabSize / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.large,
+    // Melhoria na responsividade do toque
+    overflow: 'hidden',
   },
 });

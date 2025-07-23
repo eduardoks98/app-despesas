@@ -37,9 +37,6 @@ echo - Voce recebera um email quando estiver pronto
 echo - O APK sera baixavel do link no email
 echo.
 
-echo Configurando para nao usar Git...
-set EAS_NO_VCS=1
-
 echo Gerando APK...
 call npx eas build --platform android --profile preview
 

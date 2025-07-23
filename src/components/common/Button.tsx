@@ -10,6 +10,7 @@ interface ButtonProps {
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
   style?: ViewStyle;
+  textStyle?: TextStyle;
   hapticFeedback?: boolean;
 }
 
@@ -20,6 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
   size = 'medium',
   disabled = false,
   style,
+  textStyle,
   hapticFeedback = true
 }) => {
   const colors = useColors();
@@ -37,7 +39,8 @@ export const Button: React.FC<ButtonProps> = ({
     styles.text,
     styles[`text_${variant}`],
     styles[`text_${size}`],
-    disabled && styles.textDisabled
+    disabled && styles.textDisabled,
+    textStyle
   ];
 
   const handlePress = async () => {
