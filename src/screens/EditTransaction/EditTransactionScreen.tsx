@@ -13,6 +13,7 @@ import {
 import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { TabSelector } from '../../components/common/TabSelector';
 import { MoneyText } from '../../components/common/MoneyText';
 import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
@@ -322,23 +323,27 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
             {/* Tipo de Transação */}
             <Card style={styles.card}>
               <Text style={styles.label}>Tipo de Transação</Text>
-              <View style={styles.typeButtons}>
-                <TouchableOpacity
-                  style={getTypeButtonStyle('expense')}
-                  onPress={() => setFormData(prev => ({ ...prev, type: 'expense' }))}
-                >
-                  <Ionicons name="arrow-down" size={20} color={formData.type === 'expense' ? colors.white : colors.textSecondary} />
-                  <Text style={getTypeTextStyle('expense')}>Despesa</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={getTypeButtonStyle('income')}
-                  onPress={() => setFormData(prev => ({ ...prev, type: 'income' }))}
-                >
-                  <Ionicons name="arrow-up" size={20} color={formData.type === 'income' ? colors.white : colors.textSecondary} />
-                  <Text style={getTypeTextStyle('income')}>Receita</Text>
-                </TouchableOpacity>
-              </View>
+              <TabSelector
+                options={[
+                  { 
+                    key: 'expense', 
+                    label: 'Despesa', 
+                    icon: 'arrow-down',
+                    color: colors.danger
+                  },
+                  { 
+                    key: 'income', 
+                    label: 'Receita', 
+                    icon: 'arrow-up',
+                    color: colors.success
+                  }
+                ]}
+                selectedValue={formData.type}
+                onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, type: value as 'expense' | 'income' }));
+                }}
+                style={styles.tabSelector}
+              />
             </Card>
 
             {/* Valor */}
@@ -511,6 +516,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  tabSelector: {
+    marginHorizontal: 0,
+    marginVertical: 0,
+  },
   card: {
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.md,
@@ -521,42 +530,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: SPACING.sm,
-  },
-  typeButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  typeButtonActive: {
-    borderColor: colors.primary,
-  },
-  incomeButton: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
-  },
-  expenseButton: {
-    backgroundColor: colors.danger,
-    borderColor: colors.danger,
-  },
-  typeButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  typeButtonTextActive: {
-    color: colors.white,
   },
   amountContainer: {
     flexDirection: 'row',

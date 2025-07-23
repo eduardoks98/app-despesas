@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, FlatList } from '
 import { SPACING, FONT_SIZES, LAYOUT } from '../../styles/responsive';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
+import { CardHeader } from '../../components/common/CardHeader';
 import { MoneyText } from '../../components/common/MoneyText';
 import { FAB } from '../../components/common/FAB';
 import { StorageService } from '../../services/storage/StorageService';
@@ -305,68 +306,68 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             {/* Próximos Vencimentos */}
             {upcomingItems.length > 0 && (
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Próximos Vencimentos</Text>
-                  <TouchableOpacity onPress={() => {
-                    // Analisar os tipos dos próximos vencimentos para decidir o filtro
-                    const hasInstallments = upcomingItems.some(item => item.type === 'installment');
-                    const hasSubscriptions = upcomingItems.some(item => item.type === 'subscription');
-                    
-                    if (hasInstallments && !hasSubscriptions) {
-                      // Só parcelamentos - navegar para parcelamentos
-                      navigation.navigate('Records', { 
-                        selectedType: 'installments',
-                        showFilters: true 
-                      });
-                    } else if (hasSubscriptions && !hasInstallments) {
-                      // Só assinaturas - navegar para assinaturas
-                      navigation.navigate('Records', { 
-                        selectedType: 'subscriptions',
-                        showFilters: true 
-                      });
-                    } else {
-                      // Ambos ou só transações - navegar para records geral
-                      navigation.navigate('Records', { showFilters: true });
-                    }
-                  }}>
-                    <Text style={styles.seeAll}>Ver todos</Text>
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.timelineContainer}>
-                  {upcomingItems.map((item, index) => (
-                    <TouchableOpacity 
-                      key={item.id} 
-                      style={[
-                        styles.timelineItemCompact,
-                        index !== upcomingItems.length - 1 && styles.timelineItemBorder
-                      ]}
-                      onPress={() => handleTimelineItemPress(item)}
-                    >
-                      <View style={[
-                        styles.timelineIcon,
-                        { backgroundColor: item.color + '20' }
-                      ]}>
-                        <Ionicons name={item.icon as any} size={16} color={item.color} />
-                      </View>
+                <View style={styles.cardContainer}>
+                  <CardHeader 
+                    title="Próximos Vencimentos" 
+                    subtitle={`${upcomingItems.length} próximo${upcomingItems.length !== 1 ? 's' : ''}`}
+                    action={() => {
+                      // Analisar os tipos dos próximos vencimentos para decidir o filtro
+                      const hasInstallments = upcomingItems.some(item => item.type === 'installment');
+                      const hasSubscriptions = upcomingItems.some(item => item.type === 'subscription');
                       
-                      <View style={styles.timelineContent}>
-                        <Text style={styles.timelineTitle}>{item.title}</Text>
-                        <Text style={styles.timelineDate}>
-                          {getDateLabel(item.date)}
-                        </Text>
-                        {item.category && (
-                          <Text style={styles.timelineCategory}>{item.category}</Text>
-                        )}
-                      </View>
-                      
-                      <MoneyText 
-                        value={item.amount} 
-                        size="small" 
-                        style={[styles.timelineAmount, { color: item.color }]}
-                      />
-                    </TouchableOpacity>
-                  ))}
+                      if (hasInstallments && !hasSubscriptions) {
+                        // Só parcelamentos - navegar para parcelamentos
+                        navigation.navigate('Records', { 
+                          selectedType: 'installments',
+                          showFilters: true 
+                        });
+                      } else if (hasSubscriptions && !hasInstallments) {
+                        // Só assinaturas - navegar para assinaturas
+                        navigation.navigate('Records', { 
+                          selectedType: 'subscriptions',
+                          showFilters: true 
+                        });
+                      } else {
+                        // Ambos ou só transações - navegar para records geral
+                        navigation.navigate('Records', { showFilters: true });
+                      }
+                    }}
+                  />
+                  <View style={styles.cardBody}>
+                    {upcomingItems.map((item, index) => (
+                      <TouchableOpacity 
+                        key={item.id} 
+                        style={[
+                          styles.timelineItemCompact,
+                          index !== upcomingItems.length - 1 && styles.timelineItemBorder
+                        ]}
+                        onPress={() => handleTimelineItemPress(item)}
+                      >
+                        <View style={[
+                          styles.timelineIcon,
+                          { backgroundColor: item.color + '20' }
+                        ]}>
+                          <Ionicons name={item.icon as any} size={16} color={item.color} />
+                        </View>
+                        
+                        <View style={styles.timelineContent}>
+                          <Text style={styles.timelineTitle}>{item.title}</Text>
+                          <Text style={styles.timelineDate}>
+                            {getDateLabel(item.date)}
+                          </Text>
+                          {item.category && (
+                            <Text style={styles.timelineCategory}>{item.category}</Text>
+                          )}
+                        </View>
+                        
+                        <MoneyText 
+                          value={item.amount} 
+                          size="small" 
+                          style={[styles.timelineAmount, { color: item.color }]}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
             )}
@@ -374,50 +375,47 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             {/* Timeline de Movimentações Recentes */}
             {timelineItems.length > 0 && (
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionTitleContainer}>
-                    <Text style={styles.sectionTitle}>Movimentações Recentes</Text>
-                    <Text style={styles.sectionSubtitle}>Últimas 5 movimentações</Text>
+                <View style={styles.cardContainer}>
+                  <CardHeader 
+                    title="Movimentações Recentes" 
+                    subtitle="Últimas 5 movimentações"
+                    action={() => navigation.navigate('Transactions')}
+                  />
+                  <View style={styles.cardBody}>
+                    {timelineItems.map((item, index) => (
+                      <TouchableOpacity 
+                        key={item.id}
+                        style={[
+                          styles.timelineItemCompact,
+                          index !== timelineItems.length - 1 && styles.timelineItemBorder
+                        ]}
+                        onPress={() => handleTimelineItemPress(item)}
+                      >
+                        <View style={[
+                          styles.timelineIcon,
+                          { backgroundColor: item.color + '20' }
+                        ]}>
+                          <Ionicons name={item.icon as any} size={16} color={item.color} />
+                        </View>
+                        
+                        <View style={styles.timelineContent}>
+                          <Text style={styles.timelineTitle}>{item.title}</Text>
+                          <Text style={styles.timelineDate}>
+                            {getDateLabel(item.date)}
+                          </Text>
+                          {item.category && (
+                            <Text style={styles.timelineCategory}>{item.category}</Text>
+                          )}
+                        </View>
+                        
+                        <MoneyText 
+                          value={item.amount} 
+                          size="small" 
+                          style={[styles.timelineAmount, { color: item.color }]}
+                        />
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                  <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
-                    <Text style={styles.seeAll}>Ver todas</Text>
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.timelineContainer}>
-                  {timelineItems.map((item, index) => (
-                    <TouchableOpacity 
-                      key={item.id}
-                      style={[
-                        styles.timelineItemCompact,
-                        index !== timelineItems.length - 1 && styles.timelineItemBorder
-                      ]}
-                      onPress={() => handleTimelineItemPress(item)}
-                    >
-                      <View style={[
-                        styles.timelineIcon,
-                        { backgroundColor: item.color + '20' }
-                      ]}>
-                        <Ionicons name={item.icon as any} size={16} color={item.color} />
-                      </View>
-                      
-                      <View style={styles.timelineContent}>
-                        <Text style={styles.timelineTitle}>{item.title}</Text>
-                        <Text style={styles.timelineDate}>
-                          {getDateLabel(item.date)}
-                        </Text>
-                        {item.category && (
-                          <Text style={styles.timelineCategory}>{item.category}</Text>
-                        )}
-                      </View>
-                      
-                      <MoneyText 
-                        value={item.amount} 
-                        size="small" 
-                        style={[styles.timelineAmount, { color: item.color }]}
-                      />
-                    </TouchableOpacity>
-                  ))}
                 </View>
               </View>
             )}
@@ -517,35 +515,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   section: {
-    marginTop: SPACING.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.xs,
-    flexWrap: 'wrap',
-  },
-  sectionTitleContainer: {
-    flex: 1,
-  },
-  sectionTitle: {
-    fontSize: FONT_SIZES.xl,
-    fontWeight: '600',
-    color: colors.text,
-    flexShrink: 1, // Permite compressão do título
-  },
-  sectionSubtitle: {
-    fontSize: FONT_SIZES.xs,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  seeAll: {
-    fontSize: FONT_SIZES.md,
-    color: colors.primary,
-    fontWeight: '500',
-    flexShrink: 0, // Não comprime o botão
+    marginBottom: 12,
   },
   bottomSpacer: {
     height: 80,
@@ -560,16 +530,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-  },
-  timelineContainer: {
-    backgroundColor: colors.white,
-    marginHorizontal: SPACING.md,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   timelineIcon: {
     width: 32,
@@ -610,5 +570,18 @@ const styles = StyleSheet.create({
   },
   timelineAmount: {
     fontWeight: '700',
+  },
+  cardContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  cardBody: {
+    backgroundColor: colors.white,
+    padding: 0,
   },
 });

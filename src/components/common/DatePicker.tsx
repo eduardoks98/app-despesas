@@ -17,13 +17,17 @@ interface DatePickerProps {
   onChange: (date: Date) => void;
   label?: string;
   placeholder?: string;
+  style?: any;
+  compact?: boolean;
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({
   value,
   onChange,
   label,
-  placeholder = 'Selecione uma data'
+  placeholder = 'Selecione uma data',
+  style,
+  compact = false
 }) => {
   const [show, setShow] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(value);
@@ -65,12 +69,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       {label && <Text style={styles.label}>{label}</Text>}
       
       <TouchableOpacity
-        style={styles.dateButton}
+        style={[compact ? styles.compactDateButton : styles.dateButton, style]}
         onPress={() => setShow(true)}
       >
-        <Ionicons name="calendar" size={20} color={colors.textSecondary} />
-        <Text style={styles.dateText}>
-          {format(value, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+        <Ionicons name="calendar" size={compact ? 16 : 20} color={colors.textSecondary} />
+        <Text style={compact ? styles.compactDateText : styles.dateText}>
+          {compact ? format(value, 'dd/MM/yyyy') : format(value, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
         </Text>
       </TouchableOpacity>
 
@@ -180,6 +184,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     flex: 1,
+  },
+  compactDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: colors.background,
+    minHeight: 36,
+  },
+  compactDateText: {
+    fontSize: 13,
+    color: colors.text,
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,

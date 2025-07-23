@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
+import { CardHeader } from '../../components/common/CardHeader';
+import { TabSelector } from '../../components/common/TabSelector';
 import { MoneyText } from '../../components/common/MoneyText';
 import { FAB } from '../../components/common/FAB';
 import { StorageService } from '../../services/storage/StorageService';
@@ -191,9 +193,11 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
       
       <View style={styles.timelineContent}>
         <Text style={styles.timelineTitle}>{installment.description}</Text>
-        <Text style={styles.timelineDate}>{installment.store}</Text>
-        {installment.category && (
-          <Text style={styles.timelineCategory}>{installment.category}</Text>
+        <Text style={styles.timelineDate}>
+          {installment.store} • {installment.paidInstallments.length}/{installment.totalInstallments} parcelas
+        </Text>
+        {installment.status === 'completed' && (
+          <Text style={[styles.timelineCategory, { color: colors.success }]}>✓ Concluído</Text>
         )}
       </View>
       
@@ -206,8 +210,10 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
   );
 
   const renderInstallments = () => {
-    const activeInstallments = installments.filter(i => i.status === 'active');
-    const totalInstallments = activeInstallments.reduce((sum, i) => sum + i.installmentValue, 0);
+    const filteredData = getFilteredData();
+    const activeInstallments = filteredData.filter(i => i.status === 'active');
+    const completedInstallments = filteredData.filter(i => i.status === 'completed');
+    const totalInstallments = installments.filter(i => i.status === 'active').reduce((sum, i) => sum + i.installmentValue, 0);
     
     return (
       <>
@@ -215,7 +221,7 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
         <View style={styles.summaryCards}>
           <Card style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Ativos</Text>
-            <Text style={styles.summaryValue}>{activeInstallments.length}</Text>
+            <Text style={styles.summaryValue}>{installments.filter(i => i.status === 'active').length}</Text>
           </Card>
           <Card style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Total Mensal</Text>
@@ -229,8 +235,36 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
         </View>
 
         {/* Lista de Parcelamentos */}
-        <View style={styles.timelineContainer}>
-          {getFilteredData().map((item, index, array) => renderInstallmentCard(item, index, array))}
+        <View>
+          {activeInstallments.length > 0 && (
+            <View style={styles.sectionGroup}>
+              <View style={styles.cardContainer}>
+                <CardHeader 
+                  title="Em Andamento" 
+                  subtitle={`${activeInstallments.length} parcelamentos`}
+                  icon="play-circle"
+                />
+                <View style={styles.cardBody}>
+                  {activeInstallments.map((item, index) => renderInstallmentCard(item, index, activeInstallments))}
+                </View>
+              </View>
+            </View>
+          )}
+          
+          {completedInstallments.length > 0 && (
+            <View style={styles.sectionGroup}>
+              <View style={styles.cardContainer}>
+                <CardHeader 
+                  title="Concluídos" 
+                  subtitle={`${completedInstallments.length} parcelamentos`}
+                  icon="checkmark-circle"
+                />
+                <View style={styles.cardBody}>
+                  {completedInstallments.map((item, index) => renderInstallmentCard(item, index, completedInstallments))}
+                </View>
+              </View>
+            </View>
+          )}
         </View>
       </>
     );
@@ -247,15 +281,15 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
     >
       <View style={[
         styles.timelineIcon,
-        { backgroundColor: colors.info + '20' }
+        { backgroundColor: subscription.status === 'active' ? colors.info + '20' : colors.textSecondary + '20' }
       ]}>
-        <Ionicons name="repeat" size={16} color={colors.info} />
+        <Ionicons name="repeat" size={16} color={subscription.status === 'active' ? colors.info : colors.textSecondary} />
       </View>
       
       <View style={styles.timelineContent}>
         <Text style={styles.timelineTitle}>{subscription.name}</Text>
         <Text style={styles.timelineDate}>
-          Dia {subscription.billingDay}
+          Dia {subscription.billingDay} • {subscription.status === 'active' ? 'Ativa' : 'Inativa'}
         </Text>
         {subscription.category && (
           <Text style={styles.timelineCategory}>{subscription.category}</Text>
@@ -265,14 +299,16 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
       <MoneyText 
         value={-subscription.amount} 
         size="small" 
-        style={[styles.timelineAmount, { color: colors.info }]}
+        style={[styles.timelineAmount, { color: subscription.status === 'active' ? colors.info : colors.textSecondary }]}
       />
     </TouchableOpacity>
   );
 
   const renderSubscriptions = () => {
-    const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
-    const totalSubscriptions = activeSubscriptions.reduce((sum, s) => sum + s.amount, 0);
+    const filteredData = getFilteredData();
+    const activeSubscriptions = filteredData.filter(s => s.status === 'active');
+    const inactiveSubscriptions = filteredData.filter(s => s.status !== 'active');
+    const totalSubscriptions = subscriptions.filter(s => s.status === 'active').reduce((sum, s) => sum + s.amount, 0);
     
     return (
       <>
@@ -280,7 +316,7 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
         <View style={styles.summaryCards}>
           <Card style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Ativas</Text>
-            <Text style={styles.summaryValue}>{activeSubscriptions.length}</Text>
+            <Text style={styles.summaryValue}>{subscriptions.filter(s => s.status === 'active').length}</Text>
           </Card>
           <Card style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Total Mensal</Text>
@@ -294,8 +330,36 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
         </View>
 
         {/* Lista de Assinaturas */}
-        <View style={styles.timelineContainer}>
-          {getFilteredData().map((item, index, array) => renderSubscriptionCard(item, index, array))}
+        <View>
+          {activeSubscriptions.length > 0 && (
+            <View style={styles.sectionGroup}>
+              <View style={styles.cardContainer}>
+                <CardHeader 
+                  title="Ativas" 
+                  subtitle={`${activeSubscriptions.length} assinaturas`}
+                  icon="checkmark-circle"
+                />
+                <View style={styles.cardBody}>
+                  {activeSubscriptions.map((item, index) => renderSubscriptionCard(item, index, activeSubscriptions))}
+                </View>
+              </View>
+            </View>
+          )}
+          
+          {inactiveSubscriptions.length > 0 && (
+            <View style={styles.sectionGroup}>
+              <View style={styles.cardContainer}>
+                <CardHeader 
+                  title="Inativas" 
+                  subtitle={`${inactiveSubscriptions.length} assinaturas`}
+                  icon="pause-circle"
+                />
+                <View style={styles.cardBody}>
+                  {inactiveSubscriptions.map((item, index) => renderSubscriptionCard(item, index, inactiveSubscriptions))}
+                </View>
+              </View>
+            </View>
+          )}
         </View>
       </>
     );
@@ -354,14 +418,14 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.headerTop}>
-                  <View>
+                  <View style={styles.headerTitleContainer}>
                     <Text style={styles.title}>Registros</Text>
                     <Text style={styles.subtitle}>
                       {selectedType === 'installments' ? 'Parcelamentos' : 'Assinaturas'}
                     </Text>
                   </View>
                   <TouchableOpacity 
-                    style={[styles.filterButton, getActiveFiltersCount() > 0 && styles.filterButtonWithFilters]}
+                    style={styles.filterButton}
                     onPress={async () => {
                       await HapticService.buttonPress();
                       setShowFiltersModal(true);
@@ -370,7 +434,7 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
                     <Ionicons 
                       name="options" 
                       size={20} 
-                      color={getActiveFiltersCount() > 0 ? colors.white : colors.primary} 
+                      color={colors.white} 
                     />
                     {getActiveFiltersCount() > 0 && (
                       <View style={styles.filterBadge}>
@@ -382,49 +446,22 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation, route 
               </View>
 
               {/* Type Selector */}
-              <View style={styles.typeSelector}>
-                {RECORD_TYPES.map(type => (
-                  <TouchableOpacity
-                    key={type.key}
-                    style={[
-                      styles.typeButton,
-                      selectedType === type.key && styles.typeButtonActive
-                    ]}
-                    onPress={async () => {
-                      await HapticService.buttonPress();
-                      setSelectedType(type.key);
-                    }}
-                  >
-                    <Ionicons 
-                      name={type.icon as any} 
-                      size={16} 
-                      color={selectedType === type.key ? colors.white : type.color} 
-                    />
-                    <Text style={[
-                      styles.typeButtonText,
-                      selectedType === type.key && styles.typeButtonTextActive
-                    ]}>
-                      {type.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <TabSelector
+                options={RECORD_TYPES.map(type => ({
+                  key: type.key,
+                  label: type.label,
+                  icon: type.icon,
+                  color: type.color
+                }))}
+                selectedValue={selectedType}
+                onValueChange={async (value) => {
+                  await HapticService.buttonPress();
+                  setSelectedType(value as RecordType);
+                }}
+              />
 
               {/* Content */}
-              {/* Content */}
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionTitleContainer}>
-                    <Text style={styles.sectionTitle}>
-                      {selectedType === 'installments' ? 'Parcelamentos' : 'Assinaturas'}
-                    </Text>
-                    {getActiveFiltersCount() > 0 && (
-                      <Text style={styles.sectionSubtitle}>
-                        {getActiveFiltersCount()} filtro{getActiveFiltersCount() > 1 ? 's' : ''} aplicado{getActiveFiltersCount() > 1 ? 's' : ''}
-                      </Text>
-                    )}
-                  </View>
-                </View>
                 {renderContent()}
               </View>
             </>
@@ -584,6 +621,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  headerTitleContainer: {
+    flex: 1,
+    marginRight: SPACING.sm,
+  },
   title: {
     fontSize: FONT_SIZES.xxl,
     fontWeight: 'bold',
@@ -603,9 +644,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  filterButtonWithFilters: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
   filterBadge: {
     position: 'absolute',
     top: -4,
@@ -622,45 +660,11 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: 'bold',
   },
-  typeSelector: {
-    flexDirection: 'row',
-    marginTop: -16,
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.xs,
-    marginBottom: SPACING.xs,
-  },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.xs,
-    borderRadius: 12,
-    backgroundColor: colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  typeButtonActive: {
-    backgroundColor: colors.primary,
-  },
-  typeButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  typeButtonTextActive: {
-    color: colors.white,
-  },
   summaryCards: {
     flexDirection: 'row',
     paddingHorizontal: SPACING.md,
     gap: SPACING.xs,
-    marginBottom: SPACING.md,
+    marginBottom: 12,
   },
   summaryCard: {
     flex: 1,
@@ -709,17 +713,21 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   section: {
-    marginTop: SPACING.md,
+    paddingHorizontal: SPACING.md,
+  },
+  cardContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  cardBody: {
+    backgroundColor: colors.white,
+    padding: 0,
   },
   timelineContainer: {
     backgroundColor: colors.white,
-    marginHorizontal: SPACING.md,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   timelineIcon: {
     width: 32,
@@ -881,8 +889,8 @@ const styles = StyleSheet.create({
     minWidth: '30%',
   },
   statusButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primaryDark,
   },
   statusButtonText: {
     fontSize: 12,
@@ -916,12 +924,31 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDark,
     alignItems: 'center',
   },
   applyFiltersText: {
     fontSize: 14,
     color: colors.white,
     fontWeight: '600',
+  },
+  sectionGroup: {
+    marginBottom: 12,
+  },
+  sectionGroupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.xs,
+  },
+  sectionGroupTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  sectionGroupCount: {
+    fontSize: FONT_SIZES.sm,
+    color: colors.textSecondary,
   },
 }); 

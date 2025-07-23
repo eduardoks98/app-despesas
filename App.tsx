@@ -25,6 +25,7 @@ import { SubscriptionsScreen } from './src/screens/Subscriptions/SubscriptionsSc
 import { TransactionsScreen } from './src/screens/Transactions/TransactionsScreen';
 import { SubscriptionDetailScreen } from './src/screens/SubscriptionDetail/SubscriptionDetailScreen';
 import { ExportScreen } from './src/screens/Export/ExportScreen';
+import { CategoriesScreen } from './src/screens/Categories/CategoriesScreen';
 import { SplashScreen } from './src/screens/Splash/SplashScreen';
 import { OnboardingScreen } from './src/screens/Onboarding/OnboardingScreen';
 
@@ -277,6 +278,13 @@ function AppNavigator() {
         <Stack.Screen 
           name="Export" 
           component={ExportScreen}
+          options={{ 
+            headerShown: false
+          }}
+        />
+        <Stack.Screen 
+          name="Categories" 
+          component={CategoriesScreen}
           options={{ 
             headerShown: false
           }}

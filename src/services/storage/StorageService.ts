@@ -83,18 +83,22 @@ export class StorageService {
     return data ? JSON.parse(data) : this.getDefaultCategories();
   }
 
+  static async saveCategories(categories: Category[]): Promise<void> {
+    await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+  }
+
   static getDefaultCategories(): Category[] {
     return [
-      { id: '1', name: 'Alimentação', icon: '🍔', color: '#FF6B6B', type: 'expense', isCustom: false },
-      { id: '2', name: 'Transporte', icon: '🚗', color: '#4ECDC4', type: 'expense', isCustom: false },
-      { id: '3', name: 'Moradia', icon: '🏠', color: '#45B7D1', type: 'expense', isCustom: false },
-      { id: '4', name: 'Saúde', icon: '💊', color: '#96CEB4', type: 'expense', isCustom: false },
-      { id: '5', name: 'Educação', icon: '📚', color: '#FECA57', type: 'expense', isCustom: false },
-      { id: '6', name: 'Lazer', icon: '🎮', color: '#9C88FF', type: 'expense', isCustom: false },
-      { id: '7', name: 'Compras', icon: '🛍️', color: '#FD79A8', type: 'expense', isCustom: false },
-      { id: '8', name: 'Salário', icon: '💰', color: '#A29BFE', type: 'income', isCustom: false },
-      { id: '9', name: 'Freelance', icon: '💻', color: '#74B9FF', type: 'income', isCustom: false },
-      { id: '10', name: 'Investimentos', icon: '📈', color: '#55A3FF', type: 'income', isCustom: false },
+      { id: '1', name: 'Alimentação', icon: 'restaurant', color: '#FF6B6B', type: 'expense', isCustom: false },
+      { id: '2', name: 'Transporte', icon: 'car', color: '#4ECDC4', type: 'expense', isCustom: false },
+      { id: '3', name: 'Moradia', icon: 'home', color: '#45B7D1', type: 'expense', isCustom: false },
+      { id: '4', name: 'Saúde', icon: 'medical', color: '#96CEB4', type: 'expense', isCustom: false },
+      { id: '5', name: 'Educação', icon: 'school', color: '#FECA57', type: 'expense', isCustom: false },
+      { id: '6', name: 'Lazer', icon: 'game-controller', color: '#9C88FF', type: 'expense', isCustom: false },
+      { id: '7', name: 'Compras', icon: 'bag', color: '#FD79A8', type: 'expense', isCustom: false },
+      { id: '8', name: 'Salário', icon: 'briefcase', color: '#A29BFE', type: 'income', isCustom: false },
+      { id: '9', name: 'Freelance', icon: 'laptop', color: '#74B9FF', type: 'income', isCustom: false },
+      { id: '10', name: 'Investimentos', icon: 'trending-up', color: '#55A3FF', type: 'income', isCustom: false },
     ];
   }
 

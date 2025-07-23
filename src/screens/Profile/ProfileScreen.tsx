@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
+import { CardHeader } from '../../components/common/CardHeader';
 import { Button } from '../../components/common/Button';
 import { StorageService } from '../../services/storage/StorageService';
 import { InstallmentCalculations } from '../../services/calculations/InstallmentCalculations';
@@ -381,6 +382,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const toolsItems = [
     {
+      icon: 'list',
+      title: 'Gerenciar Categorias',
+      subtitle: 'Criar e editar categorias personalizadas',
+      onPress: async () => {
+        await HapticService.buttonPress();
+        navigation.navigate('Categories');
+      },
+    },
+    {
       icon: 'bar-chart',
       title: 'Relatórios',
       subtitle: 'Análises e gráficos financeiros',
@@ -457,10 +467,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         </View>
 
         {/* Estatísticas */}
-        <Card style={styles.statsCard}>
-          <Text style={styles.statsTitle}>Suas Estatísticas</Text>
-          
-          <View style={styles.statsGrid}>
+        <View style={styles.statsCard}>
+          <CardHeader 
+            title="Suas Estatísticas" 
+            icon="stats-chart"
+          />
+          <View style={styles.cardBody}>
+            <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.totalTransactions}</Text>
               <Text style={styles.statLabel}>Transações</Text>
@@ -485,13 +498,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               <Text style={styles.statLabel}>Despesas</Text>
             </View>
           </View>
-        </Card>
+          </View>
+        </View>
 
         {/* Configurações */}
-        <Card>
-          <Text style={styles.cardTitle}>Configurações</Text>
-          
-          <View style={styles.settingItem}>
+        <View style={styles.cardContainer}>
+          <CardHeader 
+            title="Configurações" 
+            icon="settings"
+          />
+          <View style={styles.cardBody}>
+            <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Ionicons name="eye-off" size={20} color={colors.textSecondary} />
               <View style={styles.settingText}>
@@ -563,13 +580,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-        </Card>
+          </View>
+        </View>
 
         {/* Ações Rápidas */}
-        <Card>
-          <Text style={styles.cardTitle}>Ações Rápidas</Text>
-          
-          {quickActions.map((item, index) => (
+        <View style={styles.cardContainer}>
+          <CardHeader 
+            title="Ações Rápidas" 
+            icon="flash"
+            action={() => navigation.navigate('SelectTransactionType')}
+          />
+          <View style={styles.cardBody}>
+            {quickActions.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
@@ -596,13 +618,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               />
             </TouchableOpacity>
           ))}
-        </Card>
+          </View>
+        </View>
 
         {/* Ferramentas */}
-        <Card>
-          <Text style={styles.cardTitle}>Ferramentas</Text>
-          
-          {toolsItems.map((item, index) => (
+        <View style={styles.cardContainer}>
+          <CardHeader 
+            title="Ferramentas" 
+            icon="build"
+            action={() => navigation.navigate('Reports')}
+          />
+          <View style={styles.cardBody}>
+            {toolsItems.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
@@ -629,13 +656,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               />
             </TouchableOpacity>
           ))}
-        </Card>
+          </View>
+        </View>
 
         {/* Dados e Backup */}
-        <Card>
-          <Text style={styles.cardTitle}>Dados e Backup</Text>
-          
-          {dataItems.map((item, index) => (
+        <View style={styles.cardContainer}>
+          <CardHeader 
+            title="Dados e Backup" 
+            icon="server"
+            action={() => navigation.navigate('Export')}
+          />
+          <View style={styles.cardBody}>
+            {dataItems.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={[
@@ -673,20 +705,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               />
             </TouchableOpacity>
           ))}
-        </Card>
+          </View>
+        </View>
 
         {/* Informações do app */}
-        <Card>
-          <Text style={styles.cardTitle}>Sobre o App</Text>
-          
-          <View style={styles.appInfo}>
+        <View style={styles.cardContainer}>
+          <CardHeader 
+            title="Sobre o App" 
+            icon="information-circle"
+          />
+          <View style={styles.cardBody}>
+            <View style={styles.appInfo}>
             <Text style={styles.appName}>App Despesas</Text>
             <Text style={styles.appVersion}>Versão 1.0.0</Text>
             <Text style={styles.appDescription}>
               Controle financeiro com foco em parcelamentos
             </Text>
           </View>
-        </Card>
+          </View>
+        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -729,7 +766,25 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.textSecondary,
   },
   statsCard: {
+    marginHorizontal: 16,
     marginBottom: 16,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  cardContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  cardBody: {
+    padding: 0,
   },
   statsTitle: {
     fontSize: 16,
@@ -741,6 +796,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    padding: 16,
   },
   statItem: {
     width: '50%',
@@ -771,6 +827,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -801,6 +858,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 16,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -839,6 +897,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   appInfo: {
     alignItems: 'center',
+    padding: 16,
   },
   appName: {
     fontSize: 18,

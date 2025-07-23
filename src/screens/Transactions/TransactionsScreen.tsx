@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
+import { CardHeader } from '../../components/common/CardHeader';
 import { FAB } from '../../components/common/FAB';
 import { MoneyText } from '../../components/common/MoneyText';
 import { StorageService } from '../../services/storage/StorageService';
@@ -252,12 +253,43 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
     });
   };
 
-  const renderTransactionCard = (transaction: Transaction, index: number) => (
+  const groupTransactionsByMonth = (transactions: Transaction[]) => {
+    const grouped: { [key: string]: Transaction[] } = {};
+    
+    transactions.forEach(transaction => {
+      const date = new Date(transaction.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!grouped[monthKey]) {
+        grouped[monthKey] = [];
+      }
+      grouped[monthKey].push(transaction);
+    });
+    
+    // Ordenar as chaves (meses) em ordem decrescente
+    const sortedKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+    
+    return sortedKeys.map(key => ({
+      month: key,
+      transactions: grouped[key]
+    }));
+  };
+
+  const formatMonthHeader = (monthKey: string) => {
+    const [year, month] = monthKey.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1);
+    return date.toLocaleDateString('pt-BR', { 
+      month: 'long', 
+      year: 'numeric' 
+    }).replace(/^\w/, c => c.toUpperCase());
+  };
+
+  const renderTransactionCard = (transaction: Transaction, index: number, isLast: boolean) => (
     <TouchableOpacity 
       key={transaction.id}
       style={[
         styles.timelineItemCompact,
-        index !== filteredTransactions.length - 1 && styles.timelineItemBorder
+        !isLast && styles.timelineItemBorder
       ]}
       onPress={() => handleTransactionPress(transaction)}
       onLongPress={() => handleTransactionLongPress(transaction)}
@@ -332,14 +364,14 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.headerTop}>
-                  <View>
+                  <View style={styles.headerTitleContainer}>
                     <Text style={styles.title}>Transações</Text>
                     <Text style={styles.subtitle}>
                       {filteredTransactions.length} {filteredTransactions.length === 1 ? 'transação' : 'transações'}
                     </Text>
                   </View>
                   <TouchableOpacity 
-                    style={[styles.filterButton, getActiveFiltersCount() > 0 && styles.filterButtonWithFilters]}
+                    style={styles.exportButton}
                     onPress={async () => {
                       await HapticService.buttonPress();
                       setShowFiltersModal(true);
@@ -348,7 +380,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
                     <Ionicons 
                       name="options" 
                       size={20} 
-                      color={getActiveFiltersCount() > 0 ? colors.white : colors.primary} 
+                      color={colors.white} 
                     />
                     {getActiveFiltersCount() > 0 && (
                       <View style={styles.filterBadge}>
@@ -384,20 +416,24 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({ navigati
 
               {/* Lista de transações */}
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionTitleContainer}>
-                    <Text style={styles.sectionTitle}>Todas as Transações</Text>
-                    {getActiveFiltersCount() > 0 && (
-                      <Text style={styles.sectionSubtitle}>
-                        {getActiveFiltersCount()} filtro{getActiveFiltersCount() > 1 ? 's' : ''} aplicado{getActiveFiltersCount() > 1 ? 's' : ''}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-                
-{filteredTransactions.length > 0 ? (
-                  <View style={styles.timelineContainer}>
-                    {filteredTransactions.map((transaction, index) => renderTransactionCard(transaction, index))}
+                {filteredTransactions.length > 0 ? (
+                  <View>
+                    {groupTransactionsByMonth(filteredTransactions).map((group, groupIndex) => (
+                      <View key={group.month} style={styles.monthGroup}>
+                        <View style={styles.cardContainer}>
+                          <CardHeader 
+                            title={formatMonthHeader(group.month)}
+                            subtitle={`${group.transactions.length} transações`}
+                            icon="calendar"
+                          />
+                          <View style={styles.cardBody}>
+                            {group.transactions.map((transaction, index) => 
+                              renderTransactionCard(transaction, index, index === group.transactions.length - 1)
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    ))}
                   </View>
                 ) : (
                   <View style={styles.emptyContainer}>
@@ -599,6 +635,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  headerTitleContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
   title: {
     fontSize: FONT_SIZES.xxl,
     fontWeight: 'bold',
@@ -609,7 +649,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     color: 'rgba(255,255,255,0.8)',
   },
-  filterButton: {
+  exportButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -617,9 +657,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-  },
-  filterButtonWithFilters: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
   },
   filterBadge: {
     position: 'absolute',
@@ -642,7 +679,7 @@ const styles = StyleSheet.create({
     marginTop: -16,
     paddingHorizontal: SPACING.md,
     gap: SPACING.xs,
-    marginBottom: SPACING.xs,
+    marginBottom: 12,
   },
   summaryCard: {
     flex: 1,
@@ -668,7 +705,19 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   section: {
-    marginTop: SPACING.md,
+    marginTop: 12,
+    paddingHorizontal: SPACING.md,
+  },
+  cardContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  cardBody: {
+    backgroundColor: colors.white,
+    padding: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -691,16 +740,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  timelineContainer: {
-    backgroundColor: colors.white,
-    marginHorizontal: SPACING.md,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   timelineIcon: {
     width: 32,
@@ -953,5 +992,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.white,
     fontWeight: '600',
+  },
+  monthGroup: {
+    marginBottom: 12,
+  },
+  monthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.xs,
+  },
+  monthHeaderText: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.text,
+    textTransform: 'capitalize',
+  },
+  monthHeaderCount: {
+    fontSize: FONT_SIZES.sm,
+    color: colors.textSecondary,
   },
 });

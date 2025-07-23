@@ -12,6 +12,8 @@ import {
 import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { CardHeader } from '../../components/common/CardHeader';
+import { TabSelector } from '../../components/common/TabSelector';
 import { MoneyText } from '../../components/common/MoneyText';
 import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
@@ -68,10 +70,10 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
     if (!data) {
       // Se falhou, usar categorias padrão
       const defaultCategories: Category[] = [
-        { id: '1', name: 'Alimentação', icon: '🍔', type: 'expense', color: '#FF6B6B', isCustom: false },
-        { id: '2', name: 'Transporte', icon: '🚗', type: 'expense', color: '#4ECDC4', isCustom: false },
-        { id: '3', name: 'Salário', icon: '💰', type: 'income', color: '#45B7D1', isCustom: false },
-        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
+        { id: '1', name: 'Alimentação', icon: 'restaurant', type: 'expense', color: '#FF6B6B', isCustom: false },
+        { id: '2', name: 'Transporte', icon: 'car', type: 'expense', color: '#4ECDC4', isCustom: false },
+        { id: '3', name: 'Salário', icon: 'briefcase', type: 'income', color: '#45B7D1', isCustom: false },
+        { id: '4', name: 'Outros', icon: 'folder', type: 'both', color: '#96CEB4', isCustom: false },
       ];
       setCategories(defaultCategories);
     }
@@ -209,39 +211,38 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
   return (
     <Container>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Nova Transação</Text>
-
-        <View style={styles.form}>
+        <Card>
+          <CardHeader 
+            title="Nova Transação" 
+            icon="add-circle"
+          />
+          <View style={styles.cardBody}>
+            <View style={styles.form}>
           {/* Tipo de transação */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Tipo</Text>
-            <View style={styles.typeButtons}>
-              <TouchableOpacity 
-                style={getTypeButtonStyle('expense')}
-                onPress={() => {
-                  setFormData(prev => ({ ...prev, type: 'expense', category: '' }));
-                  setTimeout(loadCategories, 100);
-                }}
-              >
-                <Ionicons name="remove-circle" size={20} color={
-                  formData.type === 'expense' ? colors.white : colors.danger
-                } />
-                <Text style={getTypeTextStyle('expense')}>Despesa</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={getTypeButtonStyle('income')}
-                onPress={() => {
-                  setFormData(prev => ({ ...prev, type: 'income', category: '' }));
-                  setTimeout(loadCategories, 100);
-                }}
-              >
-                <Ionicons name="add-circle" size={20} color={
-                  formData.type === 'income' ? colors.white : colors.success
-                } />
-                <Text style={getTypeTextStyle('income')}>Receita</Text>
-              </TouchableOpacity>
-            </View>
+            <TabSelector
+              options={[
+                { 
+                  key: 'expense', 
+                  label: 'Despesa', 
+                  icon: 'remove-circle',
+                  color: colors.danger
+                },
+                { 
+                  key: 'income', 
+                  label: 'Receita', 
+                  icon: 'add-circle',
+                  color: colors.success
+                }
+              ]}
+              selectedValue={formData.type}
+              onValueChange={(value) => {
+                setFormData(prev => ({ ...prev, type: value as 'expense' | 'income', category: '' }));
+                setTimeout(loadCategories, 100);
+              }}
+              style={styles.tabSelector}
+            />
           </View>
 
           {/* Valor */}
@@ -317,9 +318,16 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
             >
               {formData.category ? (
                 <View style={styles.selectedCategory}>
-                  <Text style={styles.categoryIcon}>
-                    {getSelectedCategory()?.icon || '📂'}
-                  </Text>
+                  <View style={[
+                    styles.categoryIconContainer,
+                    { backgroundColor: (getSelectedCategory()?.color || '#96CEB4') + '20' }
+                  ]}>
+                    <Ionicons 
+                      name={(getSelectedCategory()?.icon || 'folder') as any} 
+                      size={16} 
+                      color={getSelectedCategory()?.color || '#96CEB4'} 
+                    />
+                  </View>
                   <Text style={styles.categoryName}>{formData.category}</Text>
                 </View>
               ) : (
@@ -430,13 +438,15 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
             />
           </View>
 
-          <Button 
-            title={isLoading ? "Salvando..." : "Salvar Transação"}
-            onPress={handleSave}
-            style={styles.button}
-            disabled={isLoading}
-          />
-        </View>
+              <Button 
+                title={isLoading ? "Salvando..." : "Salvar Transação"}
+                onPress={handleSave}
+                style={styles.button}
+                disabled={isLoading}
+              />
+            </View>
+          </View>
+        </Card>
       </ScrollView>
 
       {/* Modal de categorias */}
@@ -463,7 +473,16 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
                     setShowCategoryModal(false);
                   }}
                 >
-                  <Text style={styles.categoryItemIcon}>{category.icon}</Text>
+                  <View style={[
+                    styles.categoryItemIconContainer,
+                    { backgroundColor: category.color + '20' }
+                  ]}>
+                    <Ionicons 
+                      name={category.icon as any} 
+                      size={16} 
+                      color={category.color} 
+                    />
+                  </View>
                   <Text style={[
                     styles.categoryItemName,
                     formData.category === category.name && styles.categoryItemNameSelected
@@ -493,17 +512,18 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 24,
-    color: colors.text,
+  cardBody: {
+    padding: 16,
   },
   form: {
-    paddingHorizontal: 16,
+    flex: 1,
+  },
+  tabSelector: {
+    marginHorizontal: 0,
+    marginVertical: 0,
   },
   inputGroup: {
     marginBottom: 24,
@@ -523,38 +543,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     color: colors.text,
     textAlignVertical: 'top',
-  },
-  typeButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 8,
-  },
-  typeButtonActive: {
-    backgroundColor: colors.danger,
-    borderColor: colors.danger,
-  },
-  typeButtonIncomeActive: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
-  },
-  typeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  typeButtonTextActive: {
-    color: colors.white,
   },
   amountContainer: {
     flexDirection: 'row',
@@ -602,8 +590,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  categoryIcon: {
-    fontSize: 20,
+  categoryIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   categoryName: {
     fontSize: 16,
@@ -691,8 +683,12 @@ const styles = StyleSheet.create({
   categoryItemSelected: {
     backgroundColor: colors.primaryLight,
   },
-  categoryItemIcon: {
-    fontSize: 20,
+  categoryItemIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
   categoryItemName: {
