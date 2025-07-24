@@ -235,18 +235,14 @@ function AppNavigator() {
           name="EditInstallment" 
           component={EditInstallmentScreen}
           options={{ 
-            title: 'Editar Parcelamento',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 
           name="EditSubscription" 
           component={EditSubscriptionScreen}
           options={{ 
-            title: 'Editar Assinatura',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 
@@ -280,18 +276,14 @@ function AppNavigator() {
           name="InstallmentDetail" 
           component={InstallmentDetailScreen}
           options={{ 
-            title: 'Detalhes do Parcelamento',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 
           name="SubscriptionDetail" 
           component={SubscriptionDetailScreen}
           options={{ 
-            title: 'Detalhes da Assinatura',
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: colors.white,
+            headerShown: false
           }}
         />
         <Stack.Screen 

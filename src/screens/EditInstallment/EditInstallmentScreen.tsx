@@ -13,7 +13,6 @@ import {
 import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
-import { MoneyText } from '../../components/common/MoneyText';
 import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
 import { ValidationService } from '../../services/validation/ValidationService';
@@ -45,11 +44,8 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
     store: '',
     totalAmount: '',
     totalInstallments: '',
-    installmentValue: '',
     startDate: new Date(),
-    endDate: new Date(),
     category: '',
-    paymentMethod: 'credit' as 'credit' | 'debit' | 'pix',
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -72,13 +68,10 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
         setFormData({
           description: found.description,
           store: found.store,
-          totalAmount: found.totalAmount.toString(),
+          totalAmount: found.totalAmount.toString().replace('.', ','),
           totalInstallments: found.totalInstallments.toString(),
-          installmentValue: found.installmentValue.toString(),
           startDate: safeParseDate(found.startDate),
-          endDate: safeParseDate(found.endDate),
           category: found.category,
-          paymentMethod: found.paymentMethod,
         });
       } else {
         Alert.alert('Erro', 'Parcelamento não encontrado');
@@ -118,85 +111,97 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
   };
 
   const validateForm = () => {
+    console.log('=== VALIDANDO FORMULARIO ===');
     setValidationErrors([]);
 
-    const totalAmount = formData.totalAmount ? parseFloat(formData.totalAmount.replace(',', '.')) : 0;
-    const totalInstallments = parseInt(formData.totalInstallments) || 0;
-    const installmentValue = formData.installmentValue ? parseFloat(formData.installmentValue.replace(',', '.')) : 0;
+    const amount = formData.totalAmount ? parseFloat(formData.totalAmount.replace(',', '.')) : 0;
+    const installments = formData.totalInstallments ? parseInt(formData.totalInstallments) : 0;
+    console.log('Amount parsed:', amount);
+    console.log('Installments parsed:', installments);
+
+    // Calcular data de término
+    const endDate = new Date(formData.startDate);
+    endDate.setMonth(endDate.getMonth() + installments - 1);
 
     const installmentData = {
       description: formData.description,
       store: formData.store,
-      totalAmount: totalAmount,
-      totalInstallments: totalInstallments,
-      installmentValue: installmentValue,
-      startDate: formData.startDate.toISOString(),
-      endDate: formData.endDate.toISOString(),
+      totalAmount: amount,
+      totalInstallments: installments,
       category: formData.category,
-      paymentMethod: formData.paymentMethod,
+      startDate: formData.startDate.toISOString(),
+      endDate: endDate.toISOString(),
     };
 
-    const errors = ValidationService.validateInstallment(installmentData);
-    setValidationErrors(errors);
-    return errors.length === 0;
-  };
-
-  const updateInstallment = async (installmentData: any) => {
-    if (!installment) return;
-
-    const updatedInstallment: Installment = {
-      ...installment,
-      ...installmentData,
-      totalAmount: installmentData.totalAmount,
-      totalInstallments: installmentData.totalInstallments,
-      installmentValue: installmentData.installmentValue,
-    };
-
-    const allInstallments = await StorageService.getInstallments();
-    const index = allInstallments.findIndex(i => i.id === installmentId);
+    console.log('Installment data para validação:', installmentData);
+    const validationResult = ValidationService.validateInstallment(installmentData);
+    console.log('Resultado da validação:', validationResult);
     
-    if (index !== -1) {
-      allInstallments[index] = updatedInstallment;
-      await StorageService.setInstallments(allInstallments);
-      return true;
-    }
-    return false;
+    const errors = validationResult.errors || [];
+    setValidationErrors(errors);
+    const isValid = validationResult.isValid || errors.length === 0;
+    console.log('Formulário válido:', isValid);
+    return isValid;
   };
+
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    console.log('=== HANDLE SAVE INICIADO ===');
+    console.log('FormData atual:', formData);
+    
+    if (!validateForm()) {
+      console.log('Validação falhou, parando execução');
+      HapticService.error();
+      return;
+    }
 
+    console.log('Validação passou, continuando...');
     setIsLoading(true);
+    HapticService.buttonPress();
 
     try {
       const totalAmount = parseFloat(formData.totalAmount.replace(',', '.'));
       const totalInstallments = parseInt(formData.totalInstallments);
-      const installmentValue = parseFloat(formData.installmentValue.replace(',', '.'));
+      const installmentValue = totalAmount / totalInstallments;
       
-      const installmentData = {
+      const endDate = new Date(formData.startDate);
+      endDate.setMonth(endDate.getMonth() + totalInstallments - 1);
+
+      const updatedInstallment: Installment = {
+        ...installment!,
         description: formData.description,
         store: formData.store,
         totalAmount: totalAmount,
         totalInstallments: totalInstallments,
         installmentValue: installmentValue,
         startDate: formData.startDate.toISOString(),
-        endDate: formData.endDate.toISOString(),
+        endDate: endDate.toISOString(),
         category: formData.category,
-        paymentMethod: formData.paymentMethod,
+        paymentMethod: 'credit',
       };
 
-      const success = await updateInstallment(installmentData);
+      // Atualizar diretamente sem criar transações duplicadas
+      const allInstallments = await StorageService.getInstallments();
+      const index = allInstallments.findIndex(i => i.id === installmentId);
       
-      if (success) {
-        Alert.alert('Sucesso', 'Parcelamento atualizado com sucesso!', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
+      if (index !== -1) {
+        allInstallments[index] = updatedInstallment;
+        await StorageService.setInstallments(allInstallments);
       } else {
-        Alert.alert('Erro', 'Erro ao atualizar parcelamento');
+        throw new Error('Parcelamento não encontrado');
       }
+      
+      HapticService.success();
+      Alert.alert(
+        'Sucesso',
+        'Parcelamento atualizado com sucesso!',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       console.error('Erro ao salvar parcelamento:', error);
-      Alert.alert('Erro', 'Erro ao salvar parcelamento');
+      const errorMessage = ErrorHandler.handle(error, 'Erro ao salvar parcelamento');
+      HapticService.error();
+      Alert.alert('Erro', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -231,7 +236,8 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
   };
 
   const formatAmount = (value: string) => {
-    return value.replace(/[^0-9,]/g, '').replace(/,/g, '.');
+    const cleaned = value.replace(/[^0-9,]/g, '');
+    return cleaned;
   };
 
   const handleAmountChange = (field: string, value: string) => {
@@ -239,14 +245,6 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
     setFormData(prev => ({ ...prev, [field]: formatted }));
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    switch (method) {
-      case 'debit': return 'card';
-      case 'credit': return 'card';
-      case 'pix': return 'phone-portrait';
-      default: return 'card';
-    }
-  };
 
   if (!installment) {
     return (
@@ -260,235 +258,214 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
 
   return (
     <Container>
-      <FlatList
-        data={[{ key: 'content' }]}
-        renderItem={() => (
-          <>
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerTop}>
-                <View>
-                  <Text style={styles.title}>Editar Parcelamento</Text>
-                  <Text style={styles.subtitle}>
-                    {formData.description || 'Parcelamento'}
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  style={styles.deleteButton}
-                  onPress={async () => {
-                    await HapticService.buttonPress();
-                    handleDelete();
-                  }}
-                >
-                  <Ionicons name="trash" size={20} color={colors.white} />
-                </TouchableOpacity>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Editar Parcelamento</Text>
+        <TouchableOpacity 
+          style={styles.deleteButton}
+          onPress={async () => {
+            await HapticService.buttonPress();
+            handleDelete();
+          }}
+        >
+          <Ionicons name="trash" size={20} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Descrição</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.description}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
+              placeholder="Ex: iPhone 15"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Loja</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.store}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, store: text }))}
+              placeholder="Ex: Apple Store"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          {/* Category Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Categoria</Text>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowCategoryModal(true)}
+            >
+              <View style={styles.categoryContent}>
+                {getSelectedCategory() ? (
+                  <>
+                    <Ionicons name={getSelectedCategory()?.icon as any} size={20} color={getSelectedCategory()?.color || colors.primary} />
+                    <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Selecionar categoria</Text>
+                )}
+              </View>
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Date Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Data de Início</Text>
+            <DatePicker
+              date={formData.startDate}
+              onDateChange={(date) => setFormData(prev => ({ ...prev, startDate: date }))}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, styles.flex1]}>
+              <Text style={styles.label}>Valor Total</Text>
+              <View style={styles.inputContainer}>
+                <Text style={styles.currency}>R$</Text>
+                <TextInput
+                  style={[styles.input, styles.currencyInput]}
+                  value={formData.totalAmount}
+                  onChangeText={(value) => handleAmountChange('totalAmount', value)}
+                  placeholder="0,00"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="decimal-pad"
+                />
               </View>
             </View>
 
-        {/* Descrição */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Descrição</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.description}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
-            placeholder="Ex: Compra de iPhone"
-            placeholderTextColor={colors.textTertiary}
-          />
-        </Card>
-
-        {/* Loja */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Loja/Estabelecimento</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.store}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, store: text }))}
-            placeholder="Ex: Apple Store"
-            placeholderTextColor={colors.textTertiary}
-          />
-        </Card>
-
-        {/* Valor Total */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Valor Total</Text>
-          <View style={styles.amountContainer}>
-            <Text style={styles.currencySymbol}>R$</Text>
-            <TextInput
-              style={styles.amountInput}
-              value={formData.totalAmount}
-              onChangeText={(value) => handleAmountChange('totalAmount', value)}
-              placeholder="0,00"
-              keyboardType="numeric"
-              placeholderTextColor={colors.textTertiary}
-            />
+            <View style={[styles.inputGroup, styles.flex1]}>
+              <Text style={styles.label}>Nº Parcelas</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.totalInstallments}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, totalInstallments: text.replace(/[^0-9]/g, '') }))}
+                placeholder="12"
+                placeholderTextColor={colors.textSecondary}
+                keyboardType="number-pad"
+              />
+            </View>
           </View>
-        </Card>
 
-        {/* Número de Parcelas */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Número de Parcelas</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.totalInstallments}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, totalInstallments: text.replace(/[^0-9]/g, '') }))}
-            placeholder="Ex: 12"
-            keyboardType="numeric"
-            placeholderTextColor={colors.textTertiary}
-          />
-        </Card>
-
-        {/* Valor da Parcela */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Valor da Parcela</Text>
-          <View style={styles.amountContainer}>
-            <Text style={styles.currencySymbol}>R$</Text>
-            <TextInput
-              style={styles.amountInput}
-              value={formData.installmentValue}
-              onChangeText={(value) => handleAmountChange('installmentValue', value)}
-              placeholder="0,00"
-              keyboardType="numeric"
-              placeholderTextColor={colors.textTertiary}
-            />
-          </View>
-        </Card>
-
-        {/* Categoria */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Categoria</Text>
-          <TouchableOpacity
-            style={styles.categoryButton}
-            onPress={() => setShowCategoryModal(true)}
-          >
-            {getSelectedCategory() ? (
-              <View style={styles.selectedCategory}>
-                <Ionicons name={getSelectedCategory()?.icon as any} size={20} color={getSelectedCategory()?.color || colors.primary} />
-                <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
+          {formData.totalAmount && formData.totalInstallments && (
+            <Card style={styles.calculation}>
+              <View style={styles.calculationHeader}>
+                <Ionicons name="calculator" size={24} color={colors.primary} />
+                <Text style={styles.calculationTitle}>Cálculo</Text>
               </View>
-            ) : (
-              <Text style={styles.categoryPlaceholder}>Selecione uma categoria</Text>
-            )}
-            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </Card>
-
-        {/* Data de Início */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Data de Início</Text>
-          <DatePicker
-            value={formData.startDate}
-            onChange={(date) => setFormData(prev => ({ ...prev, startDate: date }))}
-          />
-        </Card>
-
-        {/* Data de Término */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Data de Término</Text>
-          <DatePicker
-            value={formData.endDate}
-            onChange={(date) => setFormData(prev => ({ ...prev, endDate: date }))}
-          />
-        </Card>
-
-        {/* Forma de Pagamento */}
-        <Card style={styles.card}>
-          <Text style={styles.label}>Forma de Pagamento</Text>
-          <View style={styles.paymentMethods}>
-            {['debit', 'credit', 'pix'].map((method) => (
-              <TouchableOpacity
-                key={method}
-                style={[
-                  styles.paymentMethodButton,
-                  formData.paymentMethod === method && styles.paymentMethodButtonActive
-                ]}
-                onPress={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
-              >
-                <Ionicons 
-                  name={getPaymentMethodIcon(method) as any} 
-                  size={20} 
-                  color={formData.paymentMethod === method ? colors.white : colors.textSecondary} 
-                />
-                <Text style={[
-                  styles.paymentMethodText,
-                  formData.paymentMethod === method && styles.paymentMethodTextActive
-                ]}>
-                  {method === 'debit' ? 'Débito' : 
-                   method === 'credit' ? 'Crédito' : 'PIX'}
+              <View style={styles.calculationRow}>
+                <Text style={styles.calculationLabel}>Valor da parcela:</Text>
+                <Text style={styles.calculationValue}>
+                  R$ {(parseFloat(formData.totalAmount.replace(',', '.')) / parseInt(formData.totalInstallments)).toFixed(2).replace('.', ',')}
                 </Text>
-              </TouchableOpacity>
-            ))}
+              </View>
+              <View style={styles.calculationRow}>
+                <Text style={styles.calculationLabel}>Total de parcelas:</Text>
+                <Text style={styles.calculationValue}>
+                  {formData.totalInstallments}x
+                </Text>
+              </View>
+            </Card>
+          )}
+
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <Card style={styles.errorCard}>
+              <View style={styles.errorHeader}>
+                <Ionicons name="alert-circle" size={20} color={colors.error} />
+                <Text style={styles.errorTitle}>Erros encontrados:</Text>
+              </View>
+              {validationErrors.map((error, index) => (
+                <Text key={index} style={styles.errorText}>• {error}</Text>
+              ))}
+            </Card>
+          )}
+
+          <View style={styles.infoCard}>
+            <View style={styles.infoHeader}>
+              <Ionicons name="information-circle" size={20} color={colors.info} />
+              <Text style={styles.infoTitle}>Informação</Text>
+            </View>
+            <Text style={styles.infoText}>
+              Alterações nos valores serão refletidas apenas nas parcelas futuras não pagas.
+            </Text>
           </View>
-        </Card>
 
-        {/* Erros de Validação */}
-        {validationErrors.length > 0 && (
-          <Card style={styles.errorCard}>
-            {validationErrors.map((error, index) => (
-              <Text key={index} style={styles.errorText}>• {error}</Text>
-            ))}
-          </Card>
-        )}
+        </View>
+      </ScrollView>
 
-        {/* Botões */}
-        <View style={styles.buttons}>
-          <Button
+      {/* Fixed Bottom Button Container */}
+      <View style={styles.fixedBottomContainer}>
+        <View style={styles.buttonRow}>
+          <Button 
             title="Cancelar"
             onPress={() => navigation.goBack()}
-            variant="outline"
-            style={styles.button}
+            style={[styles.button, styles.cancelButton]}
+            textStyle={styles.cancelButtonText}
           />
-          <Button
-            title="Salvar"
+          <Button 
+            title={isLoading ? "Salvando..." : "Salvar"}
             onPress={handleSave}
-            loading={isLoading}
-            style={styles.button}
+            style={[styles.button, styles.saveButton]}
+            disabled={isLoading}
           />
         </View>
+      </View>
 
-        <View style={styles.bottomSpacer} />
-          </>
-        )}
-        keyExtractor={(item) => item.key}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.flatListContent}
-      />
-
-      {/* Modal de Categorias */}
+      {/* Category Selection Modal */}
       <Modal
         visible={showCategoryModal}
-        transparent
         animationType="slide"
-        onRequestClose={() => setShowCategoryModal(false)}
+        presentationStyle="pageSheet"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecionar Categoria</Text>
-              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.categoriesList}>
-              {getFilteredCategories().map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={styles.categoryItem}
-                  onPress={() => {
-                    setFormData(prev => ({ ...prev, category: category.name }));
-                    setShowCategoryModal(false);
-                  }}
-                >
-                  <Ionicons name={category.icon as any} size={24} color={category.color || colors.primary} />
-                  <Text style={styles.categoryItemText}>{category.name}</Text>
-                  {formData.category === category.name && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Selecionar Categoria</Text>
+            <View style={styles.modalSpacer} />
           </View>
+
+          <FlatList
+            data={getFilteredCategories()}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.category === item.name && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData(prev => ({ ...prev, category: item.name }));
+                  setShowCategoryModal(false);
+                  HapticService.buttonPress();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Ionicons name={item.icon as any} size={24} color={item.color || colors.primary} />
+                  <Text style={styles.categoryItemName}>{item.name}</Text>
+                </View>
+                {formData.category === item.name && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
         </View>
       </Modal>
     </Container>
@@ -496,70 +473,170 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
     flex: 1,
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  container: {
+    flex: 1,
+  },
+  form: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 20,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  deleteButton: {
-    padding: 8,
-  },
-  card: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
+  inputGroup: {
+    marginBottom: 20,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    marginBottom: 8,
     color: colors.text,
-    marginBottom: 12,
   },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: 16,
     fontSize: 16,
+    backgroundColor: colors.surface,
     color: colors.text,
-    backgroundColor: colors.background,
   },
-  amountContainer: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
-  currencySymbol: {
-    fontSize: 18,
-    fontWeight: '600',
+  currency: {
+    paddingLeft: 16,
+    fontSize: 16,
     color: colors.textSecondary,
-    marginRight: 8,
   },
-  amountInput: {
+  currencyInput: {
     flex: 1,
-    fontSize: 18,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  flex1: {
+    flex: 1,
+  },
+  calculation: {
+    backgroundColor: colors.primaryLight,
+    marginBottom: 24,
+  },
+  calculationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  calculationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  calculationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  calculationLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  calculationValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  infoCard: {
+    backgroundColor: colors.infoLight,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.info,
+  },
+  infoText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  fixedBottomContainer: {
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 34, // Safe area padding
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  button: {
+    flex: 1,
+  },
+  cancelButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
     color: colors.text,
-    paddingVertical: 16,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
   },
   categoryButton: {
     flexDirection: 'row',
@@ -568,17 +645,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: colors.background,
+    padding: 16,
+    backgroundColor: colors.surface,
   },
-  selectedCategory: {
+  categoryContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  categoryIcon: {
-    fontSize: 20,
+    gap: 8,
   },
   categoryText: {
     fontSize: 16,
@@ -586,100 +659,70 @@ const styles = StyleSheet.create({
   },
   categoryPlaceholder: {
     fontSize: 16,
-    color: colors.textTertiary,
-  },
-  paymentMethods: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  paymentMethodButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  paymentMethodButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  paymentMethodText: {
-    fontSize: 14,
-    fontWeight: '500',
     color: colors.textSecondary,
   },
-  paymentMethodTextActive: {
-    color: colors.white,
-  },
   errorCard: {
-    marginHorizontal: 16,
+    backgroundColor: colors.errorLight,
     marginBottom: 16,
-    padding: 16,
-    backgroundColor: colors.dangerLight,
+  },
+  errorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.error,
   },
   errorText: {
-    fontSize: 14,
-    color: colors.danger,
+    fontSize: 12,
+    color: colors.error,
     marginBottom: 4,
   },
-  buttons: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 16,
-  },
-  button: {
+  modalContainer: {
     flex: 1,
-  },
-  bottomSpacer: {
-    height: 100,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '70%',
+    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modalCancel: {
+    fontSize: 16,
+    color: colors.primary,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
   },
-  categoriesList: {
-    padding: 16,
+  modalSpacer: {
+    width: 60,
   },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
+    justifyContent: 'space-between',
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  categoryItemIcon: {
-    fontSize: 24,
-    marginRight: 16,
+  categoryItemSelected: {
+    backgroundColor: colors.primaryLight,
   },
-  categoryItemText: {
-    flex: 1,
+  categoryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  categoryItemName: {
     fontSize: 16,
     color: colors.text,
   },

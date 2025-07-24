@@ -18,8 +18,11 @@ import { Card } from '../../components/common/Card';
 import { MoneyText } from '../../components/common/MoneyText';
 import { Button } from '../../components/common/Button';
 import { StorageService } from '../../services/storage/StorageService';
+import { SubscriptionService } from '../../services/subscriptions/SubscriptionService';
+import { HapticService } from '../../services/haptic/HapticService';
 import { Subscription, Transaction } from '../../types';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 
 interface SubscriptionDetailScreenProps {
   route: {
@@ -41,6 +44,8 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
   const [paymentCount, setPaymentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPaidThisMonth, setIsPaidThisMonth] = useState(false);
+  const [thisMonthPayment, setThisMonthPayment] = useState<Transaction | null>(null);
 
   useEffect(() => {
     loadSubscriptionData();
@@ -66,6 +71,18 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
         const total = related.reduce((sum, t) => sum + t.amount, 0);
         setTotalPaid(total);
         setPaymentCount(related.length);
+
+        // Verificar se já foi pago este mês
+        const paidThisMonth = await SubscriptionService.isSubscriptionPaidThisMonth(subscriptionId);
+        setIsPaidThisMonth(paidThisMonth);
+
+        // Obter pagamento deste mês se existir
+        if (paidThisMonth) {
+          const monthPayment = await SubscriptionService.getLastPaymentThisMonth(subscriptionId);
+          setThisMonthPayment(monthPayment);
+        } else {
+          setThisMonthPayment(null);
+        }
       } else {
         setError('Assinatura não encontrada');
       }
@@ -127,9 +144,26 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
   const handleManualPayment = async () => {
     if (!subscription) return;
 
+    // Verificar se já foi pago este mês
+    const alreadyPaid = await SubscriptionService.isSubscriptionPaidThisMonth(subscriptionId);
+    
+    if (alreadyPaid) {
+      const monthPayment = await SubscriptionService.getLastPaymentThisMonth(subscriptionId);
+      const paymentDateText = monthPayment ? 
+        format(new Date(monthPayment.date), 'dd/MM/yyyy', { locale: ptBR }) : 
+        'neste mês';
+      
+      Alert.alert(
+        'Pagamento Já Realizado',
+        `Esta assinatura já foi paga ${paymentDateText}.\n\nValor: R$ ${subscription.amount.toFixed(2).replace('.', ',')}`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
     Alert.alert(
       'Registrar Pagamento',
-      `Registrar pagamento de R$ ${subscription.amount.toFixed(2)} para ${subscription.name}?`,
+      `Registrar pagamento de R$ ${subscription.amount.toFixed(2).replace('.', ',')} para ${subscription.name}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -211,23 +245,41 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
 
   return (
     <Container>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Detalhes da Assinatura</Text>
+        <TouchableOpacity 
+          style={styles.editButton}
+          onPress={async () => {
+            await HapticService.buttonPress();
+            navigation.navigate('EditSubscription', { subscriptionId });
+          }}
+        >
+          <Ionicons name="create" size={20} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.container}>
-        {/* Header Card */}
-        <Card variant="primary" style={styles.headerCard}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerInfo}>
-              <Text style={styles.headerTitle}>{subscription.name}</Text>
+        {/* Info Card */}
+        <Card variant="primary" style={styles.infoCard}>
+          <View style={styles.infoHeader}>
+            <View style={styles.infoDetails}>
+              <Text style={styles.infoTitle}>{subscription.name}</Text>
               {subscription.description && (
-                <Text style={styles.headerDescription}>{subscription.description}</Text>
+                <Text style={styles.infoDescription}>{subscription.description}</Text>
               )}
             </View>
-            <View style={styles.headerActions}>
-              <TouchableOpacity onPress={() => navigation.navigate('EditSubscription', { subscriptionId })}>
-                <Ionicons name="create" size={20} color={colors.white} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleDelete}>
-                <Ionicons name="trash" size={20} color={colors.white} />
-              </TouchableOpacity>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>
+                {subscription.status === 'active' ? 'Ativa' : 
+                 subscription.status === 'paused' ? 'Pausada' : 'Cancelada'}
+              </Text>
             </View>
           </View>
 
@@ -333,26 +385,43 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
           </Card>
         )}
 
-        {/* Statistics */}
-        <View style={styles.statsGrid}>
-          <Card style={styles.statCard}>
-            <Ionicons name="card" size={24} color={colors.primary} />
-            <Text style={styles.statLabel}>Total Pago</Text>
-            <MoneyText value={totalPaid} size="medium" showSign={false} />
+        {/* Status deste mês */}
+        {!isPaidThisMonth && (
+          <Card style={styles.monthStatusCard}>
+            <View style={styles.pendingPayment}>
+              <View style={styles.pendingInfo}>
+                <Text style={styles.pendingLabel}>Valor a pagar este mês:</Text>
+                <MoneyText value={subscription.amount} size="large" showSign={false} style={styles.pendingAmount} />
+              </View>
+              <Button
+                title="Registrar Pagamento"
+                onPress={handleManualPayment}
+                variant="primary"
+                style={styles.payButton}
+              />
+            </View>
           </Card>
+        )}
 
-          <Card style={styles.statCard}>
-            <Ionicons name="calendar" size={24} color={colors.primary} />
-            <Text style={styles.statLabel}>Pagamentos</Text>
-            <Text style={styles.statValue}>{paymentCount}</Text>
-          </Card>
-
-          <Card style={styles.statCard}>
-            <Ionicons name="time" size={24} color={colors.primary} />
-            <Text style={styles.statLabel}>Ativa há</Text>
-            <Text style={styles.statValue}>{monthsSinceStart} meses</Text>
-          </Card>
-        </View>
+        {/* Resumo consolidado */}
+        <Card style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Total pago</Text>
+              <MoneyText value={totalPaid} size="medium" showSign={false} />
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Pagamentos</Text>
+              <Text style={styles.summaryValue}>{paymentCount}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Ativa há</Text>
+              <Text style={styles.summaryValue}>{monthsSinceStart} meses</Text>
+            </View>
+          </View>
+        </Card>
 
         {/* Recent Transactions */}
         {transactions.length > 0 && (
@@ -386,21 +455,52 @@ export const SubscriptionDetailScreen: React.FC<SubscriptionDetailScreenProps> =
           </View>
         )}
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <Button
-            title="Registrar Pagamento Manual"
-            onPress={handleManualPayment}
-            variant="outline"
-            style={styles.actionButton}
-          />
-        </View>
+        {/* Status de pagamento no final */}
+        {isPaidThisMonth && (
+          <View style={styles.bottomStatus}>
+            <Text style={styles.paidStatusText}>✓ Pagamento já realizado este mês</Text>
+          </View>
+        )}
+
       </ScrollView>
     </Container>
   );
 };
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
+    flex: 1,
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
   },
@@ -426,27 +526,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  headerCard: {
+  infoCard: {
     marginTop: 16,
   },
-  headerTop: {
+  infoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 20,
   },
-  headerInfo: {
+  infoDetails: {
     flex: 1,
   },
-  headerTitle: {
+  infoTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.white,
     marginBottom: 4,
   },
-  headerDescription: {
+  infoDescription: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.8)',
+  },
+  statusBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  statusText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
   },
   headerActions: {
     flexDirection: 'row',
@@ -616,11 +727,127 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+  // Novos estilos para UI melhorada
+  monthStatusCard: {
+    marginBottom: 16,
+  },
+  monthStatusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  monthInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  monthStatusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  statusBadgePaid: {
+    backgroundColor: colors.successLight,
+  },
+  statusBadgePending: {
+    backgroundColor: colors.warningLight,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  paidStatus: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    alignItems: 'center',
+  },
+  paidStatusText: {
+    fontSize: 14,
+    color: colors.success,
+    fontWeight: '500',
+  },
+  paymentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  paymentInfoText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  pendingPayment: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  pendingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  pendingLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  pendingAmount: {
+    color: colors.warning,
+  },
+  payButton: {
+    width: '100%',
+  },
+  summaryCard: {
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: colors.border,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
   actions: {
     padding: 16,
     marginBottom: 32,
   },
   actionButton: {
     width: '100%',
+  },
+  paidInfo: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+  },
+  bottomStatus: {
+    padding: 16,
+    marginBottom: 32,
+    alignItems: 'center',
   },
 }); 

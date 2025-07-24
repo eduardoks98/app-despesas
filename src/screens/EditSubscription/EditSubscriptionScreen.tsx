@@ -3,7 +3,8 @@ import {
   View, 
   Text, 
   TextInput, 
-  ScrollView, 
+  ScrollView,
+  FlatList, 
   StyleSheet,
   Alert,
   TouchableOpacity,
@@ -17,8 +18,10 @@ import { DatePicker } from '../../components/common/DatePicker';
 import { StorageService } from '../../services/storage/StorageService';
 import { ValidationService } from '../../services/validation/ValidationService';
 import { ErrorHandler } from '../../services/error/ErrorHandler';
+import { HapticService } from '../../services/haptic/HapticService';
 import { Subscription, Category } from '../../types';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { safeParseDate } from '../../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -47,6 +50,8 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [originalSubscription, setOriginalSubscription] = useState<Subscription | null>(null);
@@ -283,10 +288,41 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
 
   return (
     <Container>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Editar Assinatura</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Editar Assinatura</Text>
+        <TouchableOpacity 
+          style={styles.deleteButton}
+          onPress={async () => {
+            await HapticService.buttonPress();
+            handleDelete();
+          }}
+        >
+          <Ionicons name="trash" size={20} color={colors.white} />
+        </TouchableOpacity>
+      </View>
 
+      <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.form}>
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <Card style={styles.errorCard}>
+              <View style={styles.errorHeader}>
+                <Ionicons name="alert-circle" size={20} color={colors.danger} />
+                <Text style={styles.errorTitle}>Erros encontrados:</Text>
+              </View>
+              {validationErrors.map((error, index) => (
+                <Text key={index} style={styles.errorText}>• {error}</Text>
+              ))}
+            </Card>
+          )}
+
           {/* Nome */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Nome da Assinatura</Text>
@@ -305,9 +341,6 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
               placeholder="Ex: Netflix, Spotify"
               placeholderTextColor={colors.textSecondary}
             />
-            {validationErrors.filter(e => e.includes('Nome')).map((error, index) => (
-              <Text key={index} style={styles.errorText}>{error}</Text>
-            ))}
           </View>
 
           {/* Descrição */}
@@ -346,9 +379,6 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
                 keyboardType="decimal-pad"
               />
             </View>
-            {validationErrors.filter(e => e.includes('Valor')).map((error, index) => (
-              <Text key={index} style={styles.errorText}>{error}</Text>
-            ))}
             {formData.amount && (
               <View style={styles.amountPreview}>
                 <MoneyText 
@@ -364,22 +394,20 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
           {/* Categoria */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Categoria</Text>
-            <TouchableOpacity
-              style={styles.categorySelector}
+            <TouchableOpacity 
+              style={styles.categoryButton}
               onPress={() => setShowCategoryModal(true)}
             >
-              {formData.category ? (
-                <View style={styles.selectedCategory}>
-                  <Ionicons 
-                    name={getSelectedCategory()?.icon as any || 'folder-outline'} 
-                    size={20} 
-                    color={getSelectedCategory()?.color || colors.primary} 
-                  />
-                  <Text style={styles.categoryName}>{formData.category}</Text>
-                </View>
-              ) : (
-                <Text style={styles.placeholderText}>Selecione uma categoria</Text>
-              )}
+              <View style={styles.categoryContent}>
+                {getSelectedCategory() ? (
+                  <>
+                    <Ionicons name={getSelectedCategory()?.icon as any} size={20} color={getSelectedCategory()?.color || colors.primary} />
+                    <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Selecionar categoria</Text>
+                )}
+              </View>
               <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -404,83 +432,51 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
               placeholderTextColor={colors.textSecondary}
               keyboardType="numeric"
             />
-            {validationErrors.filter(e => e.includes('Dia')).map((error, index) => (
-              <Text key={index} style={styles.errorText}>{error}</Text>
-            ))}
           </View>
 
           {/* Status */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Status</Text>
-            <View style={styles.statusButtons}>
-              {[
-                { key: 'active', label: 'Ativa' },
-                { key: 'paused', label: 'Pausada' },
-                { key: 'cancelled', label: 'Cancelada' },
-              ].map(status => (
-                <TouchableOpacity
-                  key={status.key}
-                  style={[
-                    styles.statusButton,
-                    formData.status === status.key && styles.statusButtonActive,
-                    formData.status === status.key && { backgroundColor: getStatusColor(status.key) }
-                  ]}
-                  onPress={() => setFormData(prev => ({ 
-                    ...prev, 
-                    status: status.key as any 
-                  }))}
-                >
-                  <Ionicons 
-                    name={getStatusIcon(status.key) as any} 
-                    size={16} 
-                    color={formData.status === status.key ? colors.white : getStatusColor(status.key)} 
-                  />
-                  <Text style={[
-                    styles.statusButtonText,
-                    formData.status === status.key && styles.statusButtonTextActive
-                  ]}>
-                    {status.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowStatusModal(true)}
+            >
+              <View style={styles.categoryContent}>
+                <Ionicons 
+                  name={getStatusIcon(formData.status) as any} 
+                  size={20} 
+                  color={getStatusColor(formData.status)} 
+                />
+                <Text style={styles.categoryText}>
+                  {formData.status === 'active' ? 'Ativa' : 
+                   formData.status === 'paused' ? 'Pausada' : 'Cancelada'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
           {/* Método de pagamento */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Método de Pagamento</Text>
-            <View style={styles.paymentMethods}>
-              {[
-                { key: 'credit', label: 'Cartão de Crédito' },
-                { key: 'debit', label: 'Cartão de Débito' },
-                { key: 'pix', label: 'PIX' },
-                { key: 'boleto', label: 'Boleto' },
-              ].map(method => (
-                <TouchableOpacity
-                  key={method.key}
-                  style={[
-                    styles.paymentMethod,
-                    formData.paymentMethod === method.key && styles.paymentMethodActive
-                  ]}
-                  onPress={() => setFormData(prev => ({ 
-                    ...prev, 
-                    paymentMethod: method.key as any 
-                  }))}
-                >
-                  <Ionicons 
-                    name={getPaymentMethodIcon(method.key) as any} 
-                    size={16} 
-                    color={formData.paymentMethod === method.key ? colors.white : colors.textSecondary} 
-                  />
-                  <Text style={[
-                    styles.paymentMethodText,
-                    formData.paymentMethod === method.key && styles.paymentMethodTextActive
-                  ]}>
-                    {method.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowPaymentMethodModal(true)}
+            >
+              <View style={styles.categoryContent}>
+                <Ionicons 
+                  name={getPaymentMethodIcon(formData.paymentMethod) as any} 
+                  size={20} 
+                  color={colors.primary} 
+                />
+                <Text style={styles.categoryText}>
+                  {formData.paymentMethod === 'credit' ? 'Cartão de Crédito' :
+                   formData.paymentMethod === 'debit' ? 'Cartão de Débito' :
+                   formData.paymentMethod === 'pix' ? 'PIX' : 'Boleto'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
           {/* Data de início */}
@@ -492,71 +488,162 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
             />
           </View>
 
-          <View style={styles.buttonGroup}>
-            <Button 
-              title={isLoading ? "Salvando..." : "Salvar"}
-              onPress={handleSave}
-              style={styles.saveButton}
-              disabled={isLoading}
-            />
-            
-            <Button 
-              title="Excluir Assinatura"
-              onPress={handleDelete}
-              variant="outline"
-              style={[styles.deleteButton, { borderColor: colors.danger }]}
-              textStyle={{ color: colors.danger }}
-              disabled={isLoading}
-            />
-          </View>
         </View>
       </ScrollView>
 
-      {/* Modal de categorias */}
+      {/* Fixed Bottom Button Container */}
+      <View style={styles.fixedBottomContainer}>
+        <View style={styles.buttonRow}>
+          <Button 
+            title="Cancelar"
+            onPress={() => navigation.goBack()}
+            style={[styles.button, styles.cancelButton]}
+            textStyle={styles.cancelButtonText}
+          />
+          <Button 
+            title={isLoading ? "Salvando..." : "Salvar"}
+            onPress={handleSave}
+            style={[styles.button, styles.saveButton]}
+            disabled={isLoading}
+          />
+        </View>
+      </View>
+
+      {/* Category Selection Modal */}
       <Modal
         visible={showCategoryModal}
-        transparent
         animationType="slide"
-        onRequestClose={() => setShowCategoryModal(false)}
+        presentationStyle="pageSheet"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
             <Text style={styles.modalTitle}>Selecionar Categoria</Text>
-            
-            <ScrollView style={styles.categoriesList}>
-              {getFilteredCategories().map(category => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.categoryItem,
-                    formData.category === category.name && styles.categoryItemSelected
-                  ]}
-                  onPress={() => {
-                    setFormData(prev => ({ ...prev, category: category.name }));
-                    setShowCategoryModal(false);
-                  }}
-                >
-                  <Ionicons name={category.icon as any} size={24} color={category.color || colors.primary} />
-                  <Text style={[
-                    styles.categoryItemName,
-                    formData.category === category.name && styles.categoryItemNameSelected
-                  ]}>
-                    {category.name}
-                  </Text>
-                  {formData.category === category.name && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Button
-              title="Cancelar"
-              onPress={() => setShowCategoryModal(false)}
-              variant="outline"
-              style={styles.modalButton}
-            />
+            <View style={styles.modalSpacer} />
           </View>
+
+          <FlatList
+            data={getFilteredCategories()}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.category === item.name && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData(prev => ({ ...prev, category: item.name }));
+                  setShowCategoryModal(false);
+                  HapticService.buttonPress();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Ionicons name={item.icon as any} size={24} color={item.color || colors.primary} />
+                  <Text style={styles.categoryItemName}>{item.name}</Text>
+                </View>
+                {formData.category === item.name && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
+
+      {/* Payment Method Selection Modal */}
+      <Modal
+        visible={showPaymentMethodModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowPaymentMethodModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Método de Pagamento</Text>
+            <View style={styles.modalSpacer} />
+          </View>
+
+          <FlatList
+            data={[
+              { key: 'credit', label: 'Cartão de Crédito', icon: 'card' },
+              { key: 'debit', label: 'Cartão de Débito', icon: 'card' },
+              { key: 'pix', label: 'PIX', icon: 'flash' },
+              { key: 'boleto', label: 'Boleto', icon: 'document-text' },
+            ]}
+            keyExtractor={(item) => item.key}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.paymentMethod === item.key && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData(prev => ({ ...prev, paymentMethod: item.key as any }));
+                  setShowPaymentMethodModal(false);
+                  HapticService.buttonPress();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Ionicons name={item.icon as any} size={24} color={colors.primary} />
+                  <Text style={styles.categoryItemName}>{item.label}</Text>
+                </View>
+                {formData.paymentMethod === item.key && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
+
+      {/* Status Selection Modal */}
+      <Modal
+        visible={showStatusModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Status da Assinatura</Text>
+            <View style={styles.modalSpacer} />
+          </View>
+
+          <FlatList
+            data={[
+              { key: 'active', label: 'Ativa', icon: 'checkmark-circle' },
+              { key: 'paused', label: 'Pausada', icon: 'pause-circle' },
+              { key: 'cancelled', label: 'Cancelada', icon: 'close-circle' },
+            ]}
+            keyExtractor={(item) => item.key}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.status === item.key && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData(prev => ({ ...prev, status: item.key as any }));
+                  setShowStatusModal(false);
+                  HapticService.buttonPress();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Ionicons name={item.icon as any} size={24} color={getStatusColor(item.key)} />
+                  <Text style={styles.categoryItemName}>{item.label}</Text>
+                </View>
+                {formData.status === item.key && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
         </View>
       </Modal>
     </Container>
@@ -564,22 +651,44 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
 };
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40,
+    height: 40,
+  },
   container: {
     flex: 1,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 24,
-    color: colors.text,
-  },
   form: {
     paddingHorizontal: 16,
+    paddingTop: 20,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
@@ -625,7 +734,7 @@ const styles = StyleSheet.create({
   expensePreview: {
     color: colors.text,
   },
-  categorySelector: {
+  categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -635,74 +744,18 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: colors.surface,
   },
-  selectedCategory: {
+  categoryContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  categoryIcon: {
-    fontSize: 20,
-  },
-  categoryName: {
+  categoryText: {
     fontSize: 16,
     color: colors.text,
   },
-  placeholderText: {
+  categoryPlaceholder: {
     fontSize: 16,
     color: colors.textSecondary,
-  },
-  statusButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  statusButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 8,
-  },
-  statusButtonActive: {
-    borderColor: colors.primary,
-  },
-  statusButtonText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  statusButtonTextActive: {
-    color: colors.white,
-  },
-  paymentMethods: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  paymentMethod: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 8,
-  },
-  paymentMethodActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  paymentMethodText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  paymentMethodTextActive: {
-    color: colors.white,
   },
   buttonGroup: {
     marginBottom: 100,
@@ -712,66 +765,107 @@ const styles = StyleSheet.create({
     // Usar estilos padrão do Button
   },
   deleteButton: {
-    // Usar estilos padrão do Button com variant outline
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxHeight: '70%',
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modalCancel: {
+    fontSize: 16,
+    color: colors.primary,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.text,
-    marginBottom: 20,
-    textAlign: 'center',
   },
-  categoriesList: {
-    maxHeight: 300,
+  modalSpacer: {
+    width: 60,
   },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   categoryItemSelected: {
     backgroundColor: colors.primaryLight,
   },
-  categoryItemIcon: {
-    fontSize: 20,
-    marginRight: 12,
+  categoryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   categoryItemName: {
-    flex: 1,
     fontSize: 16,
     color: colors.text,
-  },
-  categoryItemNameSelected: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  modalButton: {
-    marginTop: 16,
   },
   inputError: {
     borderColor: colors.danger,
     borderWidth: 2,
+  },
+  fixedBottomContainer: {
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 34,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  button: {
+    flex: 1,
+  },
+  cancelButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
+    color: colors.text,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
   },
   errorText: {
     fontSize: 12,
     color: colors.danger,
     marginTop: 4,
     marginLeft: 4,
+  },
+  errorCard: {
+    backgroundColor: colors.errorLight,
+    marginBottom: 16,
+  },
+  errorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.danger,
   },
 });

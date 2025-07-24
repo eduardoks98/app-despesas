@@ -17,8 +17,10 @@ import { MoneyText } from '../../components/common/MoneyText';
 import { Button } from '../../components/common/Button';
 import { ProgressBar } from '../../components/common/ProgressBar';
 import { StorageService } from '../../services/storage/StorageService';
+import { HapticService } from '../../services/haptic/HapticService';
 import { Installment, Transaction } from '../../types';
 import { colors } from '../../styles/colors';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 
 interface InstallmentDetailScreenProps {
   route: {
@@ -151,36 +153,6 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
     }
   };
 
-  const handleDeleteInstallment = () => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Deseja realmente excluir este parcelamento? Todas as transações relacionadas serão removidas.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Excluir', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Remover transações relacionadas
-              const allTransactions = await StorageService.getTransactions();
-              const filtered = allTransactions.filter(t => t.installmentId !== installmentId);
-              await StorageService.setTransactions(filtered);
-
-              // Remover parcelamento
-              const allInstallments = await StorageService.getInstallments();
-              const filteredInstallments = allInstallments.filter(i => i.id !== installmentId);
-              await StorageService.setInstallments(filteredInstallments);
-
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert('Erro', 'Erro ao excluir parcelamento');
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const handleUndoPayment = async (installmentNumber: number) => {
     Alert.alert(
@@ -349,29 +321,43 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
 
   return (
     <Container>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Detalhes do Parcelamento</Text>
+        <TouchableOpacity 
+          style={styles.editButton}
+          onPress={async () => {
+            await HapticService.buttonPress();
+            navigation.navigate('EditInstallment', { installmentId: installment.id });
+          }}
+        >
+          <Ionicons name="create" size={20} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header Card */}
-        <Card variant="primary" style={styles.headerCard}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerInfo}>
-              <Text style={styles.headerTitle}>{installment.description}</Text>
-              <Text style={styles.headerStore}>{installment.store}</Text>
+        {/* Info Card */}
+        <Card variant="primary" style={styles.infoCard}>
+          <View style={styles.infoHeader}>
+            <View style={styles.infoDetails}>
+              <Text style={styles.infoTitle}>{installment.description}</Text>
+              <Text style={styles.infoStore}>{installment.store}</Text>
             </View>
-            <View style={styles.headerActions}>
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('EditInstallment', { installmentId: installment.id })}
-                style={styles.actionButton}
-              >
-                <Ionicons name="create" size={20} color={colors.white} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleDeleteInstallment} style={styles.actionButton}>
-                <Ionicons name="trash" size={20} color={colors.white} />
-              </TouchableOpacity>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>
+                {installment.status === 'completed' ? 'Quitado' : 'Ativo'}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.headerAmounts}>
-            <View>
+          <View style={styles.amountsRow}>
+            <View style={styles.amountItem}>
               <Text style={styles.amountLabel}>Valor Total</Text>
               <MoneyText 
                 value={installment.totalAmount} 
@@ -380,7 +366,16 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
                 style={styles.whiteText}
               />
             </View>
-            <View style={styles.rightAlign}>
+            <View style={styles.amountItem}>
+              <Text style={styles.amountLabel}>Por Parcela</Text>
+              <MoneyText 
+                value={installment.installmentValue} 
+                size="large" 
+                showSign={false}
+                style={styles.whiteText}
+              />
+            </View>
+            <View style={styles.amountItem}>
               <Text style={styles.amountLabel}>Restante</Text>
               <MoneyText 
                 value={remainingAmount} 
@@ -391,23 +386,6 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
             </View>
           </View>
 
-          {/* Informações de Data */}
-          <View style={styles.headerDates}>
-            <View style={styles.dateInfo}>
-              <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.dateLabel}>Comprado em {formatDate(installment.startDate)}</Text>
-            </View>
-            <View style={styles.dateInfo}>
-              <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.dateLabel}>
-                {installment.status === 'completed' ? 
-                  `Concluído em ${formatDate(installment.endDate)}` : 
-                  `Vence em ${formatDate(installment.endDate)}`
-                }
-              </Text>
-            </View>
-          </View>
-
           <ProgressBar 
             progress={progress} 
             style={styles.progressBar}
@@ -415,33 +393,15 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
             backgroundColor="rgba(255,255,255,0.3)"
           />
 
-          <View style={styles.headerFooter}>
-            <Text style={styles.headerFooterText}>
+          <View style={styles.progressInfo}>
+            <Text style={styles.progressText}>
               {installment.paidInstallments.length} de {installment.totalInstallments} parcelas pagas
             </Text>
-            <Text style={styles.headerFooterText}>
-              {installment.status === 'completed' ? 'Concluído' : 
-               `${installment.totalInstallments - installment.paidInstallments.length} restantes`}
+            <Text style={styles.progressText}>
+              {formatDate(installment.startDate)} - {formatDate(installment.endDate)}
             </Text>
           </View>
         </Card>
-
-        {/* Status Summary */}
-        <View style={styles.summaryCards}>
-          <Card style={styles.summaryCard}>
-            <Ionicons name="card" size={24} color={colors.primary} />
-            <Text style={styles.summaryLabel}>Valor da Parcela</Text>
-            <MoneyText value={installment.installmentValue} size="medium" showSign={false} />
-          </Card>
-
-          <Card style={styles.summaryCard}>
-            <Ionicons name="calendar" size={24} color={colors.primary} />
-            <Text style={styles.summaryLabel}>Status</Text>
-            <Text style={styles.summaryValue}>
-              {installment.status === 'completed' ? 'Quitado' : 'Ativo'}
-            </Text>
-          </Card>
-        </View>
 
         {/* Installments List */}
         <View style={styles.section}>
@@ -512,6 +472,39 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
 };
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: colors.white,
+    textAlign: 'center',
+    flex: 1,
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
   },
@@ -520,10 +513,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerCard: {
+  infoCard: {
     marginTop: 16,
   },
-  headerTop: {
+  infoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -542,18 +535,47 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerInfo: {
+  infoDetails: {
     flex: 1,
   },
-  headerTitle: {
+  infoTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.white,
     marginBottom: 4,
   },
-  headerStore: {
+  infoStore: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
+  },
+  statusBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  statusText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  amountsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  amountItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  progressInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  progressText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
   },
   headerAmounts: {
     flexDirection: 'row',
