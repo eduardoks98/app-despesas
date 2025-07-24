@@ -120,7 +120,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             transaction.category = `Parcela ${parcelaNumero}/${installment.totalInstallments} • ${installment.store}`;
             icon = 'card';
             color = colors.warning;
-            type = 'installment';
+            // CORREÇÃO: Manter como 'transaction' mas com visual de installment
+            // O navigation vai usar transaction.installmentId automaticamente
+            type = 'transaction';
           }
         }
         // Se é pagamento de assinatura
@@ -134,7 +136,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             transaction.category = `Assinatura • ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`;
             icon = 'repeat';
             color = colors.info;
-            type = 'subscription';
+            // CORREÇÃO: Manter como 'transaction' mas com visual de subscription
+            // O navigation vai usar transaction.subscriptionId automaticamente
+            type = 'transaction';
           }
         }
 
@@ -152,7 +156,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       });
 
     // Adicionar próximas parcelas não pagas (só para vencimentos)
-    installments.forEach(installment => {
+    const activeInstallmentsForTimeline = installments.filter(installment => installment.status === 'active');
+    
+    activeInstallmentsForTimeline.forEach(installment => {
       const startDate = new Date(installment.startDate);
       
       for (let i = 1; i <= installment.totalInstallments; i++) {
@@ -250,13 +256,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       case 'transaction':
         const transaction = item.originalData as Transaction;
         if (transaction.installmentId) {
+          console.log(`🎯 Navigating to installment: ${transaction.installmentId}`);
           navigation.navigate('InstallmentDetail', { installmentId: transaction.installmentId });
+        } else if (transaction.subscriptionId) {
+          navigation.navigate('SubscriptionDetail', { subscriptionId: transaction.subscriptionId });
         } else {
           navigation.navigate('EditTransaction', { transactionId: transaction.id });
         }
         break;
       case 'installment':
         const installment = item.originalData as Installment;
+        console.log(`🎯 Navigating to installment: ${installment.id}`);
         navigation.navigate('InstallmentDetail', { installmentId: installment.id });
         break;
       case 'subscription':

@@ -54,6 +54,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
   const [customEndDate, setCustomEndDate] = useState(new Date());
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [monthlyData, setMonthlyData] = useState<MonthData[]>([]);
+  const [allMonthsData, setAllMonthsData] = useState<MonthData[]>([]);
+  const [chartScrollOffset, setChartScrollOffset] = useState(0);
+  const [visibleMonthsRange, setVisibleMonthsRange] = useState({ start: 0, end: 6 });
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [incomeCategoryData, setIncomeCategoryData] = useState<CategoryData[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -74,6 +77,50 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       generateReports();
     }
   }, [transactions, installments, subscriptions, selectedPeriod, currentMonth, customStartDate, customEndDate]);
+
+  // Efeito para configurar a posição inicial do gráfico (mês atual com mais contexto histórico)
+  useEffect(() => {
+    if (monthlyData.length > 0) {
+      // Encontrar o índice do mês atual
+      const today = new Date();
+      const currentMonthName = today.toLocaleDateString('pt-BR', { month: 'short' });
+      const currentYear = today.getFullYear();
+      
+      const currentMonthIndex = monthlyData.findIndex(month => 
+        month.month.toLowerCase() === currentMonthName.toLowerCase() && 
+        month.year === currentYear
+      );
+      
+      console.log('📅 Posicionando gráfico:', {
+        currentMonthName,
+        currentYear,
+        currentMonthIndex,
+        totalMonths: monthlyData.length
+      });
+      
+      if (currentMonthIndex !== -1) {
+        // Posicionar para mostrar mais contexto antes do mês atual (4-5 meses antes, 1-2 depois)
+        const idealStart = Math.max(0, currentMonthIndex - 5);
+        const maxStart = Math.max(0, monthlyData.length - 7);
+        const initialOffset = Math.min(idealStart, maxStart);
+        
+        console.log('🎯 Posicionando com mais contexto histórico:', { 
+          currentMonthIndex, 
+          initialOffset,
+          monthsBefore: currentMonthIndex - initialOffset,
+          monthsAfter: Math.min(initialOffset + 6, monthlyData.length - 1) - currentMonthIndex
+        });
+        setChartScrollOffset(initialOffset);
+        setVisibleMonthsRange({ start: initialOffset, end: Math.min(initialOffset + 6, monthlyData.length - 1) });
+      } else {
+        // Se não encontrar o mês atual, posicionar próximo ao final (meses mais recentes)
+        const initialOffset = Math.max(0, monthlyData.length - 7);
+        console.log('❌ Mês atual não encontrado, posicionando no final:', initialOffset);
+        setChartScrollOffset(initialOffset);
+        setVisibleMonthsRange({ start: initialOffset, end: Math.min(initialOffset + 6, monthlyData.length - 1) });
+      }
+    }
+  }, [monthlyData.length]);
 
   const loadData = async (isRefresh = false) => {
     if (!isRefresh) {
@@ -170,12 +217,32 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
   };
 
   const generateMonthlyData = () => {
-    const monthsData: MonthData[] = [];
+    // Encontrar o range completo de dados incluindo parcelamentos futuros
+    const allDates = transactions.map(t => new Date(t.date));
+    const earliestDate = allDates.length > 0 ? new Date(Math.min(...allDates.map(d => d.getTime()))) : subMonths(new Date(), 12);
     
-    // Gerar 7 meses: 3 anteriores, atual, 3 futuros
-    for (let i = -3; i <= 3; i++) {
-      const date = new Date();
-      date.setMonth(date.getMonth() + i);
+    // Encontrar a data final baseada nos parcelamentos mais longos
+    let latestInstallmentDate = new Date();
+    installments.forEach(inst => {
+      const startDate = new Date(inst.startDate);
+      const endDate = addMonths(startDate, inst.totalInstallments);
+      if (endDate > latestInstallmentDate) {
+        latestInstallmentDate = endDate;
+      }
+    });
+    
+    // Expandir range para incluir todos os parcelamentos + pelo menos 3 meses antes do atual
+    const today = new Date();
+    const earliestWithBuffer = new Date(Math.min(earliestDate.getTime(), subMonths(today, 3).getTime()));
+    const startDate = new Date(earliestWithBuffer.getFullYear(), earliestWithBuffer.getMonth(), 1);
+    const endDate = addMonths(Math.max(latestInstallmentDate, today), 6); // Pelo menos 6 meses no futuro
+    
+    const monthsData: MonthData[] = [];
+    let currentDate = new Date(startDate);
+    
+    // Gerar dados para todos os meses do range
+    while (currentDate <= endDate) {
+      const date = new Date(currentDate);
       
       const month = date.toLocaleDateString('pt-BR', { month: 'short' });
       const year = date.getFullYear();
@@ -197,24 +264,11 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         .filter(t => t.type === 'expense' && !t.installmentId && !t.subscriptionId)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      // Calcular apenas PAGAMENTOS efetivos de parcelamentos no mês
-      let monthInstallmentValue = installments
-        .reduce((sum, inst) => {
-          const startDate = new Date(inst.startDate);
-          
-          // Para cada parcela paga, verificar se foi paga neste mês
-          return sum + inst.paidInstallments.reduce((paidSum, paidNumber) => {
-            const paidDate = new Date(startDate);
-            paidDate.setMonth(paidDate.getMonth() + paidNumber - 1);
-            
-            // Se a parcela foi paga neste mês específico
-            if (paidDate.getMonth() === date.getMonth() && 
-                paidDate.getFullYear() === year) {
-              return paidSum + inst.installmentValue;
-            }
-            return paidSum;
-          }, 0);
-        }, 0);
+      // Calcular pagamentos de parcelamentos usando as TRANSAÇÕES criadas
+      // CORREÇÃO: Usar transações com installmentId para contabilizar parcelas pagas
+      let monthInstallmentValue = monthTransactions
+        .filter(t => t.type === 'expense' && t.installmentId)
+        .reduce((sum, t) => sum + t.amount, 0);
       
       // Adicionar pagamentos de assinaturas do mês (se registradas como transações)
       let monthSubscriptionValue = monthTransactions
@@ -274,9 +328,23 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         installmentValue: monthInstallmentValue,
         subscriptionValue: monthSubscriptionValue,
       });
+      
+      // Avançar para o próximo mês
+      currentDate = addMonths(currentDate, 1);
     }
     
-    setMonthlyData(monthsData);
+    console.log('📊 Total meses gerados:', monthsData.length);
+    console.log('📊 Range:', startDate.toLocaleDateString(), 'até', endDate.toLocaleDateString());
+    
+    // Filtrar apenas meses com dados (transações, receitas, parcelamentos ou assinaturas)
+    const monthsWithData = monthsData.filter(month => 
+      month.income > 0 || month.expenses > 0 || month.transactions > 0 || 
+      month.installmentValue > 0 || month.subscriptionValue > 0
+    );
+    
+    console.log('📊 Meses com dados:', monthsWithData.length);
+    setAllMonthsData(monthsData);
+    setMonthlyData(monthsWithData.length > 0 ? monthsWithData : monthsData.slice(-12)); // Fallback para últimos 12 meses
   };
 
   const generateCategoryData = () => {
@@ -312,11 +380,39 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     });
 
     // Agrupar por categoria (apenas despesas para o gráfico)
-    const expenseTransactions = periodTransactions.filter(t => t.type === 'expense');
+    // CORREÇÃO: Incluir TODAS as transações de despesa, incluindo parcelas pagas
+    const expenseTransactions = periodTransactions.filter(t => 
+      t.type === 'expense'
+    );
+    
+    console.log('💰 Analisando despesas por categoria:', {
+      periodo: selectedPeriod,
+      totalDespesas: expenseTransactions.length,
+      currentMonth: currentMonth.toISOString(),
+      transacoesRegulares: expenseTransactions.filter(t => !t.installmentId && !t.subscriptionId).length,
+      parcelasPagas: expenseTransactions.filter(t => t.installmentId).length,
+      assinaturasPagas: expenseTransactions.filter(t => t.subscriptionId).length
+    });
     
     expenseTransactions.forEach(transaction => {
-      // Usar a categoria original da transação
-      let category = transaction.category || 'Outros';
+      // Determinar categoria baseada no tipo de transação
+      let category: string;
+      
+      if (transaction.installmentId) {
+        // Para parcelas pagas, usar a categoria do parcelamento
+        const relatedInstallment = installments.find(i => i.id === transaction.installmentId);
+        category = relatedInstallment?.category || 'Parcelamentos';
+        console.log(`💳 Parcela paga: ${category} - R$ ${transaction.amount} - ${transaction.description}`);
+      } else if (transaction.subscriptionId) {
+        // Para assinaturas pagas, usar a categoria da assinatura
+        const relatedSubscription = subscriptions.find(s => s.id === transaction.subscriptionId);
+        category = relatedSubscription?.category || 'Assinaturas';
+        console.log(`🔄 Assinatura paga: ${category} - R$ ${transaction.amount} - ${transaction.description}`);
+      } else {
+        // Transação regular
+        category = transaction.category || 'Outros';
+        console.log(`💸 Transação regular: ${category} - R$ ${transaction.amount} - ${transaction.description}`);
+      }
       
       const existing = categoryMap.get(category) || {
         amount: 0,
@@ -331,58 +427,66 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       });
     });
 
-    // Adicionar previsões de parcelamentos futuros por categoria
-    if (isCurrentOrFuture) {
-      installments
-        .filter(inst => inst.status === 'active')
-        .forEach(inst => {
-          const startDate = new Date(inst.startDate);
+    // Adicionar parcelamentos por categoria
+    // CORREÇÃO: Incluir todos os parcelamentos independente do status para análise completa
+    installments
+      .forEach(inst => {
+        const startDate = new Date(inst.startDate);
+        
+        for (let i = 1; i <= inst.totalInstallments; i++) {
+          const dueDate = new Date(startDate);
+          dueDate.setMonth(dueDate.getMonth() + i - 1);
           
-          for (let i = 1; i <= inst.totalInstallments; i++) {
-            if (!inst.paidInstallments.includes(i)) {
-              const dueDate = new Date(startDate);
-              dueDate.setMonth(dueDate.getMonth() + i - 1);
+          // Verificar se a parcela está no período analisado
+          let isInPeriod = false;
+          switch (selectedPeriod) {
+            case 'month':
+              isInPeriod = dueDate.getMonth() === currentMonth.getMonth() && 
+                          dueDate.getFullYear() === currentMonth.getFullYear();
+              break;
+            case 'quarter':
+              const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
+              const dueQuarter = Math.floor(dueDate.getMonth() / 3);
+              isInPeriod = dueQuarter === selectedQuarter && 
+                          dueDate.getFullYear() === currentMonth.getFullYear();
+              break;
+            case 'year':
+              isInPeriod = dueDate.getFullYear() === currentMonth.getFullYear();
+              break;
+            case 'custom':
+              isInPeriod = dueDate >= customStartDate && dueDate <= customEndDate;
+              break;
+          }
+          
+          if (isInPeriod) {
+            const category = inst.category || 'Parcelamentos';
+            const isPaid = inst.paidInstallments.includes(i);
+            
+            // CORREÇÃO: Só contar parcelas PENDENTES (não pagas)
+            // Parcelas pagas já foram contadas através das transações acima
+            if (!isPaid) {
+              console.log(`💳 Parcela pendente ${i}/${inst.totalInstallments}: ${category} - R$ ${inst.installmentValue} - ${inst.description}`);
               
-              // Verificar se a parcela está no período analisado
-              let isInPeriod = false;
-              switch (selectedPeriod) {
-                case 'month':
-                  isInPeriod = dueDate.getMonth() === currentMonth.getMonth() && 
-                              dueDate.getFullYear() === currentMonth.getFullYear();
-                  break;
-                case 'quarter':
-                  const selectedQuarter = Math.floor(currentMonth.getMonth() / 3);
-                  const dueQuarter = Math.floor(dueDate.getMonth() / 3);
-                  isInPeriod = dueQuarter === selectedQuarter && 
-                              dueDate.getFullYear() === currentMonth.getFullYear();
-                  break;
-                case 'year':
-                  isInPeriod = dueDate.getFullYear() === currentMonth.getFullYear();
-                  break;
-                case 'custom':
-                  isInPeriod = dueDate >= customStartDate && dueDate <= customEndDate;
-                  break;
-              }
+              const existing = categoryMap.get(category) || {
+                amount: 0,
+                transactions: 0,
+                type: 'expense' as const
+              };
               
-              if (isInPeriod) {
-                const category = inst.category || 'Parcelamentos';
-                const existing = categoryMap.get(category) || {
-                  amount: 0,
-                  transactions: 0,
-                  type: 'expense' as const
-                };
-                
-                categoryMap.set(category, {
-                  amount: existing.amount + inst.installmentValue,
-                  transactions: existing.transactions + 1,
-                  type: 'expense'
-                });
-              }
+              categoryMap.set(category, {
+                amount: existing.amount + inst.installmentValue,
+                transactions: existing.transactions + 1,
+                type: 'expense'
+              });
+            } else {
+              console.log(`💳 Parcela paga ${i}/${inst.totalInstallments}: ${category} - R$ ${inst.installmentValue} - ${inst.description} (já contada via transação)`);
             }
           }
-        });
+        }
+      });
 
-      // Adicionar previsões de assinaturas futuras por categoria
+    // Adicionar previsões de assinaturas por categoria (apenas para períodos atuais/futuros)
+    if (isCurrentOrFuture) {
       subscriptions
         .filter(sub => sub.status === 'active')
         .forEach(sub => {
@@ -428,6 +532,8 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
           
           if (subscriptionAmount > 0) {
             const category = sub.category || 'Assinaturas';
+            console.log(`📱 Assinatura: ${category} - R$ ${subscriptionAmount} - ${sub.name} (${subscriptionCount} meses)`);
+            
             const existing = categoryMap.get(category) || {
               amount: 0,
               transactions: 0,
@@ -445,6 +551,13 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
 
     const totalExpenses = Array.from(categoryMap.values())
       .reduce((sum, cat) => sum + cat.amount, 0);
+
+    // Log final das categorias para debug
+    console.log('📊 Resumo final por categoria:');
+    categoryMap.forEach((data, category) => {
+      console.log(`  ${category}: R$ ${data.amount.toFixed(2)} (${data.transactions} transações)`);
+    });
+    console.log(`  Total geral: R$ ${totalExpenses.toFixed(2)}`);
 
     const categoryColors = [
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
@@ -523,7 +636,10 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     });
 
     // Agrupar por categoria (apenas receitas)
-    const incomeTransactions = periodTransactions.filter(t => t.type === 'income');
+    // Excluir transações que têm subscriptionId para evitar dupla contagem
+    const incomeTransactions = periodTransactions.filter(t => 
+      t.type === 'income' && !t.subscriptionId
+    );
     
     incomeTransactions.forEach(transaction => {
       // Usar a categoria original da transação
@@ -755,84 +871,141 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     };
   };
 
-  const renderSimpleChart = (data: MonthData[]) => {
-    const maxValue = Math.max(...data.map(d => Math.max(d.income, d.expenses)));
-    const chartHeight = 120;
-    const chartWidth = Dimensions.get('window').width - 32;
-    const barWidth = (chartWidth - 60) / data.length;
+  const getMonthIndexFromName = (monthName: string): number => {
+    const monthNames = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const index = monthNames.findIndex(name => monthName.toLowerCase().includes(name));
+    return index !== -1 ? index : new Date().getMonth();
+  };
 
-    const handleBarPress = async (item: MonthData, index: number) => {
+  const navigateChart = (direction: 'left' | 'right') => {
+    let newOffset;
+    if (direction === 'left') {
+      newOffset = Math.max(0, chartScrollOffset - 3);
+    } else {
+      newOffset = Math.min(Math.max(0, monthlyData.length - 7), chartScrollOffset + 3);
+    }
+    
+    setChartScrollOffset(newOffset);
+    setVisibleMonthsRange({ start: newOffset, end: Math.min(newOffset + 6, monthlyData.length - 1) });
+    
+    HapticService.buttonPress();
+  };
+
+  const renderSimpleChart = (data: MonthData[]) => {
+    // Mostrar apenas uma janela de 7 meses por vez
+    const visibleData = data.slice(visibleMonthsRange.start, visibleMonthsRange.end + 1);
+    const maxValue = Math.max(...visibleData.map(d => Math.max(d.income, d.expenses)), 1);
+    const chartHeight = 90;
+    const chartWidth = Dimensions.get('window').width - 80; // Espaço para botões
+    const barWidth = Math.max(40, (chartWidth - 60) / visibleData.length);
+
+    const handleBarPress = async (item: MonthData, localIndex: number) => {
       await HapticService.buttonPress();
       
-      // Calcular qual mês foi clicado baseado no índice (centro é atual)
-      const monthOffset = index - 3; // -3, -2, -1, 0, 1, 2, 3
-      const targetDate = new Date();
-      targetDate.setMonth(targetDate.getMonth() + monthOffset);
+      // Criar uma data baseada no ano e mês da barra clicada
+      const monthIndex = getMonthIndexFromName(item.month);
+      const targetDate = new Date(item.year, monthIndex, 1);
       
       setSelectedPeriod('month');
       setCurrentMonth(targetDate);
     };
 
+    const canNavigateLeft = chartScrollOffset > 0;
+    const canNavigateRight = chartScrollOffset < Math.max(0, data.length - 7);
+
     return (
       <View style={styles.chartContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chartScrollContainer}
-        >
-          <View style={styles.chart}>
-            {data.map((item, index) => {
-              const incomeHeight = maxValue > 0 ? (item.income / maxValue) * chartHeight : 0;
-              const expenseHeight = maxValue > 0 ? (item.expenses / maxValue) * chartHeight : 0;
-              
-              // Verificar se é o mês atual selecionado
-              const monthOffset = index - 3;
-              const targetDate = new Date();
-              targetDate.setMonth(targetDate.getMonth() + monthOffset);
-              const isCurrentMonth = selectedPeriod === 'month' && 
-                currentMonth.getMonth() === targetDate.getMonth() && 
-                currentMonth.getFullYear() === targetDate.getFullYear();
-
-              return (
-                <TouchableOpacity 
-                  key={index} 
-                  style={[
-                    styles.barGroup, 
-                    { width: Math.max(barWidth, 60) },
-                    isCurrentMonth && styles.barGroupSelected
-                  ]}
-                  onPress={() => handleBarPress(item, index)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.bars}>
-                    <View
-                      style={[
-                        styles.bar,
-                        styles.incomeBar,
-                        { height: incomeHeight },
-                        isCurrentMonth && styles.barSelected
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.bar,
-                        styles.expenseBar,
-                        { height: expenseHeight },
-                        isCurrentMonth && styles.barSelected
-                      ]}
-                    />
-                  </View>
-                  <Text style={[
-                    styles.barLabel,
-                    isCurrentMonth && styles.barLabelSelected
-                  ]}>
-                    {item.month}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+        {/* Botões de navegação e indicador */}
+        <View style={styles.chartHeader}>
+          <TouchableOpacity 
+            style={[styles.chartNavButton, chartScrollOffset === 0 && styles.chartNavButtonDisabled]}
+            onPress={() => navigateChart('left')}
+            disabled={chartScrollOffset === 0}
+          >
+            <Ionicons 
+              name="chevron-back" 
+              size={20} 
+              color={chartScrollOffset === 0 ? colors.textSecondary : colors.primary}
+            />
+          </TouchableOpacity>
+          
+          <View style={styles.chartIndicator}>
+            <Text style={styles.chartIndicatorText}>
+              {visibleData.length > 0 && 
+                `${visibleData[0].month}/${visibleData[0].year} - ${visibleData[visibleData.length - 1].month}/${visibleData[visibleData.length - 1].year}`
+              }
+            </Text>
+            <Text style={styles.chartIndicatorSubtext}>
+              {visibleMonthsRange.start + 1}-{Math.min(visibleMonthsRange.end + 1, data.length)} de {data.length} meses
+            </Text>
           </View>
-        </ScrollView>
+          
+          <TouchableOpacity 
+            style={[styles.chartNavButton, chartScrollOffset >= Math.max(0, data.length - 7) && styles.chartNavButtonDisabled]}
+            onPress={() => navigateChart('right')}
+            disabled={chartScrollOffset >= Math.max(0, data.length - 7)}
+          >
+            <Ionicons 
+              name="chevron-forward" 
+              size={20} 
+              color={chartScrollOffset >= Math.max(0, data.length - 7) ? colors.textSecondary : colors.primary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Gráfico de barras */}
+        <View style={styles.chart}>
+          {visibleData.map((item, index) => {
+            const incomeHeight = maxValue > 0 ? (item.income / maxValue) * chartHeight : 0;
+            const expenseHeight = maxValue > 0 ? (item.expenses / maxValue) * chartHeight : 0;
+            
+            // Verificar se é o mês atual selecionado
+            const isCurrentMonth = selectedPeriod === 'month' && 
+              currentMonth.getMonth() === new Date(item.year, getMonthIndexFromName(item.month), 1).getMonth() && 
+              currentMonth.getFullYear() === item.year;
+
+            return (
+              <TouchableOpacity 
+                key={`${item.year}-${item.month}-${index}`}
+                style={[
+                  styles.barGroup, 
+                  { width: barWidth },
+                  isCurrentMonth && styles.barGroupSelected
+                ]}
+                onPress={() => handleBarPress(item, index)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.bars}>
+                  <View
+                    style={[
+                      styles.bar,
+                      styles.incomeBar,
+                      { height: Math.max(incomeHeight, 2) },
+                      isCurrentMonth && styles.barSelected
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.bar,
+                      styles.expenseBar,
+                      { height: Math.max(expenseHeight, 2) },
+                      isCurrentMonth && styles.barSelected
+                    ]}
+                  />
+                </View>
+                <Text style={[
+                  styles.barLabel,
+                  isCurrentMonth && styles.barLabelSelected
+                ]}>
+                  {item.month}
+                </Text>
+                <Text style={styles.barYearLabel}>
+                  {item.year}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
         
         <View style={styles.legend}>
           <View style={styles.legendItem}>
@@ -986,6 +1159,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     </ScrollView>
   );
 
+  // Main component return
   return (
     <Container>
       <LoadingWrapper
@@ -1074,7 +1248,8 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
         {/* Gráfico mensal */}
         <View style={styles.cardContainer}>
           <CardHeader 
-            title="Últimos 6 meses" 
+            title={`Histórico financeiro (${monthlyData.length} meses)`}
+            subtitle={monthlyData.length > 7 ? 'Use as setas para navegar' : ''}
             icon="bar-chart"
           />
           <View style={styles.cardBody}>
@@ -1504,6 +1679,7 @@ const styles = StyleSheet.create({
   chartContainer: {
     alignItems: 'center',
     padding: 16,
+    backgroundColor: colors.white,
   },
   chartScrollContainer: {
     paddingHorizontal: 16,
@@ -1525,48 +1701,64 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   chartNavButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   chartNavButtonDisabled: {
     backgroundColor: colors.background,
     borderColor: colors.border,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   chartIndicator: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 12,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 12,
+    paddingVertical: 8,
+    marginHorizontal: 8,
   },
   chartIndicatorText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
     textAlign: 'center',
   },
   chartIndicatorSubtext: {
-    fontSize: 11,
-    color: colors.textSecondary,
+    fontSize: 10,
+    color: colors.primary,
     textAlign: 'center',
     marginTop: 2,
+    opacity: 0.8,
   },
   barGroup: {
     alignItems: 'center',
+    paddingVertical: 4,
   },
   bars: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 100,
+    height: 90,
     gap: 2,
+    marginBottom: 4,
   },
   bar: {
-    width: 8,
-    borderRadius: 4,
+    width: 10,
+    borderRadius: 5,
+    minHeight: 4,
   },
   incomeBar: {
     backgroundColor: colors.success,
@@ -1588,10 +1780,12 @@ const styles = StyleSheet.create({
   },
   barGroupSelected: {
     backgroundColor: colors.primaryLight,
-    borderRadius: 8,
-    marginHorizontal: -2,
-    paddingHorizontal: 2,
-    transform: [{ scaleY: 1.05 }],
+    borderRadius: 12,
+    marginHorizontal: -6,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   barSelected: {
     opacity: 1,
@@ -1609,8 +1803,14 @@ const styles = StyleSheet.create({
   },
   legend: {
     flexDirection: 'row',
-    gap: 16,
-    marginTop: 16,
+    justifyContent: 'center',
+    gap: 24,
+    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    marginHorizontal: 16,
   },
   legendItem: {
     flexDirection: 'row',
@@ -1618,13 +1818,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   legendText: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.text,
   },
   emptyChart: {
     alignItems: 'center',
@@ -1830,9 +2031,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
     textAlign: 'center',
-    numberOfLines: 1,
-    adjustsFontSizeToFit: true,
-    minimumFontScale: 0.7,
     textTransform: 'capitalize',
   },
   currentPeriodBadge: {
@@ -1881,10 +2079,6 @@ const styles = StyleSheet.create({
   },
   modalScrollView: {
     padding: 16,
-  },
-  periodOptions: {
-    flexDirection: 'column',
-    gap: 8,
   },
   periodCard: {
     flexDirection: 'row',

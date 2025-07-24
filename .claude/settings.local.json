@@ -7,7 +7,9 @@
       "Bash(npm start)",
       "mcp__ide__getDiagnostics",
       "Bash(cd \"C:\\Users\\eduardo.steffens\\Documents\\sftp-vscode\\app-despesas\")",
-      "Bash(npx expo start --dev-client)"
+      "Bash(npx expo start --dev-client)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   }

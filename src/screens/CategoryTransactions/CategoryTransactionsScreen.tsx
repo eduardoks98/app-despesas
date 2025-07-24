@@ -144,34 +144,73 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
   const generateExtendedTransactions = () => {
     const extended: ExtendedTransaction[] = [];
 
-    // Adicionar transações regulares da categoria
+    // Adicionar TODAS as transações da categoria, incluindo parcelas pagas
+    // CORREÇÃO: Incluir transações com installmentId para mostrar parcelas pagas
     const categoryTransactions = transactions.filter(t => 
-      t.category === category && 
       t.type === type &&
-      isInPeriod(new Date(t.date))
+      isInPeriod(new Date(t.date)) &&
+      (
+        // Transação regular com a categoria
+        (t.category === category && !t.installmentId && !t.subscriptionId) ||
+        // Parcela paga que pertence à categoria do parcelamento
+        (t.installmentId && installments.find(inst => 
+          inst.id === t.installmentId && 
+          (inst.category === category || (!inst.category && category === 'Parcelamentos'))
+        )) ||
+        // Assinatura paga que pertence à categoria da assinatura
+        (t.subscriptionId && subscriptions.find(sub => 
+          sub.id === t.subscriptionId && 
+          (sub.category === category || (!sub.category && category === 'Assinaturas'))
+        ))
+      )
     );
 
     categoryTransactions.forEach(transaction => {
-      // Determinar status baseado em isPaid - Lógica simples e clara
-      let status = 'paid'; // padrão
+      // Determinar description, source e status baseado no tipo de transação
+      let description = transaction.description || 'Transação';
+      let source: 'transaction' | 'installment' | 'subscription' = 'transaction';
+      let displayCategory = transaction.category || 'Outros';
+      
+      // Se é parcela paga
+      if (transaction.installmentId) {
+        const relatedInstallment = installments.find(i => i.id === transaction.installmentId);
+        if (relatedInstallment) {
+          description = `${relatedInstallment.description} (${transaction.installmentNumber || '?'}/${relatedInstallment.totalInstallments})`;
+          source = 'installment';
+          displayCategory = relatedInstallment.category || 'Parcelamentos';
+        }
+      }
+      // Se é assinatura paga
+      else if (transaction.subscriptionId) {
+        const relatedSubscription = subscriptions.find(s => s.id === transaction.subscriptionId);
+        if (relatedSubscription) {
+          description = relatedSubscription.name;
+          source = 'subscription';
+          displayCategory = relatedSubscription.category || 'Assinaturas';
+        }
+      }
+      
+      // Status baseado no campo isPaid da transação
+      let status = 'paid'; // padrão para transações criadas
       if (transaction.isPaid === false) {
         status = 'pending';
       } else if (transaction.isPaid === true) {
         status = 'paid';
       } else {
-        // undefined ou null - assumir como pendente para ser mais conservador
-        status = 'pending';
+        // Para parcelas e assinaturas, se não tem isPaid definido, assumir como pago
+        // pois a transação foi criada (significa que foi paga)
+        status = 'paid';
       }
       
       extended.push({
         id: transaction.id,
-        description: transaction.description || 'Transação',
+        description,
         amount: transaction.amount,
         date: transaction.date,
-        category: transaction.category || 'Outros',
+        category: displayCategory,
         type: transaction.type,
-        source: 'transaction',
-        status: status,
+        source,
+        status,
         installmentId: transaction.installmentId,
         subscriptionId: transaction.subscriptionId
       });
@@ -198,19 +237,23 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
         if (isInPeriod(dueDate)) {
           const isPaid = installment.paidInstallments.includes(i);
           
-          extended.push({
-            id: `${installment.id}-${i}`,
-            description: `${installment.description || 'Parcelamento'} (${i}/${installment.totalInstallments})`,
-            amount: installment.installmentValue,
-            date: dueDate.toISOString(),
-            category: installment.category || 'Parcelamentos',
-            type: 'expense',
-            source: 'installment',
-            status: isPaid ? 'paid' : 'pending',
-            installmentId: installment.id,
-            installmentNumber: i,
-            totalInstallments: installment.totalInstallments
-          });
+          // CORREÇÃO: Só mostrar parcelas PENDENTES
+          // Parcelas pagas já aparecem como transações regulares
+          if (!isPaid) {
+            extended.push({
+              id: `${installment.id}-${i}`,
+              description: `${installment.description || 'Parcelamento'} (${i}/${installment.totalInstallments})`,
+              amount: installment.installmentValue,
+              date: dueDate.toISOString(),
+              category: installment.category || 'Parcelamentos',
+              type: 'expense',
+              source: 'installment',
+              status: 'pending',
+              installmentId: installment.id,
+              installmentNumber: i,
+              totalInstallments: installment.totalInstallments
+            });
+          }
         }
       }
     });
@@ -275,17 +318,21 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
             new Date(t.date).getFullYear() === date.getFullYear()
           );
 
-          extended.push({
-            id: `${subscription.id}-${date.getFullYear()}-${date.getMonth()}`,
-            description: subscription.name || 'Assinatura',
-            amount: subscription.amount,
-            date: date.toISOString(),
-            category: subscription.category || 'Assinaturas',
-            type: 'expense',
-            source: 'subscription',
-            status: monthPaid ? 'paid' : 'pending',
-            subscriptionId: subscription.id
-          });
+          // CORREÇÃO: Só mostrar assinaturas PENDENTES
+          // Assinaturas pagas já aparecem como transações regulares acima
+          if (!monthPaid) {
+            extended.push({
+              id: `${subscription.id}-${date.getFullYear()}-${date.getMonth()}`,
+              description: subscription.name || 'Assinatura',
+              amount: subscription.amount,
+              date: date.toISOString(),
+              category: subscription.category || 'Assinaturas',
+              type: 'expense',
+              source: 'subscription',
+              status: 'pending',
+              subscriptionId: subscription.id
+            });
+          }
         }
       });
     });

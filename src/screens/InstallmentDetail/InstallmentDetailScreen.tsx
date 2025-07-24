@@ -49,6 +49,7 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
       const installments = await StorageService.getInstallments();
       console.log('Parcelamentos carregados:', installments);
       
+      // Buscar parcelamento independente do status (pode ser 'active' ou 'completed')
       let found = installments.find(i => i.id === installmentId);
       
       // Se não encontrou com o ID direto, verificar se o ID passado é de uma transação
@@ -74,7 +75,9 @@ export const InstallmentDetailScreen: React.FC<InstallmentDetailScreenProps> = (
         setTransactions(related);
       } else {
         console.error('Parcelamento não encontrado com ID:', installmentId);
-        Alert.alert('Erro', 'Parcelamento não encontrado', [
+        console.error('IDs de parcelamentos disponíveis:', installments.map(i => i.id));
+        console.error('Total de parcelamentos:', installments.length);
+        Alert.alert('Erro', `Parcelamento não encontrado.\nID procurado: ${installmentId}\nTotal disponível: ${installments.length}`, [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       }
