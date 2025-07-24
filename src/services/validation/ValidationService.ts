@@ -105,16 +105,17 @@ export class ValidationService {
       errors.push('Data de início é obrigatória');
     }
 
-    if (!installment.endDate) {
-      errors.push('Data de término é obrigatória');
-    }
-
-    if (installment.startDate && installment.endDate) {
+    // Cálculo automático da data de término baseado na data de início e número de parcelas
+    if (installment.startDate && installment.totalInstallments) {
       const startDate = new Date(installment.startDate);
-      const endDate = new Date(installment.endDate);
       
-      if (startDate >= endDate) {
-        errors.push('Data de término deve ser posterior à data de início');
+      // Calcula a data de término adicionando o número de meses equivalente às parcelas
+      const endDate = new Date(startDate);
+      endDate.setMonth(startDate.getMonth() + installment.totalInstallments - 1);
+      
+      // Se o installment não tem endDate definida, define automaticamente
+      if (!installment.endDate) {
+        (installment as any).endDate = endDate.toISOString().split('T')[0];
       }
     }
 
