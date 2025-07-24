@@ -9,7 +9,13 @@
       "Bash(cd \"C:\\Users\\eduardo.steffens\\Documents\\sftp-vscode\\app-despesas\")",
       "Bash(npx expo start --dev-client)",
       "Bash(npx tsc:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(rm:*)",
+      "Bash(del \"C:\\Users\\eduardo.steffens\\Documents\\sftp-vscode\\app-despesas\\src\\components\\TestComponent.tsx\")",
+      "Bash(if [ -d \"android/build\" ])",
+      "Bash(then rm -rf \"android/build\")",
+      "Bash(else echo \"⚠️ android/build já removido\")",
+      "Bash(fi)"
     ],
     "deny": []
   }
