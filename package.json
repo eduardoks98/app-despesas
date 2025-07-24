@@ -8,7 +8,16 @@
     "ios": "npx expo start --ios",
     "web": "npx expo start --web",
     "build:android": "npx eas build -p android --profile preview",
-    "build:android-dev": "npx eas build -p android --profile development"
+    "build:android-dev": "npx eas build -p android --profile development",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "prebuild": "npx expo prebuild --clean",
+    "clean": "rm -rf node_modules && npm install",
+    "backup": "node scripts/backup.js",
+    "deploy": "npm run build:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -20,6 +29,7 @@
     "@react-navigation/stack": "^6.3.20",
     "date-fns": "^2.30.0",
     "expo": "^53.0.20",
+    "expo-analytics": "^1.0.18",
     "expo-dev-client": "~5.2.4",
     "expo-file-system": "~18.1.11",
     "expo-haptics": "~14.1.4",
@@ -30,6 +40,7 @@
     "expo-sharing": "^13.1.5",
     "expo-sqlite": "^15.2.14",
     "expo-status-bar": "~2.2.3",
+    "expo-system-ui": "~5.0.10",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
@@ -41,8 +52,7 @@
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
     "react-native-vector-icons": "^10.0.2",
-    "react-native-web": "^0.20.0",
-    "expo-system-ui": "~5.0.10"
+    "react-native-web": "^0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

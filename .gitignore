@@ -81,6 +81,28 @@ web-build/
 .env.development.local
 .env.test.local
 .env.production.local
+env.example
+
+# Backup files
+backups/
+*.backup
+*.bak
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Logs
 logs

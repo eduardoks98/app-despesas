@@ -1,79 +1,119 @@
-# 📱 Controle Financeiro
+# 📱 App Despesas - Controle Financeiro Inteligente
 
-Um aplicativo completo para controle de despesas pessoais desenvolvido com React Native e Expo. O app oferece funcionalidades avançadas para gerenciar despesas recorrentes, parcelas e financiamentos com reajustes automáticos.
+Um aplicativo completo de controle financeiro desenvolvido com React Native e Expo, oferecendo gestão avançada de despesas, receitas, parcelamentos e assinaturas com recursos profissionais.
 
-## ✨ Funcionalidades Principais
+## 🚀 Funcionalidades Principais
 
-### 💰 Gestão de Despesas
-- **Adicionar despesas** com título, valor, data e categoria
-- **Categorização** automática (Alimentação, Transporte, Moradia, etc.)
-- **Descrições opcionais** para detalhes adicionais
-- **Interface intuitiva** com design moderno
+### 💰 Gestão Financeira Completa
 
-### 🔄 Despesas Recorrentes
-- **Recorrência configurável**: Mensal, Semanal ou Anual
-- **Sistema de parcelas** com controle de parcela atual
-- **Lembretes automáticos** para despesas recorrentes
-- **Visualização clara** de despesas recorrentes
-
-### 🏦 Financiamentos com Reajustes
-- **Cálculo automático** de juros compostos
-- **Reajustes mensais** configuráveis (ex: redução de 0.5% ao mês)
-- **Prestações calculadas** automaticamente
-- **Valor ajustado** baseado no tempo decorrido
-- **Suporte a financiamentos** como Caixa Econômica Federal
+- **Transações**: Adicione despesas e receitas com categorização inteligente
+- **Parcelamentos**: Controle compras parceladas com cálculos automáticos
+- **Assinaturas**: Gerencie serviços recorrentes (Netflix, Spotify, etc.)
+- **Categorias**: Sistema flexível de categorização personalizável
 
 ### 📊 Relatórios e Análises
-- **Dashboard principal** com resumo financeiro
-- **Gráficos interativos** de despesas por mês
-- **Gráfico de pizza** por categoria
-- **Top categorias** com percentuais
-- **Análise de despesas** recorrentes e financiamentos
 
-### 🔍 Filtros e Busca
-- **Busca por texto** em títulos, descrições e categorias
-- **Filtros por categoria** com chips interativos
-- **Ordenação** por data, valor ou título
-- **Lista organizada** com informações detalhadas
+- **Dashboard Interativo**: Visão geral das suas finanças
+- **Gráficos Dinâmicos**: Análise visual de gastos por período
+- **Relatórios Detalhados**: Exportação em PDF
+- **Métricas Avançadas**: Insights sobre seus padrões de gasto
 
-### ⚙️ Configurações Avançadas
-- **Exportação de dados** para backup
-- **Configurações de notificações**
-- **Modo escuro** (em desenvolvimento)
-- **Backup automático** dos dados
-- **Gerenciamento de categorias** personalizadas
+### 🔔 Notificações Inteligentes
+
+- **Lembretes Personalizáveis**: Para pagamentos e vencimentos
+- **Notificações Push**: Alertas em tempo real
+- **Configurações Flexíveis**: Horários e frequências personalizáveis
+
+### 🔒 Backup e Segurança
+
+- **Backup Automático**: Sistema de backup configurável
+- **Exportação de Dados**: Backup manual em JSON
+- **Dados Locais**: Privacidade garantida
+- **Restauração**: Recuperação de dados
+
+### 🎨 Interface Moderna
+
+- **Design Responsivo**: Adaptável a diferentes telas
+- **Temas**: Suporte a modo claro/escuro
+- **Navegação Intuitiva**: Interface amigável
+- **Animações**: Experiência fluida
+
+## 🛠️ Tecnologias Utilizadas
+
+### Core
+
+- **React Native** - Framework mobile
+- **Expo** - Plataforma de desenvolvimento
+- **TypeScript** - Tipagem estática
+- **React Navigation** - Navegação entre telas
+
+### UI/UX
+
+- **React Native Paper** - Componentes Material Design
+- **React Native Chart Kit** - Gráficos e visualizações
+- **Expo Linear Gradient** - Gradientes visuais
+- **Expo Vector Icons** - Ícones
+
+### Dados e Armazenamento
+
+- **SQLite** - Banco de dados local
+- **AsyncStorage** - Armazenamento persistente
+- **Expo File System** - Manipulação de arquivos
+
+### Funcionalidades Avançadas
+
+- **Expo Notifications** - Sistema de notificações
+- **Expo Sharing** - Compartilhamento de arquivos
+- **Expo Print** - Geração de relatórios PDF
+- **Expo Haptics** - Feedback tátil
+
+## 📱 Compatibilidade
+
+- **Android**: 6.0+ (API 23+)
+- **iOS**: 12.0+
+- **Expo SDK**: 53
+- **React Native**: 0.79.5
 
 ## 🚀 Instalação e Configuração
 
 ### Pré-requisitos
-- Node.js (versão 16 ou superior)
+
+- Node.js 18+
 - npm ou yarn
 - Expo CLI
-- Android Studio (para Android) ou Xcode (para iOS)
+- Android Studio (para desenvolvimento Android)
+- Xcode (para desenvolvimento iOS - macOS)
 
 ### Passos de Instalação
 
 1. **Clone o repositório**
+
 ```bash
-git clone https://github.com/seu-usuario/controle-financeiro.git
-cd controle-financeiro
+git clone https://github.com/seu-usuario/app-despesas.git
+cd app-despesas
 ```
 
 2. **Instale as dependências**
+
 ```bash
 npm install
-# ou
-yarn install
 ```
 
-3. **Inicie o servidor de desenvolvimento**
+3. **Configure as variáveis de ambiente**
+
+```bash
+cp env.example .env
+# Edite o arquivo .env com suas configurações
+```
+
+4. **Execute o projeto**
+
 ```bash
 npm start
-# ou
-yarn start
 ```
 
-4. **Execute no dispositivo/emulador**
+5. **Execute no dispositivo/emulador**
+
 ```bash
 # Para Android
 npm run android
@@ -85,196 +125,224 @@ npm run ios
 npm run web
 ```
 
-## 📱 Gerando APK para Android
+## 📦 Build e Deploy
 
-### Método Rápido (Recomendado)
+### Build Local
+
 ```bash
-# Windows
-build-apk.bat
+# Prebuild (gerar código nativo)
+npm run prebuild
 
-# Linux/Mac
-chmod +x build-apk.sh
-./build-apk.sh
+# Build Android
+npm run build:android
 ```
 
-### Método Manual
+### EAS Build (Recomendado)
+
 ```bash
-# 1. Instalar EAS CLI
-npm install -g eas-cli
+# Build na nuvem
+npx eas build -p android --profile preview
 
-# 2. Fazer login no Expo
-eas login
-
-# 3. Gerar APK
-eas build --platform android --profile preview
+# Build de desenvolvimento
+npx eas build -p android --profile development
 ```
 
-### Instalar no Celular
-1. **Baixe o APK** do link fornecido pelo Expo
-2. **Ative "Fontes desconhecidas"** nas configurações do Android
-3. **Instale o APK** tocando no arquivo
+### Scripts Disponíveis
 
-**📖 Consulte `docs/GERAR_APK.md` para instruções detalhadas**
+```bash
+# Desenvolvimento
+npm start              # Iniciar servidor de desenvolvimento
+npm run android        # Executar no Android
+npm run ios           # Executar no iOS
+npm run web           # Executar na web
 
-## 📱 Como Usar
+# Build
+npm run build:android     # Build Android (preview)
+npm run build:android-dev # Build Android (development)
+npm run prebuild         # Gerar código nativo
 
-### Adicionando uma Despesa
+# Qualidade de Código
+npm run lint            # Verificar código
+npm run lint:fix        # Corrigir problemas de linting
+npm run type-check      # Verificar tipos TypeScript
+npm test               # Executar testes
 
-1. **Toque no botão "+"** na tela inicial
-2. **Preencha as informações básicas**:
-   - Título da despesa
-   - Valor (formato brasileiro)
-   - Data
-   - Categoria
-   - Descrição (opcional)
+# Utilitários
+npm run clean          # Limpar e reinstalar dependências
+npm run backup         # Criar backup
+npm run deploy         # Deploy automático
+```
 
-### Configurando Despesas Recorrentes
+## 🧪 Testes
 
-1. **Ative o switch "Despesa Recorrente"**
-2. **Escolha o tipo**: Mensal, Semanal ou Anual
-3. **Defina o número de parcelas**
-4. **Configure a parcela atual**
+```bash
+# Executar todos os testes
+npm test
 
-### Configurando Financiamentos
+# Testes em modo watch
+npm run test:watch
 
-1. **Ative o switch "Financiamento"**
-2. **Informe a taxa de juros mensal** (ex: 1.5 para 1.5%)
-3. **Configure o reajuste mensal** (ex: 0.5 para redução de 0.5% ao mês)
-4. **Veja os cálculos automáticos**:
-   - Total com juros
-   - Prestação mensal
-   - Valor ajustado
+# Verificar cobertura
+npm run test:coverage
+```
 
-### Visualizando Relatórios
+### Estrutura de Testes
 
-1. **Acesse a aba "Relatórios"**
-2. **Veja o resumo geral** com totais
-3. **Analise os gráficos** de despesas por mês
-4. **Verifique a distribuição** por categoria
-5. **Monitore despesas** recorrentes e financiamentos
+```
+src/tests/
+├── StorageService.test.ts    # Testes do serviço de armazenamento
+├── components/               # Testes de componentes
+├── services/                 # Testes de serviços
+└── utils/                    # Testes de utilitários
+```
 
-## 🛠️ Tecnologias Utilizadas
+## 🔧 Configurações Avançadas
 
-- **React Native** - Framework principal
-- **Expo** - Plataforma de desenvolvimento
-- **TypeScript** - Tipagem estática
-- **React Navigation** - Navegação entre telas
-- **React Native Paper** - Componentes de UI
-- **Expo SQLite** - Banco de dados local
-- **React Native Chart Kit** - Gráficos e visualizações
-- **Expo Linear Gradient** - Gradientes visuais
-- **Expo Vector Icons** - Ícones
+### Variáveis de Ambiente
+
+```bash
+# Configurações do App
+APP_NAME=App Despesas
+APP_VERSION=1.0.0
+
+# Analytics (opcional)
+ANALYTICS_ENABLED=false
+ANALYTICS_KEY=sua_chave_analytics
+
+# Notificações
+NOTIFICATION_ENABLED=true
+DAILY_REMINDER_TIME=09:00
+
+# Backup
+BACKUP_ENABLED=true
+BACKUP_FREQUENCY=daily
+```
+
+### Configurações do EAS
+
+O projeto inclui configurações para diferentes perfis de build:
+
+- **development**: Para desenvolvimento e testes
+- **preview**: Para testes internos (APK)
+- **production**: Para produção (AAB)
+
+## 📊 Analytics e Monitoramento
+
+O app inclui sistema de analytics para:
+
+- 📈 Métricas de uso
+- 🐛 Monitoramento de erros
+- 📱 Performance do app
+- 👥 Comportamento do usuário
+
+### Eventos Rastreados
+
+- Adição de despesas/receitas
+- Criação de parcelamentos
+- Geração de relatórios
+- Uso de funcionalidades
+- Navegação entre telas
+
+## 🔒 Segurança e Privacidade
+
+- ✅ **Dados Locais**: Todas as informações ficam no dispositivo
+- ✅ **Backup Seguro**: Sistema de backup com criptografia
+- ✅ **Validação**: Verificação de entrada de dados
+- ✅ **Tratamento de Erros**: Sistema robusto de tratamento
+- ✅ **Logs de Auditoria**: Rastreamento de ações importantes
 
 ## 📁 Estrutura do Projeto
 
 ```
-controle-financeiro/
+app-despesas/
 ├── src/
-│   ├── context/
-│   │   └── FinanceContext.tsx    # Contexto global de finanças
-│   └── screens/
-│       ├── HomeScreen.tsx        # Tela principal
-│       ├── AddExpenseScreen.tsx  # Adicionar despesa
-│       ├── ExpensesScreen.tsx    # Lista de despesas
-│       ├── ReportsScreen.tsx     # Relatórios
-│       └── SettingsScreen.tsx    # Configurações
-├── App.tsx                       # Componente principal
-├── package.json                  # Dependências
-└── README.md                     # Documentação
+│   ├── components/           # Componentes reutilizáveis
+│   │   ├── common/          # Componentes básicos
+│   │   ├── transactions/    # Componentes de transações
+│   │   └── reports/         # Componentes de relatórios
+│   ├── screens/             # Telas do aplicativo
+│   │   ├── Home/           # Tela principal
+│   │   ├── AddExpense/     # Adicionar despesa
+│   │   ├── Reports/        # Relatórios
+│   │   └── Settings/       # Configurações
+│   ├── services/           # Serviços da aplicação
+│   │   ├── storage/        # Armazenamento de dados
+│   │   ├── notifications/  # Sistema de notificações
+│   │   ├── analytics/      # Analytics
+│   │   ├── backup/         # Sistema de backup
+│   │   └── export/         # Exportação de dados
+│   ├── context/            # Contextos React
+│   ├── hooks/              # Hooks customizados
+│   ├── types/              # Definições de tipos
+│   ├── utils/              # Utilitários
+│   └── styles/             # Estilos globais
+├── assets/                 # Recursos estáticos
+├── docs/                   # Documentação
+├── scripts/                # Scripts utilitários
+└── .github/                # Configurações GitHub Actions
 ```
-
-## 🎯 Funcionalidades Específicas
-
-### Cálculo de Financiamentos
-
-O app calcula automaticamente:
-
-- **Juros compostos**: `Valor Final = Principal × (1 + Taxa)^Períodos`
-- **Prestação mensal**: Fórmula padrão de financiamento
-- **Reajustes**: `Valor Ajustado = Valor Original × (1 - Reajuste)^Meses`
-
-### Exemplo de Financiamento Caixa
-
-Para um financiamento de R$ 100.000 com:
-- Taxa de juros: 1% ao mês
-- Prazo: 360 meses
-- Reajuste mensal: 0.5%
-
-O app calculará:
-- Total com juros: R$ 3.594.964,00
-- Prestação inicial: R$ 1.028,61
-- Valor após 12 meses: R$ 94.118,00
-
-## 🔧 Configurações Avançadas
-
-### Banco de Dados
-
-O app usa SQLite local para armazenar:
-- Despesas com todos os detalhes
-- Configurações do usuário
-- Histórico de transações
-
-### Backup e Exportação
-
-- **Exportação JSON**: Todos os dados em formato legível
-- **Backup automático**: Configurável nas configurações
-- **Restauração**: Funcionalidade em desenvolvimento
-
-## 🐛 Solução de Problemas
-
-### Erro de Dependências
-```bash
-# Limpe o cache do npm
-npm cache clean --force
-
-# Remova node_modules e reinstale
-rm -rf node_modules
-npm install
-```
-
-### Erro no Expo
-```bash
-# Limpe o cache do Expo
-expo r -c
-
-# Reinstale as dependências
-npm install
-```
-
-### Problemas no Android
-```bash
-# Limpe o cache do Gradle
-cd android && ./gradlew clean
-```
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
 
 ## 🤝 Contribuição
 
 Contribuições são bem-vindas! Para contribuir:
 
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+1. **Fork o projeto**
+2. **Crie uma branch** para sua feature (`git checkout -b feature/AmazingFeature`)
+3. **Commit suas mudanças** (`git commit -m 'Add some AmazingFeature'`)
+4. **Push para a branch** (`git push origin feature/AmazingFeature`)
+5. **Abra um Pull Request**
+
+### Padrões de Código
+
+- Use TypeScript para todos os arquivos
+- Siga as convenções do ESLint
+- Escreva testes para novas funcionalidades
+- Documente funções complexas
+- Use commits semânticos
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
 ## 📞 Suporte
 
-Para suporte e dúvidas:
-- Abra uma issue no GitHub
-- Entre em contato via email
-- Consulte a documentação do Expo
+- 📧 **Email**: suporte@appdespesas.com
+- 🐛 **Issues**: [GitHub Issues](https://github.com/seu-usuario/app-despesas/issues)
+- 📖 **Documentação**: [Wiki](https://github.com/seu-usuario/app-despesas/wiki)
+- 💬 **Discord**: [Comunidade](https://discord.gg/appdespesas)
 
-## 🎉 Agradecimentos
+## 🎯 Roadmap
 
-- Comunidade React Native
-- Expo Team
-- React Native Paper
-- Todos os contribuidores
+### Versão 1.1
+
+- [ ] Sincronização com nuvem
+- [ ] Widgets para home screen
+- [ ] Suporte a múltiplas moedas
+- [ ] Modo offline avançado
+
+### Versão 1.2
+
+- [ ] Integração com bancos
+- [ ] IA para categorização automática
+- [ ] Orçamentos mensais
+- [ ] Metas financeiras
+
+### Versão 2.0
+
+- [ ] Versão web completa
+- [ ] API REST
+- [ ] Multi-usuário
+- [ ] Relatórios avançados
+
+## 🏆 Reconhecimentos
+
+- **Expo Team** - Plataforma incrível
+- **React Native Community** - Comunidade ativa
+- **React Native Paper** - Componentes excelentes
+- **Todos os contribuidores** - Suporte contínuo
 
 ---
 
-**Desenvolvido com ❤️ para ajudar no controle financeiro pessoal** 
+**Desenvolvido com ❤️ para ajudar você a controlar suas finanças de forma inteligente!**
+
+_"O controle financeiro é o primeiro passo para a liberdade."_
