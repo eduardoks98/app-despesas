@@ -7,7 +7,8 @@
     "android": "npx expo start --android",
     "ios": "npx expo start --ios",
     "web": "npx expo start --web",
-    "build:android": "npx expo build:android"
+    "build:android": "npx eas build -p android --profile preview",
+    "build:android-dev": "npx eas build -p android --profile development"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -40,7 +41,8 @@
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
     "react-native-vector-icons": "^10.0.2",
-    "react-native-web": "^0.20.0"
+    "react-native-web": "^0.20.0",
+    "expo-system-ui": "~5.0.10"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
