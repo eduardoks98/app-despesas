@@ -30,6 +30,7 @@ import { CategoriesScreen } from './src/screens/Categories/CategoriesScreen';
 import { CategoryTransactionsScreen } from './src/screens/CategoryTransactions/CategoryTransactionsScreen';
 import { SplashScreen } from './src/screens/Splash/SplashScreen';
 import { OnboardingScreen } from './src/screens/Onboarding/OnboardingScreen';
+import { AboutScreen } from './src/screens/About/AboutScreen';
 
 // Theme
 import { ThemeProvider } from './src/contexts/ThemeContext';
@@ -303,6 +304,13 @@ function AppNavigator() {
         <Stack.Screen 
           name="CategoryTransactions" 
           component={CategoryTransactionsScreen}
+          options={{ 
+            headerShown: false
+          }}
+        />
+        <Stack.Screen 
+          name="About" 
+          component={AboutScreen}
           options={{ 
             headerShown: false
           }}

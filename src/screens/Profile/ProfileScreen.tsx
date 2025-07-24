@@ -592,6 +592,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <Text style={styles.appDescription}>
               Controle financeiro com foco em parcelamentos
             </Text>
+            
+            <TouchableOpacity 
+              style={styles.aboutButton}
+              onPress={() => navigation.navigate('About')}
+            >
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+              <Text style={[styles.aboutButtonText, { color: colors.primary }]}>
+                Ver mais informações
+              </Text>
+            </TouchableOpacity>
           </View>
           </View>
         </View>
@@ -743,6 +753,22 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  aboutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  aboutButtonText: {
+    fontSize: 12,
+    marginLeft: 6,
+    fontWeight: '500',
   },
   bottomSpacer: {
     height: 100,

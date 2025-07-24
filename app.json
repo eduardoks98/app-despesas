@@ -6,6 +6,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
+    "license": "AGPL-3.0",
+    "githubUrl": "https://github.com/eduardoks98/app-despesas",
+    "privacy": "public",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -47,6 +50,10 @@
     "extra": {
       "eas": {
         "projectId": "97dd8346-6a0a-469d-b8db-917e7045da29"
+      },
+      "license": {
+        "type": "AGPL-3.0",
+        "url": "https://github.com/eduardoks98/app-despesas/blob/main/LICENSE"
       }
     },
     "plugins": [

@@ -7,6 +7,7 @@ import {
   Modal,
   Share,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Card,
@@ -27,6 +28,7 @@ import { useFinance } from '../context/FinanceContext';
 
 const SettingsScreen: React.FC = () => {
   const { state, deleteExpense } = useFinance();
+  const navigation = useNavigation();
   
   // Estados locais para teste
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -146,11 +148,7 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleAbout = () => {
-    Alert.alert(
-      'Sobre o App',
-      'Controle Financeiro v1.0.0\n\nUm aplicativo completo para gerenciar suas despesas pessoais, com suporte a despesas recorrentes, parcelas e financiamentos com reajustes.\n\nDesenvolvido com React Native e Expo.',
-      [{ text: 'OK' }]
-    );
+    navigation.navigate('About' as never);
   };
 
   const formatCurrency = (value: number) => {

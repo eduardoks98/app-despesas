@@ -1,6 +1,47 @@
 # 📱 App Despesas - Controle Financeiro Inteligente
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![GitHub stars](https://img.shields.io/github/stars/eduardoks98/app-despesas.svg)](https://github.com/eduardoks98/app-despesas/stargazers)
+[![React Native](https://img.shields.io/badge/React%20Native-0.79.5-blue.svg)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-53.0.20-black.svg)](https://expo.dev/)
+
 Um aplicativo completo de controle financeiro desenvolvido com React Native e Expo, oferecendo gestão avançada de despesas, receitas, parcelamentos e assinaturas com recursos profissionais.
+
+## 💰 Como Obter o App
+
+### Opção 1: App Oficial nas Lojas (Em Breve)
+**Suporte o desenvolvimento comprando a versão oficial:**
+
+*Em desenvolvimento - em breve disponível para:*
+- Google Play Store (Android)
+- Apple App Store (iOS)
+
+**Vantagens da versão oficial:**
+- ✅ Instalação com 1 clique
+- ✅ Atualizações automáticas
+- ✅ Suporte técnico prioritário
+- ✅ Apoie o desenvolvimento contínuo
+
+### Opção 2: Compile Você Mesmo (100% Gratuito)
+Para usuários técnicos que preferem compilar:
+
+```bash
+# Clone o repositório
+git clone https://github.com/eduardoks98/app-despesas.git
+cd app-despesas
+
+# Instale as dependências
+npm install
+
+# Para Android
+npm run build:android
+# O APK estará em: android/app/build/outputs/apk/
+
+# Para iOS (requer Mac)
+npm run build:ios
+```
+
+📖 [Guia Completo de Compilação](docs/BUILD_GUIDE.md)
 
 ## 🚀 Funcionalidades Principais
 
@@ -300,16 +341,71 @@ Contribuições são bem-vindas! Para contribuir:
 - Documente funções complexas
 - Use commits semânticos
 
+## 🆚 Comparação de Versões
+
+| Recurso | Self-Build | App Store (Em Breve) |
+|---------|------------|------------|
+| Código fonte | ✅ Completo | ✅ Completo |
+| Todas as funcionalidades | ✅ | ✅ |
+| Compilação manual | ✅ Necessária | ❌ |
+| Atualizações | ✅ Manual | ✅ Automáticas |
+| Suporte técnico | ❌ Comunidade | ✅ Prioritário |
+| Instalação fácil | ❌ | ✅ |
+| Contribui com o projeto | ❌ | ✅ |
+| Preço | Grátis | A definir |
+
+## 💚 Apoie via PIX
+
+Gostou do app? Apoie o desenvolvimento!
+
+**Chave PIX**: `4c988627-0741-4136-b6a4-8c2f793d21b1`
+
+### PIX Recorrente Sugerido:
+- ☕ **Café**: R$ 5/mês
+- 🍕 **Pizza**: R$ 20/mês  
+- 🚀 **Foguete**: R$ 50/mês
+
+*Configure um PIX automático mensal no seu banco!*
+
+<div align="center">
+  <p><strong>Chave PIX:</strong> <code>4c988627-0741-4136-b6a4-8c2f793d21b1</code></p>
+  
+  <p><strong>💡 Como fazer PIX:</strong></p>
+  <p>1️⃣ Copie a chave PIX acima</p>
+  <p>2️⃣ Abra seu app do banco</p>
+  <p>3️⃣ Escolha PIX → Enviar → Chave aleatória</p>
+  <p>4️⃣ Cole a chave e escolha o valor</p>
+</div>
+
+## 🤝 Por Que Open Source + App Pago?
+
+Este modelo permite:
+- **Transparência Total**: Você pode ver exatamente como seus dados são tratados
+- **Liberdade de Escolha**: Compile gratuitamente ou compre por conveniência
+- **Desenvolvimento Sustentável**: A venda nas lojas financia melhorias contínuas
+- **Comunidade Ativa**: Contribuições e melhorias de todos
+
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+App Despesas é distribuído sob a GNU Affero General Public License v3.0 (AGPL-3.0).
 
-## 📞 Suporte
+### O que isso significa para você?
 
-- 📧 **Email**: suporte@appdespesas.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/seu-usuario/app-despesas/issues)
-- 📖 **Documentação**: [Wiki](https://github.com/seu-usuario/app-despesas/wiki)
-- 💬 **Discord**: [Comunidade](https://discord.gg/appdespesas)
+**Se você é usuário:**
+- ✅ Pode usar o app livremente
+- ✅ Pode compilar sua própria versão
+- ✅ Pode modificar para uso pessoal
+- ✅ Seus dados permanecem privados
+
+**Se você é desenvolvedor:**
+- ✅ Pode estudar o código
+- ✅ Pode criar sua própria versão
+- ⚠️ Se distribuir modificações, deve disponibilizar o código fonte
+- ⚠️ Se oferecer como serviço online, deve liberar o código modificado
+
+Veja [LICENSE](LICENSE) para detalhes completos.
+
+---
 
 ## 🎯 Roadmap
 
@@ -346,3 +442,5 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 **Desenvolvido com ❤️ para ajudar você a controlar suas finanças de forma inteligente!**
 
 _"O controle financeiro é o primeiro passo para a liberdade."_
+
+![Alt](https://repobeats.axiom.co/api/embed/e29fb48befb7e6f90f97484013bb79e1e7d04808.svg "Repobeats analytics image")
