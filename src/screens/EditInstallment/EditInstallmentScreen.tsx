@@ -102,12 +102,7 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
     );
     
     if (!data) {
-      const defaultCategories: Category[] = [
-        { id: '1', name: 'Compras', icon: '🛒', type: 'expense', color: '#FF6B6B', isCustom: false },
-        { id: '2', name: 'Eletrônicos', icon: '📱', type: 'expense', color: '#4ECDC4', isCustom: false },
-        { id: '3', name: 'Móveis', icon: '🪑', type: 'expense', color: '#45B7D1', isCustom: false },
-        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
-      ];
+      const defaultCategories = StorageService.getDefaultCategories();
       setCategories(defaultCategories);
     }
   };
@@ -368,7 +363,7 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
           >
             {getSelectedCategory() ? (
               <View style={styles.selectedCategory}>
-                <Text style={styles.categoryIcon}>{getSelectedCategory()?.icon}</Text>
+                <Ionicons name={getSelectedCategory()?.icon as any} size={20} color={getSelectedCategory()?.color || colors.primary} />
                 <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
               </View>
             ) : (
@@ -444,7 +439,7 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
             style={styles.button}
           />
           <Button
-            title="Salvar Alterações"
+            title="Salvar"
             onPress={handleSave}
             loading={isLoading}
             style={styles.button}
@@ -485,7 +480,7 @@ export const EditInstallmentScreen: React.FC<EditInstallmentScreenProps> = ({
                     setShowCategoryModal(false);
                   }}
                 >
-                  <Text style={styles.categoryItemIcon}>{category.icon}</Text>
+                  <Ionicons name={category.icon as any} size={24} color={category.color || colors.primary} />
                   <Text style={styles.categoryItemText}>{category.name}</Text>
                   {formData.category === category.name && (
                     <Ionicons name="checkmark" size={20} color={colors.primary} />

@@ -54,13 +54,8 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
       setCategories(categories || []);
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);
-      // Se falhou, usar categorias padrão
-      const defaultCategories: Category[] = [
-        { id: '1', name: 'Compras', icon: '🛍️', type: 'expense', color: '#FF6B6B', isCustom: false },
-        { id: '2', name: 'Eletrônicos', icon: '📱', type: 'expense', color: '#4ECDC4', isCustom: false },
-        { id: '3', name: 'Casa', icon: '🏠', type: 'expense', color: '#45B7D1', isCustom: false },
-        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
-      ];
+      // Se falhou, usar categorias padrão do StorageService
+      const defaultCategories = StorageService.getDefaultCategories();
       setCategories(defaultCategories);
     }
   };
@@ -127,7 +122,7 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
 
     console.log('Validação passou, continuando...');
     setIsLoading(true);
-    HapticService.light();
+    HapticService.buttonPress();
 
     try {
       const totalAmount = parseFloat(formData.totalAmount.replace(',', '.'));
@@ -183,7 +178,7 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
           text: 'Sim', 
           style: 'destructive',
           onPress: () => {
-            HapticService.light();
+            HapticService.buttonPress();
             navigation.goBack();
           }
         }
@@ -239,7 +234,7 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
               <View style={styles.categoryContent}>
                 {getSelectedCategory() ? (
                   <>
-                    <Text style={styles.categoryEmoji}>{getSelectedCategory()?.icon}</Text>
+                    <Ionicons name={getSelectedCategory()?.icon as any} size={20} color={getSelectedCategory()?.color || colors.primary} />
                     <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
                   </>
                 ) : (
@@ -332,22 +327,26 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
             </Text>
           </View>
 
-          <View style={styles.buttonContainer}>
-            <Button 
-              title="Cancelar"
-              onPress={handleDeleteConfirm}
-              style={[styles.button, styles.cancelButton]}
-              textStyle={styles.cancelButtonText}
-            />
-            <Button 
-              title={isLoading ? "Salvando..." : "Salvar"}
-              onPress={handleSave}
-              style={[styles.button, styles.saveButton]}
-              disabled={isLoading}
-            />
-          </View>
         </View>
       </ScrollView>
+
+      {/* Fixed Bottom Button Container */}
+      <View style={styles.fixedBottomContainer}>
+        <View style={styles.buttonRow}>
+          <Button 
+            title="Cancelar"
+            onPress={handleDeleteConfirm}
+            style={[styles.button, styles.cancelButton]}
+            textStyle={styles.cancelButtonText}
+          />
+          <Button 
+            title={isLoading ? "Salvando..." : "Salvar"}
+            onPress={handleSave}
+            style={[styles.button, styles.saveButton]}
+            disabled={isLoading}
+          />
+        </View>
+      </View>
 
       {/* Category Selection Modal */}
       <Modal
@@ -376,11 +375,11 @@ export const AddInstallmentScreen: React.FC<AddInstallmentScreenProps> = ({ navi
                 onPress={() => {
                   setFormData({...formData, category: item.name});
                   setShowCategoryModal(false);
-                  HapticService.light();
+                  HapticService.buttonPress();
                 }}
               >
                 <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryItemEmoji}>{item.icon}</Text>
+                  <Ionicons name={item.icon as any} size={24} color={item.color || colors.primary} />
                   <Text style={styles.categoryItemName}>{item.name}</Text>
                 </View>
                 {formData.category === item.name && (
@@ -526,10 +525,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-  buttonContainer: {
+  fixedBottomContainer: {
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 34, // Safe area padding
+  },
+  buttonRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 100,
   },
   button: {
     flex: 1,
@@ -559,9 +565,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  categoryEmoji: {
-    fontSize: 20,
   },
   categoryText: {
     fontSize: 16,
@@ -631,9 +634,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  categoryItemEmoji: {
-    fontSize: 24,
   },
   categoryItemName: {
     fontSize: 16,

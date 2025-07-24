@@ -48,12 +48,13 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
     category: '',
     paymentMethod: 'cash' as 'cash' | 'debit' | 'credit' | 'pix',
     date: new Date(),
-    isPaid: true,
+    isPaid: false,
     paidDate: new Date(),
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
@@ -120,6 +121,31 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
 
   const getSelectedCategory = () => {
     return categories.find(cat => cat.name === formData.category);
+  };
+
+  const formatAmount = (value: string) => {
+    const cleaned = value.replace(/[^0-9,]/g, '');
+    return cleaned;
+  };
+
+  const handleTypeChange = (newType: 'income' | 'expense') => {
+    setFormData(prev => ({
+      ...prev,
+      type: newType,
+      category: '' // Limpar categoria ao trocar tipo
+    }));
+    HapticService.buttonPress();
+  };
+
+  const paymentMethods = [
+    { label: 'Dinheiro', value: 'cash', icon: 'cash-outline' },
+    { label: 'Cartão de Débito', value: 'debit', icon: 'card-outline' },
+    { label: 'Cartão de Crédito', value: 'credit', icon: 'card-outline' },
+    { label: 'PIX', value: 'pix', icon: 'phone-portrait-outline' },
+  ];
+
+  const getSelectedPaymentMethod = () => {
+    return paymentMethods.find(method => method.value === formData.paymentMethod);
   };
 
   const validateForm = () => {
@@ -260,42 +286,6 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
     );
   };
 
-  const formatAmount = (value: string) => {
-    // Remove tudo exceto números e vírgula
-    const cleaned = value.replace(/[^0-9,]/g, '');
-    // Garante apenas uma vírgula
-    const parts = cleaned.split(',');
-    if (parts.length > 2) {
-      return parts[0] + ',' + parts.slice(1).join('');
-    }
-    return cleaned;
-  };
-
-  const handleAmountChange = (value: string) => {
-    const formatted = formatAmount(value);
-    setFormData(prev => ({ ...prev, amount: formatted }));
-  };
-
-  const getTypeButtonStyle = (type: 'income' | 'expense') => [
-    styles.typeButton,
-    formData.type === type && styles.typeButtonActive,
-    formData.type === type && (type === 'income' ? styles.incomeButton : styles.expenseButton)
-  ];
-
-  const getTypeTextStyle = (type: 'income' | 'expense') => [
-    styles.typeButtonText,
-    formData.type === type && styles.typeButtonTextActive
-  ];
-
-  const getPaymentMethodIcon = (method: string) => {
-    switch (method) {
-      case 'cash': return 'cash';
-      case 'debit': return 'card';
-      case 'credit': return 'card';
-      case 'pix': return 'phone-portrait';
-      default: return 'card';
-    }
-  };
 
   if (!transaction) {
     return (
@@ -330,241 +320,285 @@ export const EditTransactionScreen: React.FC<EditTransactionScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View style={styles.container}>
-          <View style={styles.form}>
-            {/* Tipo de Transação */}
-            <Card style={styles.card}>
-              <Text style={styles.label}>Tipo de Transação</Text>
-              <TabSelector
-                options={[
-                  { 
-                    key: 'expense', 
-                    label: 'Despesa', 
-                    icon: 'arrow-down',
-                    color: colors.danger
-                  },
-                  { 
-                    key: 'income', 
-                    label: 'Receita', 
-                    icon: 'arrow-up',
-                    color: colors.success
-                  }
-                ]}
-                selectedValue={formData.type}
-                onValueChange={(value) => {
-                  setFormData(prev => ({ ...prev, type: value as 'expense' | 'income' }));
-                }}
-                style={styles.tabSelector}
-              />
-            </Card>
+        <View style={styles.form}>
+          {/* Type Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Tipo</Text>
+            <TabSelector
+              options={[
+                { 
+                  key: 'expense', 
+                  label: 'Despesa', 
+                  icon: 'trending-down',
+                  color: colors.danger
+                },
+                { 
+                  key: 'income', 
+                  label: 'Receita', 
+                  icon: 'trending-up',
+                  color: colors.success
+                }
+              ]}
+              selectedValue={formData.type}
+              onValueChange={handleTypeChange}
+            />
+          </View>
 
-            {/* Valor */}
-            <Card style={styles.card}>
-              <Text style={styles.label}>Valor</Text>
-              <View style={styles.amountContainer}>
-                <Text style={styles.currencySymbol}>R$</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={formData.amount}
-                  onChangeText={handleAmountChange}
-                  placeholder="0,00"
-                  keyboardType="numeric"
-                  placeholderTextColor={colors.textTertiary}
-                />
-              </View>
-            </Card>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Descrição</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.description}
+              onChangeText={(text) => setFormData({...formData, description: text})}
+              placeholder="Ex: Almoço no restaurante"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
 
-            {/* Descrição */}
-            <Card style={styles.card}>
-              <Text style={styles.label}>Descrição</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Valor</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.currency}>R$</Text>
               <TextInput
-                style={styles.input}
-                value={formData.description}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
-                placeholder="Ex: Compras no mercado"
-                placeholderTextColor={colors.textTertiary}
+                style={[styles.input, styles.currencyInput]}
+                value={formData.amount}
+                onChangeText={(text) => setFormData({...formData, amount: formatAmount(text)})}
+                placeholder="0,00"
+                placeholderTextColor={colors.textSecondary}
+                keyboardType="decimal-pad"
               />
-            </Card>
+            </View>
+          </View>
 
-            {/* Categoria */}
-            <Card style={styles.card}>
-              <Text style={styles.label}>Categoria</Text>
-              <TouchableOpacity
-                style={styles.categoryButton}
-                onPress={() => setShowCategoryModal(true)}
-              >
+          {/* Category Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Categoria</Text>
+            <TouchableOpacity 
+              style={styles.categoryButton}
+              onPress={() => setShowCategoryModal(true)}
+            >
+              <View style={styles.categoryContent}>
                 {getSelectedCategory() ? (
-                  <View style={styles.selectedCategory}>
-                    <Text style={styles.categoryIcon}>{getSelectedCategory()?.icon}</Text>
+                  <>
+                    <Ionicons name={getSelectedCategory()?.icon as any} size={20} color={getSelectedCategory()?.color || colors.primary} />
                     <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
-                  </View>
+                  </>
                 ) : (
-                  <Text style={styles.categoryPlaceholder}>Selecione uma categoria</Text>
+                  <Text style={styles.categoryPlaceholder}>Selecionar categoria</Text>
                 )}
+              </View>
+              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Payment Method Selection - só aparece se já foi pago */}
+          {formData.isPaid && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Método de Pagamento</Text>
+              <TouchableOpacity 
+                style={styles.categoryButton}
+                onPress={() => setShowPaymentMethodModal(true)}
+              >
+                <View style={styles.categoryContent}>
+                  {getSelectedPaymentMethod() ? (
+                    <>
+                      <Ionicons name={getSelectedPaymentMethod()?.icon as any} size={20} color={colors.primary} />
+                      <Text style={styles.categoryText}>{getSelectedPaymentMethod()?.label}</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.categoryPlaceholder}>Selecionar método</Text>
+                  )}
+                </View>
                 <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
-            </Card>
+            </View>
+          )}
 
-            {/* Data */}
-            <Card style={styles.card}>
-              <Text style={styles.label}>Data</Text>
-              <DatePicker
-                value={formData.date}
-                onChange={(date) => setFormData(prev => ({ ...prev, date }))}
-              />
-            </Card>
+          {/* Date Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Data</Text>
+            <DatePicker
+              value={formData.date}
+              onChange={(date) => setFormData({...formData, date: date})}
+            />
+          </View>
 
-            {/* Status de Pagamento */}
-            <Card style={styles.card}>
-              <Text style={styles.label}>Status</Text>
-              <View style={styles.statusButtons}>
-                <TouchableOpacity 
-                  style={[
-                    styles.statusButton,
-                    formData.isPaid && styles.statusButtonActive
-                  ]}
-                  onPress={() => setFormData(prev => ({ 
+          {/* Status de Pagamento */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Status</Text>
+            <View style={styles.statusButtons}>
+              <TouchableOpacity 
+                style={[
+                  styles.statusButton,
+                  formData.isPaid && styles.statusButtonActive
+                ]}
+                onPress={() => {
+                  setFormData(prev => ({ 
                     ...prev, 
                     isPaid: true,
                     paidDate: prev.date
-                  }))}
-                >
-                  <Ionicons 
-                    name="checkmark-circle" 
-                    size={20} 
-                    color={formData.isPaid ? colors.white : colors.success} 
-                  />
-                  <Text style={[
-                    styles.statusButtonText,
-                    formData.isPaid && styles.statusButtonTextActive
-                  ]}>
-                    Já {formData.type === 'income' ? 'Recebido' : 'Pago'}
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[
-                    styles.statusButton,
-                    !formData.isPaid && styles.statusButtonPendingActive
-                  ]}
-                  onPress={() => setFormData(prev => ({ 
+                  }));
+                  HapticService.buttonPress();
+                }}
+              >
+                <Ionicons 
+                  name="checkmark-circle" 
+                  size={20} 
+                  color={formData.isPaid ? colors.white : colors.success} 
+                />
+                <Text style={[
+                  styles.statusButtonText,
+                  formData.isPaid && styles.statusButtonTextActive
+                ]}>
+                  Já {formData.type === 'income' ? 'Recebido' : 'Pago'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.statusButton,
+                  !formData.isPaid && styles.statusButtonPendingActive
+                ]}
+                onPress={() => {
+                  setFormData(prev => ({ 
                     ...prev, 
                     isPaid: false 
-                  }))}
-                >
-                  <Ionicons 
-                    name="time" 
-                    size={20} 
-                    color={!formData.isPaid ? colors.white : colors.warning} 
-                  />
-                  <Text style={[
-                    styles.statusButtonText,
-                    !formData.isPaid && styles.statusButtonTextActive
-                  ]}>
-                    {formData.type === 'income' ? 'A Receber' : 'A Pagar'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Card>
-
-            {/* Forma de Pagamento - só aparece se já foi pago */}
-            {formData.isPaid && (
-              <Card style={styles.card}>
-                <Text style={styles.label}>Forma de Pagamento</Text>
-                <View style={styles.paymentMethods}>
-                  {['cash', 'debit', 'credit', 'pix'].map((method) => (
-                    <TouchableOpacity
-                      key={method}
-                      style={[
-                        styles.paymentMethodButton,
-                        formData.paymentMethod === method && styles.paymentMethodButtonActive
-                      ]}
-                      onPress={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
-                    >
-                      <Ionicons 
-                        name={getPaymentMethodIcon(method) as any} 
-                        size={20} 
-                        color={formData.paymentMethod === method ? colors.white : colors.textSecondary} 
-                      />
-                      <Text style={[
-                        styles.paymentMethodText,
-                        formData.paymentMethod === method && styles.paymentMethodTextActive
-                      ]}>
-                        {method === 'cash' ? 'Dinheiro' : 
-                         method === 'debit' ? 'Débito' : 
-                         method === 'credit' ? 'Crédito' : 'PIX'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </Card>
-            )}
-
-            {/* Erros de Validação */}
-            {validationErrors.length > 0 && (
-              <Card style={styles.errorCard}>
-                {validationErrors.map((error, index) => (
-                  <Text key={index} style={styles.errorText}>• {error}</Text>
-                ))}
-              </Card>
-            )}
-
-            {/* Botões */}
-            <View style={styles.buttons}>
-              <Button
-                title="Cancelar"
-                onPress={() => navigation.goBack()}
-                variant="outline"
-                style={styles.button}
-              />
-              <Button
-                title="Salvar Alterações"
-                onPress={handleSave}
-                loading={isLoading}
-                style={styles.button}
-              />
+                  }));
+                  HapticService.buttonPress();
+                }}
+              >
+                <Ionicons 
+                  name="time" 
+                  size={20} 
+                  color={!formData.isPaid ? colors.white : colors.warning} 
+                />
+                <Text style={[
+                  styles.statusButtonText,
+                  !formData.isPaid && styles.statusButtonTextActive
+                ]}>
+                  {formData.type === 'income' ? 'A Receber' : 'A Pagar'}
+                </Text>
+              </TouchableOpacity>
             </View>
-
-            <View style={styles.bottomSpacer} />
           </View>
+
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <Card style={styles.errorCard}>
+              <View style={styles.errorHeader}>
+                <Ionicons name="alert-circle" size={20} color={colors.danger} />
+                <Text style={styles.errorTitle}>Erros encontrados:</Text>
+              </View>
+              {validationErrors.map((error, index) => (
+                <Text key={index} style={styles.errorText}>• {error}</Text>
+              ))}
+            </Card>
+          )}
+
         </View>
       </ScrollView>
 
-      {/* Modal de Categorias */}
+      {/* Fixed Bottom Button Container */}
+      <View style={styles.fixedBottomContainer}>
+        <View style={styles.buttonRow}>
+          <Button 
+            title="Cancelar"
+            onPress={() => navigation.goBack()}
+            style={[styles.button, styles.cancelButton]}
+            textStyle={styles.cancelButtonText}
+          />
+          <Button 
+            title={isLoading ? "Salvando..." : "Salvar"}
+            onPress={handleSave}
+            style={[styles.button, styles.saveButton]}
+            disabled={isLoading}
+          />
+        </View>
+      </View>
+
+      {/* Category Selection Modal */}
       <Modal
         visible={showCategoryModal}
-        transparent
         animationType="slide"
-        onRequestClose={() => setShowCategoryModal(false)}
+        presentationStyle="pageSheet"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecionar Categoria</Text>
-              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.categoriesList}>
-              {getFilteredCategories().map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={styles.categoryItem}
-                  onPress={() => {
-                    setFormData(prev => ({ ...prev, category: category.name }));
-                    setShowCategoryModal(false);
-                  }}
-                >
-                  <Text style={styles.categoryItemIcon}>{category.icon}</Text>
-                  <Text style={styles.categoryItemText}>{category.name}</Text>
-                  {formData.category === category.name && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Selecionar Categoria</Text>
+            <View style={styles.modalSpacer} />
           </View>
+
+          <FlatList
+            data={getFilteredCategories()}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.category === item.name && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData({...formData, category: item.name});
+                  setShowCategoryModal(false);
+                  HapticService.buttonPress();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Ionicons name={item.icon as any} size={24} color={item.color || colors.primary} />
+                  <Text style={styles.categoryItemName}>{item.name}</Text>
+                </View>
+                {formData.category === item.name && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
+
+      {/* Payment Method Selection Modal */}
+      <Modal
+        visible={showPaymentMethodModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowPaymentMethodModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Método de Pagamento</Text>
+            <View style={styles.modalSpacer} />
+          </View>
+
+          <FlatList
+            data={paymentMethods}
+            keyExtractor={(item) => item.value}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  formData.paymentMethod === item.value && styles.categoryItemSelected
+                ]}
+                onPress={() => {
+                  setFormData({...formData, paymentMethod: item.value as any});
+                  setShowPaymentMethodModal(false);
+                  HapticService.buttonPress();
+                }}
+              >
+                <View style={styles.categoryInfo}>
+                  <Ionicons name={item.icon as any} size={24} color={colors.primary} />
+                  <Text style={styles.categoryItemName}>{item.label}</Text>
+                </View>
+                {formData.paymentMethod === item.value && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
         </View>
       </Modal>
     </Container>
@@ -615,7 +649,11 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   form: {
-    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
   },
   loading: {
     flex: 1,
@@ -626,47 +664,38 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     marginVertical: 0,
   },
-  card: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-    padding: SPACING.md,
-  },
   label: {
-    fontSize: FONT_SIZES.md,
+    fontSize: 14,
     fontWeight: '600',
+    marginBottom: 8,
     color: colors.text,
-    marginBottom: SPACING.sm,
   },
-  amountContainer: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
-  currencySymbol: {
-    fontSize: 18,
-    fontWeight: '600',
+  currency: {
+    paddingLeft: 16,
+    fontSize: 16,
     color: colors.textSecondary,
-    marginRight: 8,
   },
-  amountInput: {
+  currencyInput: {
     flex: 1,
-    fontSize: 18,
-    color: colors.text,
-    paddingVertical: 16,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
   },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: 16,
     fontSize: 16,
+    backgroundColor: colors.surface,
     color: colors.text,
-    backgroundColor: colors.background,
   },
   categoryButton: {
     flexDirection: 'row',
@@ -675,17 +704,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: colors.background,
+    padding: 16,
+    backgroundColor: colors.surface,
   },
-  selectedCategory: {
+  categoryContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  categoryIcon: {
-    fontSize: 20,
+    gap: 8,
   },
   categoryText: {
     fontSize: 16,
@@ -693,105 +718,102 @@ const styles = StyleSheet.create({
   },
   categoryPlaceholder: {
     fontSize: 16,
-    color: colors.textTertiary,
-  },
-  paymentMethods: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  paymentMethodButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  paymentMethodButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  paymentMethodText: {
-    fontSize: 14,
-    fontWeight: '500',
     color: colors.textSecondary,
   },
-  paymentMethodTextActive: {
-    color: colors.white,
-  },
   errorCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
     backgroundColor: colors.dangerLight,
+    marginBottom: 16,
+  },
+  errorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.danger,
   },
   errorText: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.danger,
     marginBottom: 4,
   },
-  buttons: {
+  fixedBottomContainer: {
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 34, // Safe area padding
+  },
+  buttonRow: {
     flexDirection: 'row',
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
+    gap: 12,
   },
   button: {
     flex: 1,
   },
-  bottomSpacer: {
-    height: 100,
+  cancelButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  modalOverlay: {
+  cancelButtonText: {
+    color: colors.text,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+  },
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '70%',
+    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modalCancel: {
+    fontSize: 16,
+    color: colors.primary,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
   },
-  categoriesList: {
-    padding: 16,
+  modalSpacer: {
+    width: 60,
   },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
+    justifyContent: 'space-between',
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  categoryItemIcon: {
-    fontSize: 24,
-    marginRight: 16,
+  categoryItemSelected: {
+    backgroundColor: colors.primaryLight,
   },
-  categoryItemText: {
-    flex: 1,
+  categoryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  categoryItemName: {
     fontSize: 16,
     color: colors.text,
   },
   statusButtons: {
     flexDirection: 'row',
+    gap: 8,
     marginTop: 8,
   },
   statusButton: {
@@ -804,8 +826,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.white,
-    marginHorizontal: 4,
+    backgroundColor: colors.surface,
   },
   statusButtonActive: {
     backgroundColor: colors.success,

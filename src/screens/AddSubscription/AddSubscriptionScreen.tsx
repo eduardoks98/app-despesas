@@ -35,7 +35,7 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
     amount: '',
     category: '',
     billingDay: '1',
-    paymentMethod: 'credit' as const,
+    paymentMethod: 'credit' as 'cash' | 'credit' | 'debit' | 'pix' | 'boleto',
     nextPaymentDate: new Date(),
   });
 
@@ -57,13 +57,8 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
       setCategories(categories || []);
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);
-      // Se falhou, usar categorias padrão
-      const defaultCategories: Category[] = [
-        { id: '1', name: 'Streaming', icon: '📺', type: 'expense', color: '#FF6B6B', isCustom: false },
-        { id: '2', name: 'Academia', icon: '💪', type: 'expense', color: '#4ECDC4', isCustom: false },
-        { id: '3', name: 'Software', icon: '💻', type: 'expense', color: '#45B7D1', isCustom: false },
-        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
-      ];
+      // Se falhou, usar categorias padrão do StorageService
+      const defaultCategories = StorageService.getDefaultCategories();
       setCategories(defaultCategories);
     }
   };
@@ -125,7 +120,7 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
 
     console.log('Validação passou, continuando...');
     setIsLoading(true);
-    HapticService.light();
+    HapticService.buttonPress();
 
     try {
       console.log('Salvando assinatura:', formData);
@@ -185,7 +180,7 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
           text: 'Sim', 
           style: 'destructive',
           onPress: () => {
-            HapticService.light();
+            HapticService.buttonPress();
             navigation.goBack();
           }
         }
@@ -194,10 +189,11 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
   };
 
   const paymentMethods = [
-    { label: 'Cartão de Crédito', value: 'credit' },
-    { label: 'Débito Automático', value: 'debit' },
-    { label: 'PIX', value: 'pix' },
-    { label: 'Boleto', value: 'boleto' },
+    { label: 'Dinheiro', value: 'cash', icon: 'cash-outline' },
+    { label: 'Cartão de Crédito', value: 'credit', icon: 'card-outline' },
+    { label: 'Débito Automático', value: 'debit', icon: 'card-outline' },
+    { label: 'PIX', value: 'pix', icon: 'phone-portrait-outline' },
+    { label: 'Boleto', value: 'boleto', icon: 'barcode-outline' },
   ];
 
   const getSelectedPaymentMethod = () => {
@@ -269,7 +265,7 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
               <View style={styles.categoryContent}>
                 {getSelectedCategory() ? (
                   <>
-                    <Text style={styles.categoryEmoji}>{getSelectedCategory()?.icon}</Text>
+                    <Ionicons name={getSelectedCategory()?.icon as any} size={20} color={getSelectedCategory()?.color || colors.primary} />
                     <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
                   </>
                 ) : (
@@ -289,7 +285,10 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
             >
               <View style={styles.categoryContent}>
                 {getSelectedPaymentMethod() ? (
-                  <Text style={styles.categoryText}>{getSelectedPaymentMethod()?.label}</Text>
+                  <>
+                    <Ionicons name={getSelectedPaymentMethod()?.icon as any} size={20} color={colors.primary} />
+                    <Text style={styles.categoryText}>{getSelectedPaymentMethod()?.label}</Text>
+                  </>
                 ) : (
                   <Text style={styles.categoryPlaceholder}>Selecionar método</Text>
                 )}
@@ -343,22 +342,26 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
             </Text>
           </View>
 
-          <View style={styles.buttonContainer}>
-            <Button 
-              title="Cancelar"
-              onPress={handleDeleteConfirm}
-              style={[styles.button, styles.cancelButton]}
-              textStyle={styles.cancelButtonText}
-            />
-            <Button 
-              title={isLoading ? "Salvando..." : "Salvar"}
-              onPress={handleSave}
-              style={[styles.button, styles.saveButton]}
-              disabled={isLoading}
-            />
-          </View>
         </View>
       </ScrollView>
+
+      {/* Fixed Bottom Button Container */}
+      <View style={styles.fixedBottomContainer}>
+        <View style={styles.buttonRow}>
+          <Button 
+            title="Cancelar"
+            onPress={handleDeleteConfirm}
+            style={[styles.button, styles.cancelButton]}
+            textStyle={styles.cancelButtonText}
+          />
+          <Button 
+            title={isLoading ? "Salvando..." : "Salvar"}
+            onPress={handleSave}
+            style={[styles.button, styles.saveButton]}
+            disabled={isLoading}
+          />
+        </View>
+      </View>
 
       {/* Category Selection Modal */}
       <Modal
@@ -387,11 +390,11 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
                 onPress={() => {
                   setFormData({...formData, category: item.name});
                   setShowCategoryModal(false);
-                  HapticService.light();
+                  HapticService.buttonPress();
                 }}
               >
                 <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryItemEmoji}>{item.icon}</Text>
+                  <Ionicons name={item.icon as any} size={24} color={item.color || colors.primary} />
                   <Text style={styles.categoryItemName}>{item.name}</Text>
                 </View>
                 {formData.category === item.name && (
@@ -430,10 +433,11 @@ export const AddSubscriptionScreen: React.FC<AddSubscriptionScreenProps> = ({ na
                 onPress={() => {
                   setFormData({...formData, paymentMethod: item.value as any});
                   setShowPaymentMethodModal(false);
-                  HapticService.light();
+                  HapticService.buttonPress();
                 }}
               >
                 <View style={styles.categoryInfo}>
+                  <Ionicons name={item.icon as any} size={24} color={colors.primary} />
                   <Text style={styles.categoryItemName}>{item.label}</Text>
                 </View>
                 {formData.paymentMethod === item.value && (
@@ -528,10 +532,17 @@ const styles = StyleSheet.create({
   flex2: {
     flex: 2,
   },
-  buttonContainer: {
+  fixedBottomContainer: {
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 34, // Safe area padding
+  },
+  buttonRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 100,
   },
   button: {
     flex: 1,
@@ -561,9 +572,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  categoryEmoji: {
-    fontSize: 20,
   },
   categoryText: {
     fontSize: 16,
@@ -655,9 +663,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  categoryItemEmoji: {
-    fontSize: 24,
   },
   categoryItemName: {
     fontSize: 16,

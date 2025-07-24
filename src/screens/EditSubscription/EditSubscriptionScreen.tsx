@@ -95,13 +95,8 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
     );
     
     if (!data) {
-      // Se falhou, usar categorias padrão
-      const defaultCategories: Category[] = [
-        { id: '1', name: 'Streaming', icon: '📺', type: 'expense', color: '#FF6B6B', isCustom: false },
-        { id: '2', name: 'Software', icon: '💻', type: 'expense', color: '#4ECDC4', isCustom: false },
-        { id: '3', name: 'Serviços', icon: '🔧', type: 'expense', color: '#45B7D1', isCustom: false },
-        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
-      ];
+      // Se falhou, usar categorias padrão do StorageService
+      const defaultCategories = StorageService.getDefaultCategories();
       setCategories(defaultCategories);
     }
   };
@@ -375,9 +370,11 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
             >
               {formData.category ? (
                 <View style={styles.selectedCategory}>
-                  <Text style={styles.categoryIcon}>
-                    {getSelectedCategory()?.icon || '📂'}
-                  </Text>
+                  <Ionicons 
+                    name={getSelectedCategory()?.icon as any || 'folder-outline'} 
+                    size={20} 
+                    color={getSelectedCategory()?.color || colors.primary} 
+                  />
                   <Text style={styles.categoryName}>{formData.category}</Text>
                 </View>
               ) : (
@@ -497,7 +494,7 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
 
           <View style={styles.buttonGroup}>
             <Button 
-              title={isLoading ? "Salvando..." : "Salvar Alterações"}
+              title={isLoading ? "Salvando..." : "Salvar"}
               onPress={handleSave}
               style={styles.saveButton}
               disabled={isLoading}
@@ -539,7 +536,7 @@ export const EditSubscriptionScreen: React.FC<EditSubscriptionScreenProps> = ({ 
                     setShowCategoryModal(false);
                   }}
                 >
-                  <Text style={styles.categoryItemIcon}>{category.icon}</Text>
+                  <Ionicons name={category.icon as any} size={24} color={category.color || colors.primary} />
                   <Text style={[
                     styles.categoryItemName,
                     formData.category === category.name && styles.categoryItemNameSelected

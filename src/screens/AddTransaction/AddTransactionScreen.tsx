@@ -34,9 +34,9 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
     amount: '',
     description: '',
     category: '',
-    paymentMethod: 'cash' as 'cash' | 'debit' | 'credit' | 'pix',
+    paymentMethod: 'cash' as 'cash' | 'debit' | 'credit' | 'pix' | 'boleto',
     date: new Date(),
-    isPaid: true,
+    isPaid: false,
     paidDate: new Date(),
   });
 
@@ -52,19 +52,43 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
 
   const loadCategories = async () => {
     try {
-      console.log('Carregando categorias...');
+      console.log('=== INICIANDO CARREGAMENTO DE CATEGORIAS ===');
       const categories = await StorageService.getCategories();
-      console.log('Categorias carregadas:', categories);
+      console.log('Total de categorias carregadas:', categories?.length || 0);
+      
+      // Log detalhado de cada categoria
+      if (categories && categories.length > 0) {
+        console.log('=== DETALHES DAS CATEGORIAS ===');
+        categories.forEach((category, index) => {
+          console.log(`Categoria ${index + 1}:`);
+          console.log(`  - ID: ${category.id}`);
+          console.log(`  - Nome: ${category.name}`);
+          console.log(`  - Ícone: ${category.icon}`);
+          console.log(`  - Tipo: ${category.type}`);
+          console.log(`  - Cor: ${category.color}`);
+          console.log(`  - É customizada: ${category.isCustom}`);
+          console.log('---');
+        });
+      } else {
+        console.log('Nenhuma categoria foi carregada do storage');
+      }
+      
       setCategories(categories || []);
     } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
-      // Se falhou, usar categorias padrão
-      const defaultCategories: Category[] = [
-        { id: '1', name: 'Alimentação', icon: '🍔', type: 'expense', color: '#FF6B6B', isCustom: false },
-        { id: '2', name: 'Transporte', icon: '🚗', type: 'expense', color: '#4ECDC4', isCustom: false },
-        { id: '3', name: 'Salário', icon: '💰', type: 'income', color: '#45B7D1', isCustom: false },
-        { id: '4', name: 'Outros', icon: '📂', type: 'both', color: '#96CEB4', isCustom: false },
-      ];
+      console.error('=== ERRO AO CARREGAR CATEGORIAS ===');
+      console.error('Detalhes do erro:', error);
+      
+      // Se falhou, usar categorias padrão do StorageService
+      const defaultCategories = StorageService.getDefaultCategories();
+      console.log('Usando categorias padrão com ícones:', defaultCategories.map(c => ({ name: c.name, icon: c.icon })));
+      
+      console.log('=== USANDO CATEGORIAS PADRÃO ===');
+      defaultCategories.forEach((category, index) => {
+        console.log(`Categoria padrão ${index + 1}:`);
+        console.log(`  - Nome: ${category.name}`);
+        console.log(`  - Ícone: ${category.icon}`);
+      });
+      
       setCategories(defaultCategories);
     }
   };
@@ -90,7 +114,7 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
       type: newType,
       category: '' // Limpar categoria ao trocar tipo
     }));
-    HapticService.light();
+    HapticService.buttonPress();
   };
 
   const validateForm = () => {
@@ -134,7 +158,7 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
 
     console.log('Validação passou, continuando...');
     setIsLoading(true);
-    HapticService.light();
+    HapticService.buttonPress();
 
     try {
       const amount = parseFloat(formData.amount.replace(',', '.'));
@@ -182,7 +206,7 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
           text: 'Sim', 
           style: 'destructive',
           onPress: () => {
-            HapticService.light();
+            HapticService.buttonPress();
             navigation.goBack();
           }
         }
@@ -191,10 +215,11 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
   };
 
   const paymentMethods = [
-    { label: 'Dinheiro', value: 'cash', icon: '💵' },
-    { label: 'Cartão de Débito', value: 'debit', icon: '💳' },
-    { label: 'Cartão de Crédito', value: 'credit', icon: '💳' },
-    { label: 'PIX', value: 'pix', icon: '📱' },
+    { label: 'Dinheiro', value: 'cash', icon: 'cash-outline' },
+    { label: 'Cartão de Débito', value: 'debit', icon: 'card-outline' },
+    { label: 'Cartão de Crédito', value: 'credit', icon: 'card-outline' },
+    { label: 'PIX', value: 'pix', icon: 'phone-portrait-outline' },
+    { label: 'Boleto', value: 'boleto', icon: 'barcode-outline' },
   ];
 
   const getSelectedPaymentMethod = () => {
@@ -276,7 +301,7 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
               <View style={styles.categoryContent}>
                 {getSelectedCategory() ? (
                   <>
-                    <Text style={styles.categoryEmoji}>{getSelectedCategory()?.icon}</Text>
+                    <Ionicons name={getSelectedCategory()?.icon as any} size={20} color={getSelectedCategory()?.color || colors.primary} />
                     <Text style={styles.categoryText}>{getSelectedCategory()?.name}</Text>
                   </>
                 ) : (
@@ -287,34 +312,95 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
             </TouchableOpacity>
           </View>
 
-          {/* Payment Method Selection */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Método de Pagamento</Text>
-            <TouchableOpacity 
-              style={styles.categoryButton}
-              onPress={() => setShowPaymentMethodModal(true)}
-            >
-              <View style={styles.categoryContent}>
-                {getSelectedPaymentMethod() ? (
-                  <>
-                    <Text style={styles.categoryEmoji}>{getSelectedPaymentMethod()?.icon}</Text>
-                    <Text style={styles.categoryText}>{getSelectedPaymentMethod()?.label}</Text>
-                  </>
-                ) : (
-                  <Text style={styles.categoryPlaceholder}>Selecionar método</Text>
-                )}
-              </View>
-              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+          {/* Payment Method Selection - só aparece se já foi pago */}
+          {formData.isPaid && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Método de Pagamento</Text>
+              <TouchableOpacity 
+                style={styles.categoryButton}
+                onPress={() => setShowPaymentMethodModal(true)}
+              >
+                <View style={styles.categoryContent}>
+                  {getSelectedPaymentMethod() ? (
+                    <>
+                      <Ionicons name={getSelectedPaymentMethod()?.icon as any} size={20} color={colors.primary} />
+                      <Text style={styles.categoryText}>{getSelectedPaymentMethod()?.label}</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.categoryPlaceholder}>Selecionar método</Text>
+                  )}
+                </View>
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Date Selection */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Data</Text>
             <DatePicker
-              date={formData.date}
-              onDateChange={(date) => setFormData({...formData, date: date})}
+              value={formData.date}
+              onChange={(date) => setFormData({...formData, date: date})}
             />
+          </View>
+
+          {/* Status de Pagamento */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Status</Text>
+            <View style={styles.statusButtons}>
+              <TouchableOpacity 
+                style={[
+                  styles.statusButton,
+                  formData.isPaid && styles.statusButtonActive
+                ]}
+                onPress={() => {
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    isPaid: true,
+                    paidDate: prev.date
+                  }));
+                  HapticService.buttonPress();
+                }}
+              >
+                <Ionicons 
+                  name="checkmark-circle" 
+                  size={20} 
+                  color={formData.isPaid ? colors.white : colors.success} 
+                />
+                <Text style={[
+                  styles.statusButtonText,
+                  formData.isPaid && styles.statusButtonTextActive
+                ]}>
+                  Já {formData.type === 'income' ? 'Recebido' : 'Pago'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.statusButton,
+                  !formData.isPaid && styles.statusButtonPendingActive
+                ]}
+                onPress={() => {
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    isPaid: false 
+                  }));
+                  HapticService.buttonPress();
+                }}
+              >
+                <Ionicons 
+                  name="time" 
+                  size={20} 
+                  color={!formData.isPaid ? colors.white : colors.warning} 
+                />
+                <Text style={[
+                  styles.statusButtonText,
+                  !formData.isPaid && styles.statusButtonTextActive
+                ]}>
+                  {formData.type === 'income' ? 'A Receber' : 'A Pagar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Validation Errors */}
@@ -330,22 +416,26 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
             </Card>
           )}
 
-          <View style={styles.buttonContainer}>
-            <Button 
-              title="Cancelar"
-              onPress={handleDeleteConfirm}
-              style={[styles.button, styles.cancelButton]}
-              textStyle={styles.cancelButtonText}
-            />
-            <Button 
-              title={isLoading ? "Salvando..." : "Salvar"}
-              onPress={handleSave}
-              style={[styles.button, styles.saveButton]}
-              disabled={isLoading}
-            />
-          </View>
         </View>
       </ScrollView>
+
+      {/* Fixed Bottom Button Container */}
+      <View style={styles.fixedBottomContainer}>
+        <View style={styles.buttonRow}>
+          <Button 
+            title="Cancelar"
+            onPress={handleDeleteConfirm}
+            style={[styles.button, styles.cancelButton]}
+            textStyle={styles.cancelButtonText}
+          />
+          <Button 
+            title={isLoading ? "Salvando..." : "Salvar"}
+            onPress={handleSave}
+            style={[styles.button, styles.saveButton]}
+            disabled={isLoading}
+          />
+        </View>
+      </View>
 
       {/* Category Selection Modal */}
       <Modal
@@ -374,11 +464,11 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
                 onPress={() => {
                   setFormData({...formData, category: item.name});
                   setShowCategoryModal(false);
-                  HapticService.light();
+                  HapticService.buttonPress();
                 }}
               >
                 <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryItemEmoji}>{item.icon}</Text>
+                  <Ionicons name={item.icon as any} size={24} color={item.color || colors.primary} />
                   <Text style={styles.categoryItemName}>{item.name}</Text>
                 </View>
                 {formData.category === item.name && (
@@ -417,11 +507,11 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({ navi
                 onPress={() => {
                   setFormData({...formData, paymentMethod: item.value as any});
                   setShowPaymentMethodModal(false);
-                  HapticService.light();
+                  HapticService.buttonPress();
                 }}
               >
                 <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryItemEmoji}>{item.icon}</Text>
+                  <Ionicons name={item.icon as any} size={24} color={colors.primary} />
                   <Text style={styles.categoryItemName}>{item.label}</Text>
                 </View>
                 {formData.paymentMethod === item.value && (
@@ -506,10 +596,17 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     backgroundColor: 'transparent',
   },
-  buttonContainer: {
+  fixedBottomContainer: {
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 34, // Safe area padding
+  },
+  buttonRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 100,
   },
   button: {
     flex: 1,
@@ -539,9 +636,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  categoryEmoji: {
-    fontSize: 20,
   },
   categoryText: {
     fontSize: 16,
@@ -612,11 +706,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  categoryItemEmoji: {
-    fontSize: 24,
-  },
   categoryItemName: {
     fontSize: 16,
     color: colors.text,
+  },
+  statusButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  statusButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  statusButtonActive: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  statusButtonPendingActive: {
+    backgroundColor: colors.warning,
+    borderColor: colors.warning,
+  },
+  statusButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    marginLeft: 8,
+  },
+  statusButtonTextActive: {
+    color: colors.white,
+    fontWeight: '600',
   },
 });

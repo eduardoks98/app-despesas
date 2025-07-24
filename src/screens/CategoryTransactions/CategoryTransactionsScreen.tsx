@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
@@ -13,6 +13,7 @@ import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface CategoryTransactionsScreenProps {
   navigation: any;
@@ -63,6 +64,14 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
       generateExtendedTransactions();
     }
   }, [transactions, installments, subscriptions]);
+
+  // Atualizar dados sempre que a tela for focada
+  useFocusEffect(
+    useCallback(() => {
+      console.log('CategoryTransactionsScreen focada - recarregando dados...');
+      loadData(true); // true para não mostrar loading
+    }, [])
+  );
 
   const loadData = async (isRefresh = false) => {
     if (!isRefresh) {
@@ -143,6 +152,17 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
     );
 
     categoryTransactions.forEach(transaction => {
+      // Determinar status baseado em isPaid - Lógica simples e clara
+      let status = 'paid'; // padrão
+      if (transaction.isPaid === false) {
+        status = 'pending';
+      } else if (transaction.isPaid === true) {
+        status = 'paid';
+      } else {
+        // undefined ou null - assumir como pendente para ser mais conservador
+        status = 'pending';
+      }
+      
       extended.push({
         id: transaction.id,
         description: transaction.description || 'Transação',
@@ -151,7 +171,7 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
         category: transaction.category || 'Outros',
         type: transaction.type,
         source: 'transaction',
-        status: (transaction.isPaid === false) ? 'pending' : 'paid',
+        status: status,
         installmentId: transaction.installmentId,
         subscriptionId: transaction.subscriptionId
       });
@@ -393,9 +413,19 @@ export const CategoryTransactionsScreen: React.FC<CategoryTransactionsScreenProp
           />
           <View style={styles.statusBadge}>
             {transaction.status === 'paid' ? (
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              <View style={styles.statusContainer}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={[styles.statusText, { color: colors.success }]}>
+                  {type === 'income' ? 'Recebido' : 'Pago'}
+                </Text>
+              </View>
             ) : (
-              <Ionicons name="time" size={16} color={colors.warning} />
+              <View style={styles.statusContainer}>
+                <Ionicons name="time" size={16} color={colors.warning} />
+                <Text style={[styles.statusText, { color: colors.warning }]}>
+                  {type === 'income' ? 'A Receber' : 'A Pagar'}
+                </Text>
+              </View>
             )}
           </View>
         </View>
@@ -634,7 +664,16 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     marginTop: 4,
+    alignItems: 'flex-end',
+  },
+  statusContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   bottomSpacer: {
     height: 100,
