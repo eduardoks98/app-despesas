@@ -1,252 +1,147 @@
-# 📱 Como Gerar o APK para Android
+# 📱 GERAR APK - Guia Rápido
 
-Este guia mostra como gerar o arquivo APK para instalar o aplicativo no seu celular Android.
+> **Nota:** Para setup completo, veja [BUILD_GUIDE.md](./BUILD_GUIDE.md)
 
-## 🚀 **Opção 1: Build Local (Recomendado)**
+Este é um guia simplificado para gerar APK rapidamente.
 
-### Pré-requisitos
-- Node.js instalado
-- Expo CLI instalado
-- Android Studio (opcional, para emulador)
+## ⚡ **MÉTODO RÁPIDO**
 
-### Passo 1: Instalar EAS CLI
+### 1. Pré-requisitos Mínimos
+- Node.js 18+ instalado
+- Conta Expo (gratuita)
+
+### 2. Comando Único
 ```bash
-# Instalar EAS CLI globalmente
-npm install -g eas-cli
-
-# Verificar instalação
-eas --version
+# Instalar e buildar em uma linha
+npx create-expo-app --template && cd app-despesas && npx eas build -p android --profile preview
 ```
 
-### Passo 2: Fazer Login no Expo
+### 3. Ou Passo a Passo
 ```bash
-# Fazer login na sua conta Expo
+# 1. Instalar EAS CLI
+npm install -g eas-cli
+
+# 2. Login
 eas login
 
-# Se não tiver conta, crie em: https://expo.dev/signup
+# 3. Build
+eas build -p android --profile preview
 ```
 
-### Passo 3: Configurar Build
+## 🔄 **MÉTODOS ALTERNATIVOS**
+
+### Método 1: Script Automático
 ```bash
-# Inicializar configuração EAS
-eas build:configure
+# Execute o script incluso
+./gerar-apk.bat  # Windows
+./gerar-apk.sh   # Linux/Mac
 ```
 
-### Passo 4: Gerar APK
+### Método 2: Expo CLI Legado
 ```bash
-# Gerar APK para Android
-eas build --platform android --profile preview
-
-# Ou para versão de desenvolvimento
-eas build --platform android --profile development
+npx @expo/cli build:android
 ```
 
-## 🏗️ **Opção 2: Build na Nuvem (Mais Fácil)**
+### Método 3: Build Manual
+> ⚠️ **Avançado:** Requer Android Studio
 
-### Passo 1: Criar conta Expo
-1. Acesse: https://expo.dev/signup
-2. Crie uma conta gratuita
-
-### Passo 2: Fazer Login
 ```bash
-npx expo login
-```
-
-### Passo 3: Gerar Build
-```bash
-# Build na nuvem (gratuito)
-npx expo build:android
-
-# Ou usando EAS
-eas build --platform android
-```
-
-## 📦 **Opção 3: Build Manual (Avançado)**
-
-### Passo 1: Ejetar do Expo
-```bash
-# Ejetar do Expo para React Native puro
 expo eject
+cd android && ./gradlew assembleRelease
 ```
 
-### Passo 2: Configurar Android
-```bash
-# Navegar para pasta Android
-cd android
+## ⚙️ **CONFIGURAÇÃO (se necessário)**
 
-# Limpar build
-./gradlew clean
-
-# Gerar APK
-./gradlew assembleRelease
-```
-
-### Passo 3: Encontrar o APK
-O APK estará em: `android/app/build/outputs/apk/release/app-release.apk`
-
-## 🔧 **Configurações Avançadas**
-
-### Arquivo eas.json
-Crie um arquivo `eas.json` na raiz do projeto:
-
+### Arquivo eas.json (já incluído)
 ```json
 {
-  "cli": {
-    "version": ">= 3.13.3"
-  },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
-    },
     "preview": {
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      }
-    },
-    "production": {
-      "android": {
-        "buildType": "aab"
-      }
-    }
-  },
-  "submit": {
-    "production": {}
-  }
-}
-```
-
-### Configurar app.json
-Certifique-se que o `app.json` tenha as configurações corretas:
-
-```json
-{
-  "expo": {
-    "name": "Controle Financeiro",
-    "slug": "controle-financeiro",
-    "version": "1.0.0",
-    "android": {
-      "package": "com.controlefinanceiro.app",
-      "versionCode": 1,
-      "permissions": [
-        "WRITE_EXTERNAL_STORAGE",
-        "READ_EXTERNAL_STORAGE"
-      ]
+      "android": { "buildType": "apk" }
     }
   }
 }
 ```
 
-## 📱 **Instalar no Celular**
+### app.json (já configurado)
+- Nome: MySys App Despesas
+- Package: com.appdespesas.app
+- Permissões: Configuradas automaticamente
 
-### Método 1: Transferir APK
-1. **Conecte o celular** via USB
-2. **Ative a depuração USB** nas configurações do Android
-3. **Transfira o APK** para o celular
-4. **Instale o APK** tocando no arquivo
+## 📱 **INSTALAR NO CELULAR**
 
-### Método 2: Email/WhatsApp
-1. **Envie o APK** por email ou WhatsApp
-2. **Baixe no celular** e instale
+### 🔧 Configurar Android (uma vez só)
+1. **Configurações** → **Segurança** → **Fontes Desconhecidas** ✅
+2. Ou **Configurações** → **Apps** → **Instalar apps desconhecidos** ✅
 
-### Método 3: Google Drive
-1. **Faça upload** do APK no Google Drive
-2. **Compartilhe o link** e baixe no celular
+### 📥 Instalar APK
+**Método 1: Transfer direto**
+- Conecte USB → Copie APK → Toque no arquivo
 
-## ⚙️ **Configurações do Android**
+**Método 2: WhatsApp/Email**
+- Envie APK → Baixe → Instale
 
-### Ativar Instalação de Fontes Desconhecidas
-1. Vá em **Configurações** > **Segurança**
-2. Ative **Fontes desconhecidas**
-3. Ou vá em **Configurações** > **Apps** > **Instalar apps desconhecidos**
+**Método 3: Google Drive**
+- Upload APK → Compartilhe link → Baixe
 
-### Ativar Depuração USB
-1. Vá em **Configurações** > **Sobre o telefone**
-2. Toque 7 vezes em **Número da versão**
-3. Volte e vá em **Opções do desenvolvedor**
-4. Ative **Depuração USB**
+### ✅ **Teste Rápido**
+1. 📱 Instale **Expo Go** no celular
+2. 💻 Execute `npm start` no computador  
+3. 📷 Escaneie o QR code
+4. ✅ Se funcionar, o APK vai funcionar também!
 
-## 🐛 **Solução de Problemas**
+## ⚠️ **PROBLEMAS COMUNS**
 
-### Erro: "npm não é reconhecido"
+> **Dica:** Para soluções detalhadas, veja [SOLUCAO_PROBLEMAS.md](./SOLUCAO_PROBLEMAS.md)
+
+### ❌ "npm não reconhecido"
 ```bash
-# Instalar Node.js primeiro
-# Download: https://nodejs.org/
+# Instale Node.js: https://nodejs.org/
+node --version  # Testar
 ```
 
-### Erro: "expo não é reconhecido"
+### ❌ "eas não reconhecido"
 ```bash
-# Instalar Expo CLI
-npm install -g @expo/cli
-```
-
-### Erro: "eas não é reconhecido"
-```bash
-# Instalar EAS CLI
 npm install -g eas-cli
 ```
 
-### Erro de Build
+### ❌ Build falha
 ```bash
 # Limpar cache
-expo r -c
-
-# Reinstalar dependências
-rm -rf node_modules
-npm install
+npm start -- --reset-cache
 ```
 
-### APK não instala
-1. **Verifique as permissões** de instalação
-2. **Desinstale versões anteriores** do app
-3. **Verifique se o APK está completo**
+### ❌ APK não instala
+1. Ativar "Fontes Desconhecidas" no Android
+2. Desinstalar versão anterior
+3. Verificar se download terminou
 
-## 📋 **Comandos Úteis**
+## 📋 **COMANDOS Úteis**
 
-### Verificar Status
 ```bash
-# Status do build
+# Ver status dos builds
 eas build:list
 
-# Logs do build
+# Baixar APK pronto
+eas build:download
+
+# Ver logs detalhados
 eas build:view
 ```
 
-### Build Específico
-```bash
-# Build de desenvolvimento
-eas build --platform android --profile development
+## ⚡ **DICAS RÁPIDAS**
 
-# Build de preview
-eas build --platform android --profile preview
+- ⏱️ **Primeiro build:** 10-15 minutos
+- 🚀 **Builds seguintes:** Mais rápidos
+- 📶 **Internet:** Conexão estável obrigatória
+- 🆓 **Conta Expo:** Gratuita
 
-# Build de produção
-eas build --platform android --profile production
-```
+## 📞 **PRECISA DE AJUDA?**
 
-### Download do APK
-```bash
-# Baixar APK do build
-eas build:download
-```
-
-## 🎯 **Dicas Importantes**
-
-1. **Primeiro build** pode demorar 10-15 minutos
-2. **Builds subsequentes** são mais rápidos
-3. **Mantenha o terminal aberto** durante o build
-4. **Verifique a conexão** com a internet
-5. **Use conta Expo gratuita** para builds na nuvem
-
-## 📞 **Suporte**
-
-Se encontrar problemas:
-1. **Verifique os logs** no terminal
-2. **Consulte a documentação** do Expo
-3. **Pesquise no Google** com a mensagem de erro
-4. **Abra uma issue** no GitHub
+1. 📝 [SOLUCAO_PROBLEMAS.md](./SOLUCAO_PROBLEMAS.md)
+2. 📚 [BUILD_GUIDE.md](./BUILD_GUIDE.md) (completo)
+3. 🐛 [GitHub Issues](https://github.com/eduardoks98/app-despesas/issues)
 
 ---
 
-**Boa sorte com o build! 🚀** 
+**🚀 Boa sorte com o build!** 

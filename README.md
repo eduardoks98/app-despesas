@@ -4,8 +4,31 @@
 [![GitHub stars](https://img.shields.io/github/stars/eduardoks98/app-despesas.svg)](https://github.com/eduardoks98/app-despesas/stargazers)
 [![React Native](https://img.shields.io/badge/React%20Native-0.79.5-blue.svg)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-53.0.20-black.svg)](https://expo.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.1-blue.svg)](https://www.typescriptlang.org/)
+[![Clean Architecture](https://img.shields.io/badge/Clean%20Architecture-DDD-green.svg)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 
-Um aplicativo completo de controle financeiro desenvolvido com React Native e Expo, oferecendo gestão avançada de despesas, receitas, parcelamentos e assinaturas com recursos profissionais.
+Um aplicativo completo de controle financeiro desenvolvido com **Clean Architecture + DDD**, React Native e Expo. Oferece gestão avançada de despesas, receitas, parcelamentos e assinaturas com recursos profissionais e arquitetura escalável para mobile e web.
+
+## 🏗️ **Nova Arquitetura - Clean Architecture + DDD + API Premium**
+
+Este projeto foi completamente refatorado para usar **Clean Architecture** com **Domain-Driven Design** (DDD) e **modelo freemium**, proporcionando:
+
+### 🎯 **Arquitetura Moderna**
+- ✅ **70% de código compartilhado** entre mobile e web
+- ✅ **Testes unitários** simples e isolados  
+- ✅ **TypeScript strict** com type safety completo
+- ✅ **Manutenibilidade** com separação clara de responsabilidades
+- ✅ **Escalabilidade** para adicionar novas features rapidamente
+
+### 💰 **Modelo Freemium Implementado**
+- 🆓 **Gratuito:** Dados locais SQLite no mobile
+- 💎 **Premium:** Sincronização MySQL + API + Web App + Conta Família
+
+### 📚 **Documentação Completa**
+- 📖 **[Arquitetura Clean + DDD](./roadmaps/NOVA_ARQUITETURA.md)**
+- 🚀 **[Roadmap Freemium Completo](./roadmaps/ROADMAP_FREEMIUM_COMPLETO.md)**
+- 🏗️ **[Arquitetura de Hospedagem](./roadmaps/ARQUITETURA_HOSPEDAGEM_COMPLETA.md)**
+- 🔒 **[Segurança e Criptografia](./roadmaps/SEGURANCA_CRIPTOGRAFIA_COMPLETA.md)**
 
 ## 💰 Como Obter o App
 
@@ -22,8 +45,9 @@ Um aplicativo completo de controle financeiro desenvolvido com React Native e Ex
 - ✅ Suporte técnico prioritário
 - ✅ Apoie o desenvolvimento contínuo
 
-### Opção 2: Compile Você Mesmo (100% Gratuito)
-Para usuários técnicos que preferem compilar:
+### Opção 2: Desenvolvimento Local (100% Gratuito)
+
+#### 🚀 **Teste Rápido com Expo**
 
 ```bash
 # Clone o repositório
@@ -33,15 +57,27 @@ cd app-despesas
 # Instale as dependências
 npm install
 
+# 📱 MOBILE - Inicie o servidor de desenvolvimento
+npm run start:mobile
+# Use o app Expo Go para testar no seu dispositivo
+
+# 🌐 WEB - Inicie a versão web (futuro)
+npm run start:web
+# Abre automaticamente no navegador
+```
+
+#### 🔧 **Build para Produção**
+
+```bash
 # Para Android
-npm run build:android
+npm run build:mobile
 # O APK estará em: android/app/build/outputs/apk/
 
 # Para iOS (requer Mac)
-npm run build:ios
+npm run build:mobile
 ```
 
-📖 [Guia Completo de Compilação](docs/BUILD_GUIDE.md)
+📖 **[Guia Completo de Desenvolvimento](#-desenvolvimento-local)**
 
 ## 🚀 Funcionalidades Principais
 
@@ -79,34 +115,70 @@ npm run build:ios
 - **Navegação Intuitiva**: Interface amigável
 - **Animações**: Experiência fluida
 
-## 🛠️ Tecnologias Utilizadas
+## 🛠️ Tecnologias e Arquitetura
 
-### Core
+### 🏗️ **Arquitetura (Clean Architecture + DDD)**
 
-- **React Native** - Framework mobile
-- **Expo** - Plataforma de desenvolvimento
-- **TypeScript** - Tipagem estática
-- **React Navigation** - Navegação entre telas
+```
+┌─────────────────────────────────────────┐
+│               PRESENTATION              │ ← React Components, Hooks
+├─────────────────────────────────────────┤
+│               APPLICATION               │ ← Use Cases, Business Logic
+├─────────────────────────────────────────┤
+│                 DOMAIN                  │ ← Entities, Value Objects
+├─────────────────────────────────────────┤
+│             INFRASTRUCTURE              │ ← Repositories, External APIs
+└─────────────────────────────────────────┘
+```
 
-### UI/UX
+### 🚀 **Core Technologies**
 
-- **React Native Paper** - Componentes Material Design
-- **React Native Chart Kit** - Gráficos e visualizações
+- **React Native 0.79.5** - Framework mobile multiplataforma
+- **Expo SDK 53** - Plataforma de desenvolvimento
+- **TypeScript 5.1** - Tipagem estática strict
+- **React Navigation 6** - Navegação declarativa
+
+### 🏢 **Monorepo Structure**
+
+```
+app-despesas/
+├── apps/
+│   ├── mobile/          # React Native App
+│   └── web/             # Web App (Next.js/Vite)
+├── packages/
+│   ├── core/            # Business Logic (Domain + Use Cases)
+│   └── shared/          # Shared Components & Utils
+```
+
+### 🎨 **UI/UX**
+
+- **React Native Paper** - Material Design 3
+- **React Native Chart Kit** - Gráficos interativos
 - **Expo Linear Gradient** - Gradientes visuais
-- **Expo Vector Icons** - Ícones
+- **Expo Vector Icons** - Iconografia completa
 
-### Dados e Armazenamento
+### 💾 **Data & Storage (Hybrid Architecture)**
 
-- **SQLite** - Banco de dados local
-- **AsyncStorage** - Armazenamento persistente
-- **Expo File System** - Manipulação de arquivos
+- **MySQL** - Banco principal na VPS com API REST
+- **SQLite** - Cache local offline (mobile)
+- **IndexedDB** - Cache local offline (web)
+- **Repository Pattern** - Abstração para alternar online/offline
+- **Sincronização Automática** - Sync quando conectado
 
-### Funcionalidades Avançadas
+#### 🌐 **API-First Architecture**
+```
+📱 Mobile App  ←→  🌐 REST API  ←→  🗄️ MySQL (VPS)
+     ↓                                      ↑
+ 💾 SQLite Cache  ←─── Sync quando online ──┘
+```
 
-- **Expo Notifications** - Sistema de notificações
-- **Expo Sharing** - Compartilhamento de arquivos
-- **Expo Print** - Geração de relatórios PDF
+### 📱 **Mobile Features**
+
+- **Expo Notifications** - Push notifications
+- **Expo Sharing** - Compartilhamento nativo
+- **Expo Print** - PDF generation
 - **Expo Haptics** - Feedback tátil
+- **Expo File System** - Manipulação de arquivos
 
 ## 📱 Compatibilidade
 
@@ -115,55 +187,146 @@ npm run build:ios
 - **Expo SDK**: 53
 - **React Native**: 0.79.5
 
-## 🚀 Instalação e Configuração
+## 🚀 Desenvolvimento Local
 
-### Pré-requisitos
+### 📋 **Pré-requisitos**
 
-- Node.js 18+
-- npm ou yarn
-- Expo CLI
-- Android Studio (para desenvolvimento Android)
-- Xcode (para desenvolvimento iOS - macOS)
+- **Node.js 18+** 
+- **npm** ou yarn
+- **Expo CLI**: `npm install -g @expo/cli`
+- **Expo Go** app no seu dispositivo ([Android](https://play.google.com/store/apps/details?id=host.exp.exponent) | [iOS](https://apps.apple.com/app/expo-go/id982107779))
 
-### Passos de Instalação
-
-1. **Clone o repositório**
+### ⚡ **Setup Rápido**
 
 ```bash
-git clone https://github.com/seu-usuario/app-despesas.git
+# 1. Clone o repositório
+git clone https://github.com/eduardoks98/app-despesas.git
 cd app-despesas
-```
 
-2. **Instale as dependências**
+# 2. Instale as dependências
+npm install --workspaces
 
-```bash
-npm install
-```
-
-3. **Configure as variáveis de ambiente**
-
-```bash
+# 3. Configure as variáveis de ambiente
 cp env.example .env
 # Edite o arquivo .env com suas configurações
 ```
 
-4. **Execute o projeto**
+### 📱 **Executando o Mobile (React Native)**
 
 ```bash
+# Inicie o servidor de desenvolvimento
+npm run start:mobile
+
+# OU diretamente no mobile
+cd apps/mobile
 npm start
+
+# Escaneie o QR code com o app Expo Go
+# OU execute em emulador:
+npm run android  # Android
+npm run ios      # iOS (requer Mac)
 ```
 
-5. **Execute no dispositivo/emulador**
+### 🌐 **Executando a Web (Future)**
 
 ```bash
-# Para Android
-npm run android
+# Quando implementada, a versão web será:
+npm run start:web
 
-# Para iOS
-npm run ios
+# OU
+cd apps/web
+npm run dev
+```
 
-# Para web
-npm run web
+### 🏗️ **Testando a Nova Arquitetura**
+
+```bash
+# Buildar o core package
+cd packages/core
+npm run build
+
+# Executar testes
+npm test
+
+# Type checking
+npm run type-check
+```
+
+### 🗄️ **Configuração da API Premium + MySQL**
+
+A API Premium permite sincronização, versão web e recursos avançados:
+
+#### **🚀 Setup Automático na VPS (Apache):**
+
+```bash
+# Na sua VPS Ubuntu com Apache
+sudo chmod +x deploy-apache-mysys.sh
+sudo ./deploy-apache-mysys.sh
+```
+
+#### **📋 Setup Manual:**
+
+```bash
+# 1. Clone o projeto na sua VPS
+git clone https://github.com/eduardoks98/app-despesas.git
+cd app-despesas
+
+# 2. Configure as variáveis de ambiente
+cd apps/api
+cp .env.example .env
+# Edite o .env com suas configurações MySQL
+
+# 3. Execute o setup do banco
+npm run migrate
+
+# 4. Inicie a API
+npm run dev
+```
+
+#### **🌐 URLs Disponíveis (após deploy):**
+
+```bash
+# Landing page: https://mysys.shop
+# Web App:      https://app.mysys.shop
+# API:          https://api.mysys.shop
+# Docs:         https://docs.mysys.shop/api-docs
+# Billing:      https://billing.mysys.shop
+```
+
+#### 📡 **API Documentation (Swagger)**
+
+A API possui documentação completa com Swagger:
+
+- **Desenvolvimento:** `http://localhost:3001/api-docs`
+- **Produção:** `https://docs.mysys.shop/api-docs`
+
+#### **Principais Endpoints:**
+
+```bash
+# Autenticação
+POST   /api/auth/register          # Registro de usuário
+POST   /api/auth/login             # Login JWT
+POST   /api/auth/refresh           # Refresh token
+GET    /api/auth/me                # Dados do usuário
+
+# Transações (Premium only)
+GET    /api/transactions           # Listar com filtros
+POST   /api/transactions           # Criar transação
+PUT    /api/transactions/:id       # Atualizar transação
+DELETE /api/transactions/:id       # Deletar transação
+
+# Health & Status
+GET    /api/health                 # Status da API
+GET    /api-docs.json              # OpenAPI spec
+```
+
+#### 🔐 **Configuração no App Mobile:**
+
+```typescript
+// .env no mobile
+API_BASE_URL=https://api.mysys.shop
+PLAN_TYPE=premium  # free, premium
+STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
 ## 📦 Build e Deploy

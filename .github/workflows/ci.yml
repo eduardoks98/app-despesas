@@ -2,102 +2,205 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main]
+    branches: [master, develop]
+
+env:
+  NODE_VERSION: '18.x'
 
 jobs:
+  # Job 1: Testes e Linting
   test:
+    name: Tests & Quality
     runs-on: ubuntu-latest
-
+    
     steps:
-      - uses: actions/checkout@v3
-
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "18"
-          cache: "npm"
-
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
       - name: Install dependencies
         run: npm ci
-
+        
       - name: Run linting
         run: npm run lint
-
-      - name: Run tests
-        run: npm test
-
-      - name: Type check
+        
+      - name: Run type checking
         run: npm run type-check
-
-  build-android:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+        
+      - name: Run tests
+        run: npm run test:ci
+        
+      - name: Generate test coverage
+        run: npm run test:coverage
+        
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
         with:
-          node-version: "18"
-          cache: "npm"
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
 
+  # Job 2: Build Mobile App
+  build-mobile:
+    name: Build Mobile App
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
       - name: Install dependencies
         run: npm ci
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Build Android APK
-        run: npx eas build -p android --profile preview --non-interactive
-
-      - name: Upload APK
+        
+      - name: Setup Expo CLI
+        run: npm install -g @expo/cli
+        
+      - name: Build mobile app
+        run: cd apps/mobile && expo export --platform all
+        
+      - name: Upload mobile build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: app-despesas-apk
-          path: |
-            *.apk
-            *.aab
+          name: mobile-build
+          path: apps/mobile/dist/
 
-  deploy:
-    needs: build-android
+  # Job 3: Build Web App
+  build-web:
+    name: Build Web App
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
+    needs: test
+    
     steps:
-      - name: Download APK
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build web app
+        run: cd apps/web && npm run build
+        
+      - name: Upload web build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: apps/web/dist/
+
+  # Job 4: Build API
+  build-api:
+    name: Build API
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build API
+        run: cd apps/api && npm run build
+        
+      - name: Upload API build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-build
+          path: apps/api/dist/
+
+  # Job 5: Deploy to Production (apenas em master)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-mobile, build-web, build-api]
+    if: github.ref == 'refs/heads/master'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download API build
         uses: actions/download-artifact@v3
         with:
-          name: app-despesas-apk
-
-      - name: Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: api-build
+          path: ./api-build
+          
+      - name: Download Web build
+        uses: actions/download-artifact@v3
         with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
-          body: |
-            Automated release from CI/CD pipeline
-
-            Changes in this release:
-            - Automated build and test
-            - Android APK included
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: web-build
+          path: ./web-build
+          
+      - name: Deploy API to production VPS
+        uses: appleboy/ssh-action@v0.1.5
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./app-despesas.apk
-          asset_name: app-despesas.apk
-          asset_content_type: application/vnd.android.package-archive
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd /var/www/mysys.shop/api
+            git pull origin master
+            npm ci --production
+            npm run build
+            pm2 restart app-despesas-api
+            
+      - name: Deploy Web to production VPS
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd /var/www/mysys.shop/web
+            git pull origin master
+            npm ci
+            npm run build
+            sudo systemctl reload apache2
+
+  # Job 6: Security Scan
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run npm audit
+        run: npm audit --audit-level moderate
+        
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript
+          
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2

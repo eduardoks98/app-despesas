@@ -1,0 +1,596 @@
+/* ReportsPage Styles */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: calc(100vh - 120px);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f4f6;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  gap: 2rem;
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.controlLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.periodButtons,
+.chartButtons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.periodButton,
+.chartButton {
+  padding: 0.5rem 1rem;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.periodButton:hover,
+.chartButton:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.periodButton.active,
+.chartButton.active {
+  border-color: #667eea;
+  background: #667eea;
+  color: white;
+}
+
+/* Summary Grid */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.summaryCard {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summaryCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.cardTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.cardIcon {
+  font-size: 1.5rem;
+  opacity: 0.8;
+}
+
+.cardValue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.value.income {
+  color: #059669;
+}
+
+.value.expense {
+  color: #dc2626;
+}
+
+.value.savings {
+  color: #7c3aed;
+}
+
+.change {
+  font-size: 0.875rem;
+  color: #059669;
+  font-weight: 500;
+}
+
+/* Charts Grid */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.chartCard,
+.categoriesCard {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+}
+
+.chartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.chartTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.chartLegend {
+  display: flex;
+  gap: 1rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.legendColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legendColor.income {
+  background: #059669;
+}
+
+.legendColor.expense {
+  background: #dc2626;
+}
+
+/* Chart Content */
+.chartContent {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chartPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  position: relative;
+}
+
+.chartBars {
+  display: flex;
+  align-items: end;
+  justify-content: space-around;
+  width: 100%;
+  height: 100%;
+  gap: 1rem;
+}
+
+.barGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.bar {
+  width: 40px;
+  border-radius: 4px 4px 0 0;
+  transition: opacity 0.2s ease;
+}
+
+.bar.income {
+  background: #059669;
+}
+
+.bar.expense {
+  background: #dc2626;
+}
+
+.bar:hover {
+  opacity: 0.8;
+}
+
+.barLabel {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  max-width: 60px;
+  word-wrap: break-word;
+}
+
+/* Line Chart */
+.lineChart {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.chartLine {
+  position: absolute;
+  top: 30%;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 1px;
+}
+
+.chartPoints {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.chartPoint {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #667eea;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Categories List */
+.categoriesList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.categoryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.categoryItem:hover {
+  background: #f3f4f6;
+}
+
+.categoryInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.categoryColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.categoryDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.categoryName {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.categoryAmount {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.categoryPercentage {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Insights */
+.insightsCard {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+}
+
+.insightsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.insightItem {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+}
+
+.insightIcon {
+  font-size: 1.5rem;
+  opacity: 0.8;
+}
+
+.insightContent {
+  flex: 1;
+}
+
+.insightTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.insightText {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Dark Theme */
+@media (prefers-color-scheme: dark) {
+  .title {
+    color: #f9fafb;
+  }
+  
+  .subtitle {
+    color: #d1d5db;
+  }
+  
+  .controls,
+  .summaryCard,
+  .chartCard,
+  .categoriesCard,
+  .insightsCard {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .controlLabel {
+    color: #f3f4f6;
+  }
+  
+  .periodButton,
+  .chartButton {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+  
+  .cardTitle,
+  .chartTitle {
+    color: #f9fafb;
+  }
+  
+  .value {
+    color: #f9fafb;
+  }
+  
+  .categoryItem {
+    background: #374151;
+  }
+  
+  .categoryItem:hover {
+    background: #4b5563;
+  }
+  
+  .categoryName {
+    color: #f9fafb;
+  }
+  
+  .categoryAmount {
+    color: #d1d5db;
+  }
+  
+  .categoryPercentage {
+    color: #f3f4f6;
+  }
+  
+  .insightItem {
+    background: #374151;
+  }
+  
+  .insightTitle {
+    color: #f9fafb;
+  }
+  
+  .insightText {
+    color: #d1d5db;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .controlGroup {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+  
+  .summaryGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .controls {
+    padding: 1rem;
+  }
+  
+  .controlGroup {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .periodButtons,
+  .chartButtons {
+    flex-wrap: wrap;
+  }
+  
+  .chartContent {
+    height: 250px;
+  }
+  
+  .insightItem {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0.75rem;
+  }
+  
+  .title {
+    font-size: 2rem;
+  }
+  
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .value {
+    font-size: 1.5rem;
+  }
+  
+  .chartCard,
+  .categoriesCard,
+  .insightsCard {
+    padding: 1rem;
+  }
+  
+  .chartContent {
+    height: 200px;
+  }
+  
+  .barLabel {
+    font-size: 0.65rem;
+    max-width: 40px;
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "projects": {
+    "mobile": "apps/mobile",
+    "web": "apps/web",
+    "core": "packages/core",
+    "shared": "packages/shared"
+  }
+}

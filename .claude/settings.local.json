@@ -15,7 +15,14 @@
       "Bash(if [ -d \"android/build\" ])",
       "Bash(then rm -rf \"android/build\")",
       "Bash(else echo \"⚠️ android/build já removido\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(npx create-nx-workspace:*)",
+      "Bash(mv:*)",
+      "Bash(npm install:*)",
+      "Bash(move:*)",
+      "Bash(cp:*)",
+      "Bash(./move_screens.bat)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

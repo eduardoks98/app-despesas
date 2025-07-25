@@ -1,0 +1,805 @@
+/* ProfilePage Styles */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: calc(100vh - 120px);
+}
+
+.header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* User Card */
+.userCard {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+  margin-bottom: 2rem;
+}
+
+.userAvatar {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatarInitials {
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.userInfo {
+  flex: 1;
+}
+
+.userName {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.25rem 0;
+}
+
+.userEmail {
+  font-size: 1rem;
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+}
+
+.userPlan {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.planBadge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.375rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.planStatus {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  background: white;
+  border-radius: 12px;
+  padding: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+  margin-bottom: 2rem;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.tab.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+/* Tab Content */
+.tabContent {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+  overflow: hidden;
+}
+
+.profileContent,
+.settingsContent,
+.billingContent {
+  padding: 2rem;
+}
+
+/* Sections */
+.section {
+  margin-bottom: 2rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* Forms */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.input {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.saveButton {
+  align-self: flex-start;
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.saveButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -3px rgba(102, 126, 234, 0.4);
+}
+
+/* Security List */
+.securityList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.securityItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+}
+
+.securityInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.securityLabel {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.securityStatus {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.securityButton {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.securityButton:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+/* Settings List */
+.settingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settingItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+}
+
+.settingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.settingLabel {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.settingDescription {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.settingSelect {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.settingSelect:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Notifications */
+.notificationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.notificationItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+}
+
+.notificationInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.notificationLabel {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.notificationDescription {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Toggle Switch */
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.toggleInput {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: 0.3s;
+  border-radius: 12px;
+}
+
+.toggleSlider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggleInput:checked + .toggleSlider {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.toggleInput:checked + .toggleSlider:before {
+  transform: translateX(20px);
+}
+
+/* Billing */
+.currentPlan {
+  margin-bottom: 1rem;
+}
+
+.planCard {
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.planHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.planName {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.planPrice {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.planFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.feature {
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.planActions {
+  display: flex;
+  gap: 1rem;
+}
+
+.cancelButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #dc2626;
+  border-radius: 6px;
+  color: #dc2626;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelButton:hover {
+  background: #dc2626;
+  color: white;
+}
+
+/* Payment Method */
+.paymentMethod {
+  margin-bottom: 1rem;
+}
+
+.paymentCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+}
+
+.cardInfo {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.cardType {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.cardNumber {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-family: monospace;
+}
+
+.cardExpiry {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.changeButton {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.changeButton:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+/* Billing History */
+.billingHistory {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.billingItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+}
+
+.billingInfo {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.billingDate {
+  font-size: 0.875rem;
+  color: #6b7280;
+  min-width: 80px;
+}
+
+.billingAmount {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  min-width: 80px;
+}
+
+.billingStatus {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 500;
+  min-width: 60px;
+  text-align: center;
+}
+
+.billingStatus.paid {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.downloadButton {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.downloadButton:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+/* Danger Zone */
+.dangerZone {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-top: 2rem;
+}
+
+.dangerTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #dc2626;
+  margin: 0 0 1rem 0;
+}
+
+.dangerActions {
+  display: flex;
+  gap: 1rem;
+}
+
+.logoutButton,
+.deleteButton {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logoutButton {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.logoutButton:hover {
+  background: #e5e7eb;
+}
+
+.deleteButton {
+  background: #dc2626;
+  color: white;
+}
+
+.deleteButton:hover {
+  background: #b91c1c;
+}
+
+/* Dark Theme */
+@media (prefers-color-scheme: dark) {
+  .title {
+    color: #f9fafb;
+  }
+  
+  .subtitle {
+    color: #d1d5db;
+  }
+  
+  .userCard,
+  .tabs,
+  .tabContent {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .userName {
+    color: #f9fafb;
+  }
+  
+  .userEmail {
+    color: #d1d5db;
+  }
+  
+  .tab {
+    color: #d1d5db;
+  }
+  
+  .tab:hover {
+    background: #374151;
+    color: #f3f4f6;
+  }
+  
+  .sectionTitle {
+    color: #f9fafb;
+    border-color: #374151;
+  }
+  
+  .input {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+  
+  .input:focus {
+    border-color: #667eea;
+  }
+  
+  .securityItem,
+  .settingItem,
+  .notificationItem,
+  .planCard,
+  .paymentCard,
+  .billingItem {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .securityLabel,
+  .settingLabel,
+  .notificationLabel,
+  .planName,
+  .billingAmount {
+    color: #f9fafb;
+  }
+  
+  .securityStatus,
+  .settingDescription,
+  .notificationDescription,
+  .billingDate {
+    color: #d1d5db;
+  }
+  
+  .securityButton,
+  .changeButton,
+  .downloadButton {
+    background: #4b5563;
+    border-color: #6b7280;
+    color: #f9fafb;
+  }
+  
+  .settingSelect {
+    background: #4b5563;
+    border-color: #6b7280;
+    color: #f9fafb;
+  }
+  
+  .dangerZone {
+    background: #451a1a;
+    border-color: #7f1d1d;
+  }
+  
+  .logoutButton {
+    background: #4b5563;
+    color: #f9fafb;
+  }
+  
+  .logoutButton:hover {
+    background: #6b7280;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+  
+  .userCard {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.5rem;
+  }
+  
+  .userInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .tabs {
+    flex-direction: column;
+  }
+  
+  .profileContent,
+  .settingsContent,
+  .billingContent {
+    padding: 1.5rem;
+  }
+  
+  .securityItem,
+  .settingItem,
+  .notificationItem,
+  .paymentCard,
+  .billingItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .billingInfo {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .dangerActions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0.75rem;
+  }
+  
+  .title {
+    font-size: 2rem;
+  }
+  
+  .userCard {
+    padding: 1rem;
+  }
+  
+  .userAvatar {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .avatarInitials {
+    font-size: 1.5rem;
+  }
+  
+  .planActions {
+    flex-direction: column;
+  }
+}

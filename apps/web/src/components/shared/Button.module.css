@@ -1,0 +1,249 @@
+/* Button Component Styles */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  user-select: none;
+  
+  /* Remove default button styles */
+  background: none;
+  margin: 0;
+  padding: 0;
+}
+
+.button:focus-visible {
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.text {
+  line-height: 1;
+}
+
+.leftIcon {
+  display: flex;
+  align-items: center;
+  font-size: 1em;
+}
+
+.rightIcon {
+  display: flex;
+  align-items: center;
+  font-size: 1em;
+}
+
+/* Loading Spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Size Variants */
+.size-small {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  min-height: 32px;
+}
+
+.size-medium {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  min-height: 40px;
+}
+
+.size-large {
+  padding: 1rem 1.5rem;
+  font-size: 1.125rem;
+  min-height: 48px;
+}
+
+/* Style Variants */
+.variant-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.variant-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.variant-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.variant-secondary {
+  background: #f8fafc;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.variant-secondary:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.variant-secondary:active:not(:disabled) {
+  background: #e2e8f0;
+  transform: translateY(0);
+}
+
+.variant-outlined {
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.variant-outlined:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+.variant-outlined:active:not(:disabled) {
+  background: rgba(102, 126, 234, 0.2);
+  transform: translateY(0);
+}
+
+.variant-text {
+  background: transparent;
+  color: #667eea;
+  border: none;
+  box-shadow: none;
+}
+
+.variant-text:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.variant-text:active:not(:disabled) {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+.variant-danger {
+  background: #dc2626;
+  color: white;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+}
+
+.variant-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.variant-danger:active:not(:disabled) {
+  background: #991b1b;
+  transform: translateY(0);
+}
+
+/* States */
+.fullWidth {
+  width: 100%;
+}
+
+.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.loading {
+  cursor: wait;
+  pointer-events: none;
+}
+
+.loading .content {
+  opacity: 0.7;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .variant-secondary {
+    background: #1e293b;
+    color: #f1f5f9;
+    border-color: #334155;
+  }
+  
+  .variant-secondary:hover:not(:disabled) {
+    background: #334155;
+    border-color: #475569;
+  }
+  
+  .variant-secondary:active:not(:disabled) {
+    background: #475569;
+  }
+  
+  .variant-outlined {
+    border-color: #667eea;
+    color: #8b9cf7;
+  }
+  
+  .variant-text {
+    color: #8b9cf7;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+  
+  .button:hover {
+    transform: none;
+  }
+  
+  .spinner {
+    animation: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .button {
+    border-width: 2px;
+  }
+  
+  .variant-primary {
+    border: 2px solid #000;
+  }
+  
+  .variant-secondary {
+    border: 2px solid #000;
+  }
+  
+  .variant-text {
+    border: 2px solid transparent;
+    text-decoration: underline;
+  }
+}

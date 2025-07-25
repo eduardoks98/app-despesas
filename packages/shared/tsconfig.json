@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": false,
+    "jsx": "react-native"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

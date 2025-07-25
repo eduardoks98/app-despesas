@@ -9,17 +9,24 @@
 
 ## Pré-requisitos
 
-### Para Android
-- Node.js 18+
-- Java JDK 17
-- Android Studio
-- 4GB RAM mínimo
-- 10GB espaço em disco
+### ⚡ Requisitos Básicos
+- **Node.js 18+** - [Download](https://nodejs.org/)
+- **4GB RAM mínimo**
+- **10GB espaço em disco**
+- **Conexão com internet estável**
 
-### Para iOS
-- macOS (obrigatório)
-- Xcode 14+
-- Conta Apple Developer (para dispositivo físico)
+### 🖥️ Para Windows
+- **Git** (opcional) - [Download](https://git-scm.com/)
+- **Visual Studio Code** (recomendado) - [Download](https://code.visualstudio.com/)
+
+### 🤖 Para Android
+- **Android Studio** - [Download](https://developer.android.com/studio)
+- **Java JDK 17** (incluído no Android Studio)
+
+### 🍎 Para iOS
+- **macOS** (obrigatório)
+- **Xcode 14+**
+- **Conta Apple Developer** (para dispositivo físico)
 
 ## Passo a Passo
 
@@ -51,33 +58,38 @@ pod install
 
 ### 4. Compile o App
 
-#### Método 1: APK para Android (Mais Fácil)
-```bash
-# Gera APK para instalação direta
-cd android
-./gradlew assembleRelease
-
-# O APK estará em:
-# android/app/build/outputs/apk/release/app-release.apk
-```
-
-#### Método 2: EAS Build (Recomendado)
+#### 🚀 Método 1: EAS Build (Recomendado)
 ```bash
 # Instale o EAS CLI
 npm install -g eas-cli
 
+# Login na conta Expo (gratuita)
+eas login
+
 # Configure o EAS (primeira vez)
 eas build:configure
 
-# Build para Android
-eas build -p android --profile preview --local
+# Build para Android (gera APK)
+eas build -p android --profile preview
 ```
 
-#### Método 3: Desenvolvimento Local
+#### ⚡ Método 2: Teste Rápido (Expo Go)
 ```bash
-# Para testar durante desenvolvimento
+# Para testar sem compilar
 npm start
-# Depois use o app Expo Go no seu dispositivo
+
+# Instale "Expo Go" no celular
+# Escaneie o QR code
+```
+
+#### 🔧 Método 3: Build Manual (Avançado)
+```bash
+# Requer Android Studio configurado
+expo eject
+cd android
+./gradlew assembleRelease
+
+# APK em: android/app/build/outputs/apk/release/
 ```
 
 ### 5. Instale no Seu Dispositivo
@@ -93,32 +105,37 @@ npm start
 
 ## 🚨 Problemas Comuns
 
-### "SDK não encontrado"
+> **📋 Para soluções detalhadas:** [SOLUCAO_PROBLEMAS.md](./SOLUCAO_PROBLEMAS.md)
+
+### ❌ "node não reconhecido" (Windows)
 ```bash
-# Configure o caminho do Android SDK
-export ANDROID_HOME=$HOME/Android/Sdk
-export PATH=$PATH:$ANDROID_HOME/tools
+# Reinstale Node.js: https://nodejs.org/
+# Reinicie o terminal
+node --version  # Verificar
 ```
 
-### "Metro bundler error"
+### ❌ "eas não reconhecido"
+```bash
+npm install -g eas-cli
+```
+
+### ❌ "Metro bundler error"
 ```bash
 # Limpe o cache
-npx react-native start --reset-cache
+npm start -- --reset-cache
 ```
 
-### Build falha no Android
+### ❌ Build falha
 ```bash
-cd android
-./gradlew clean
-cd ..
-npm run android
+# Limpar dependências
+rm -rf node_modules
+npm install
 ```
 
-### Erro de dependências
-```bash
-# Limpe e reinstale
-npm run clean
-```
+### ❌ APK não instala
+1. **Ativar "Fontes Desconhecidas"** no Android
+2. **Desinstalar versão anterior** se existir
+3. **Verificar se download completou**
 
 ## 💡 Dicas de Performance
 
