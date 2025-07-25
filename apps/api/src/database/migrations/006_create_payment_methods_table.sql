@@ -4,7 +4,7 @@
 CREATE TABLE payment_methods (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  stripe_payment_method_id VARCHAR(255),
+  stripe_payment_method_id VARCHAR(191),
   type ENUM('card', 'pix', 'bank_transfer') NOT NULL,
   card_brand VARCHAR(50),
   card_last4 VARCHAR(4),

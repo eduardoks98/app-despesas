@@ -12,17 +12,20 @@ async function main() {
         logger.info('Running migrations...');
         await DatabaseMigrator.runMigrations();
         logger.info('✅ Migrations completed successfully!');
+        process.exit(0);
         break;
 
       case 'status':
         logger.info('Checking migration status...');
         const status = await DatabaseMigrator.getMigrationStatus();
         console.table(status);
+        process.exit(0);
         break;
 
       case 'rollback':
         logger.info('Rolling back last migration...');
         await DatabaseMigrator.rollbackLastMigration();
+        process.exit(0);
         break;
 
       default:
@@ -38,6 +41,7 @@ Examples:
   npm run migrate up
   npm run migrate status
         `);
+        process.exit(0);
         break;
     }
   } catch (error) {

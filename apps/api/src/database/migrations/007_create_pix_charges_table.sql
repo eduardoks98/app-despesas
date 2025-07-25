@@ -4,7 +4,7 @@
 CREATE TABLE pix_charges (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  external_id VARCHAR(255) UNIQUE NOT NULL,
+  external_id VARCHAR(191) UNIQUE NOT NULL,
   amount DECIMAL(15,2) NOT NULL,
   description TEXT,
   qr_code TEXT NOT NULL,

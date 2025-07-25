@@ -50,43 +50,7 @@ app-despesas/
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 18+
-- Docker & Docker Compose
-- Git
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/your-username/app-despesas.git
-cd app-despesas
-```
-
-### 2. Environment Setup
-```bash
-# Copy environment variables
-cp .env.example .env
-
-# Edit .env file with your configuration
-nano .env
-```
-
-### 3. Start Development Environment
-```bash
-# Install dependencies
-npm install
-
-# Start development servers
-npm run dev
-```
-
-### 4. Production Deployment
-```bash
-# Make deployment script executable
-chmod +x scripts/deploy.sh
-
-# Deploy application
-./scripts/deploy.sh deploy
-```
+See [SETUP.md](./SETUP.md) for detailed setup instructions.
 
 ## 📊 Available Scripts
 

@@ -34,18 +34,18 @@ export class DatabaseSeeder {
     const query = `
       CREATE TABLE IF NOT EXISTS seeds (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        filename VARCHAR(255) UNIQUE NOT NULL,
+        filename VARCHAR(191) UNIQUE NOT NULL,
         executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
 
-    await this.db.execute(query);
+    await this.db.query(query);
     logger.info('Seeds table ready');
   }
 
   private static async runSeed(filename: string): Promise<void> {
     // Check if seed already ran
-    const [rows] = await this.db.execute(
+    const rows = await this.db.query(
       'SELECT id FROM seeds WHERE filename = ?',
       [filename]
     );
@@ -59,12 +59,24 @@ export class DatabaseSeeder {
     const seedPath = path.join(__dirname, 'seeds', filename);
     const seedSQL = fs.readFileSync(seedPath, 'utf8');
 
-    // Execute seed
+    // Execute seed in transaction
     try {
-      await this.db.execute(seedSQL);
+      await this.db.transaction(async (connection) => {
+        // Split by semicolons and filter out empty statements
+        const statements = seedSQL
+          .split(';')
+          .map(stmt => stmt.trim())
+          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+
+        for (const statement of statements) {
+          if (statement.trim()) {
+            await connection.execute(statement);
+          }
+        }
+      });
       
       // Record seed as executed
-      await this.db.execute(
+      await this.db.query(
         'INSERT INTO seeds (filename) VALUES (?)',
         [filename]
       );
@@ -77,7 +89,7 @@ export class DatabaseSeeder {
   }
 
   static async getSeedStatus(): Promise<Array<{ filename: string; executed_at: Date }>> {
-    const [rows] = await this.db.execute(
+    const rows = await this.db.query(
       'SELECT filename, executed_at FROM seeds ORDER BY executed_at DESC'
     );
 
@@ -87,7 +99,7 @@ export class DatabaseSeeder {
   static async resetSeeds(): Promise<void> {
     try {
       logger.warn('Clearing all seed records...');
-      await this.db.execute('DELETE FROM seeds');
+      await this.db.query('DELETE FROM seeds');
       logger.info('Seed records cleared');
     } catch (error) {
       logger.error('Failed to reset seeds:', error);

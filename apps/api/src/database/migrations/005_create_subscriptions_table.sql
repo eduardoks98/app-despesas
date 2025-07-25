@@ -4,9 +4,9 @@
 CREATE TABLE subscriptions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  stripe_subscription_id VARCHAR(255),
-  stripe_customer_id VARCHAR(255),
-  stripe_price_id VARCHAR(255),
+  stripe_subscription_id VARCHAR(191),
+  stripe_customer_id VARCHAR(191),
+  stripe_price_id VARCHAR(191),
   status ENUM('active', 'canceled', 'incomplete', 'incomplete_expired', 'past_due', 'trialing', 'unpaid') NOT NULL,
   current_period_start TIMESTAMP NULL,
   current_period_end TIMESTAMP NULL,

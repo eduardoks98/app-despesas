@@ -34,18 +34,18 @@ export class DatabaseMigrator {
     const query = `
       CREATE TABLE IF NOT EXISTS migrations (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        filename VARCHAR(255) UNIQUE NOT NULL,
+        filename VARCHAR(191) UNIQUE NOT NULL,
         executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
 
-    await this.db.execute(query);
+    await this.db.query(query);
     logger.info('Migrations table ready');
   }
 
   private static async runMigration(filename: string): Promise<void> {
     // Check if migration already ran
-    const [rows] = await this.db.execute(
+    const rows = await this.db.query(
       'SELECT id FROM migrations WHERE filename = ?',
       [filename]
     );
@@ -61,10 +61,10 @@ export class DatabaseMigrator {
 
     // Execute migration
     try {
-      await this.db.execute(migrationSQL);
+      await this.db.query(migrationSQL);
       
       // Record migration as executed
-      await this.db.execute(
+      await this.db.query(
         'INSERT INTO migrations (filename) VALUES (?)',
         [filename]
       );
@@ -83,7 +83,7 @@ export class DatabaseMigrator {
   }
 
   static async getMigrationStatus(): Promise<Array<{ filename: string; executed_at: Date }>> {
-    const [rows] = await this.db.execute(
+    const rows = await this.db.query(
       'SELECT filename, executed_at FROM migrations ORDER BY executed_at DESC'
     );
 

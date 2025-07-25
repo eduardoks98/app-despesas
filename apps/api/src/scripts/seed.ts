@@ -12,18 +12,21 @@ async function main() {
         logger.info('Running seeds...');
         await DatabaseSeeder.runSeeds();
         logger.info('✅ Seeds completed successfully!');
+        process.exit(0);
         break;
 
       case 'status':
         logger.info('Checking seed status...');
         const status = await DatabaseSeeder.getSeedStatus();
         console.table(status);
+        process.exit(0);
         break;
 
       case 'reset':
         logger.info('Resetting seeds...');
         await DatabaseSeeder.resetSeeds();
         logger.info('✅ Seeds reset successfully!');
+        process.exit(0);
         break;
 
       default:
@@ -39,6 +42,7 @@ Examples:
   npm run seed run
   npm run seed status
         `);
+        process.exit(0);
         break;
     }
   } catch (error) {

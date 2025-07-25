@@ -39,7 +39,6 @@ export class Database {
       ...config,
       waitForConnections: true,
       queueLimit: 0,
-      timeout: 60000,
       enableKeepAlive: true,
       keepAliveInitialDelay: 0,
       charset: 'utf8mb4',
@@ -48,6 +47,7 @@ export class Database {
       dateStrings: false,
       supportBigNumbers: true,
       bigNumberStrings: false,
+      multipleStatements: true,
       connectAttributes: {
         program_name: 'app-despesas-api'
       }
@@ -157,10 +157,10 @@ export class Database {
   public getPoolStatus(): PoolStatus {
     const pool = this.pool as any; // Access private properties
     return {
-      total: pool.config.connectionLimit,
-      active: pool._allConnections.length - pool._freeConnections.length,
-      idle: pool._freeConnections.length,
-      waiting: pool._connectionQueue.length
+      total: parseInt(env.DB_CONNECTION_LIMIT) || 10,
+      active: pool._allConnections?.length || 0,
+      idle: pool._freeConnections?.length || 0,
+      waiting: pool._connectionQueue?.length || 0
     };
   }
 

@@ -1,43 +1,65 @@
-# 🚀 **Guia Completo de Configuração - App Despesas**
+# 🚀 **Guia Completo de Setup - App Despesas**
 
-## **📋 Pré-requisitos**
+> **Configuração passo a passo da plataforma SaaS freemium completa**
 
-Antes de começar, você precisa ter instalado:
+## **📋 O Que Você Vai Configurar**
+
+✅ **Backend API** (Node.js + TypeScript + MySQL)  
+✅ **Web App** (Next.js 14 + TailwindCSS)  
+✅ **Mobile App** (React Native + Expo)  
+✅ **Dashboard Admin** com analytics avançados  
+✅ **Sistema de Pagamentos** (Stripe + PIX)  
+✅ **Autenticação JWT** completa  
+✅ **Sistema Freemium** com planos pagos  
+
+---
+
+## **🛠️ Pré-requisitos**
+
+Certifique-se de ter instalado:
 - ✅ **Node.js** (versão 18+) - [Download](https://nodejs.org/)
 - ✅ **WAMP/XAMPP** - para MySQL
-- ✅ **Git**
+- ✅ **Git** 
 - ✅ **VS Code** (recomendado)
 
 ---
 
-## **🔧 Passo 1: Configurar Banco de Dados MySQL**
+## **🔧 PASSO 1: Configurar Banco de Dados MySQL**
 
 ### 1.1 Iniciar WAMP
 ```bash
-# Inicie o WAMP e certifique-se que o MySQL está rodando
-# Acesse: http://localhost/phpmyadmin
+# 1. Inicie o WAMP
+# 2. Certifique-se que o ícone do MySQL está verde
+# 3. Acesse: http://localhost/phpmyadmin
 ```
 
-### 1.2 Criar Banco de Dados
-```sql
--- No phpMyAdmin, execute este SQL:
-CREATE DATABASE app_despesas CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+### 1.2 Executar Migrations
+O projeto usa um sistema de migrations para criar o banco de dados. Execute:
+
+```bash
+# Navegar para a API
+cd apps/api
+
+# Executar migrations
+npm run migrate
+
+# Inserir dados de exemplo
+npm run seed
 ```
 
-### 1.3 Criar Usuário (Opcional)
-```sql
--- Criar usuário específico (opcional)
-CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'app_password';
-GRANT ALL PRIVILEGES ON app_despesas.* TO 'app_user'@'localhost';
-FLUSH PRIVILEGES;
-```
+> **Nota:** As migrations criam automaticamente:
+> - Banco de dados `app_despesas`
+> - Todas as tabelas necessárias
+> - Usuários de teste com senhas válidas
+> - Dados de exemplo para testar
 
 ---
 
-## **📦 Passo 2: Instalar Dependências**
+## **📦 PASSO 2: Instalar Dependências**
 
-### 2.1 Abrir Terminal na Pasta do Projeto
+### 2.1 Abrir Terminal no Projeto
 ```bash
+# Navegar até a pasta do projeto
 cd C:\wamp64\www\app-despesas
 ```
 
@@ -46,7 +68,7 @@ cd C:\wamp64\www\app-despesas
 npm install
 ```
 
-### 2.3 Instalar Dependências dos Projetos
+### 2.3 Instalar Dependências dos Sub-projetos
 ```bash
 # API Backend
 cd apps/api
@@ -66,16 +88,11 @@ cd ../..
 
 ---
 
-## **⚙️ Passo 3: Configurar Variáveis de Ambiente**
+## **⚙️ PASSO 3: Configurar Variáveis de Ambiente**
 
 ### 3.1 API Backend (.env)
-```bash
-# Copiar exemplo e editar
-cd apps/api
-cp .env.example .env
-```
+Arquivo: `apps/api/.env`
 
-**Editar `apps/api/.env`:**
 ```env
 # Server Configuration
 NODE_ENV=development
@@ -91,7 +108,7 @@ DB_CONNECTION_LIMIT=10
 DB_SSL=false
 
 # JWT Configuration
-JWT_SECRET=sua-chave-secreta-muito-segura-aqui-32-caracteres
+JWT_SECRET=sua-chave-secreta-muito-segura-aqui-32-caracteres-jwt
 JWT_EXPIRES_IN=7d
 JWT_REFRESH_SECRET=sua-chave-refresh-muito-segura-aqui-32-caracteres
 JWT_REFRESH_EXPIRES_IN=30d
@@ -105,29 +122,33 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 # CORS
 CORS_ORIGIN=http://localhost:3000,http://localhost:5173
 
-# Email (Opcional - para depois)
+# Stripe (Opcional - para pagamentos)
+STRIPE_SECRET_KEY=sk_test_demo
+STRIPE_WEBHOOK_SECRET=whsec_demo
+STRIPE_PRICE_ID_MONTHLY=price_demo_monthly
+STRIPE_PRICE_ID_YEARLY=price_demo_yearly
+
+# PIX (Opcional - para pagamentos brasileiros)
+PIX_API_KEY=sua-chave-pix
+PIX_WEBHOOK_SECRET=seu-webhook-secret
+PIX_KEY=sua-chave-pix-cpf-email
+
+# Email (Opcional)
 EMAIL_FROM=noreply@appdespesas.com.br
 EMAIL_SMTP_HOST=smtp.gmail.com
 EMAIL_SMTP_PORT=587
 EMAIL_SMTP_USER=seu-email@gmail.com
 EMAIL_SMTP_PASS=sua-senha-app
 
-# Stripe (Opcional - para depois)
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-# PIX (Opcional - para depois)
-PIX_API_KEY=sua-chave-pix
-PIX_WEBHOOK_SECRET=seu-webhook-secret
-PIX_KEY=sua-chave-pix-cpf-email
+# Security
+BCRYPT_ROUNDS=10
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 ```
 
 ### 3.2 Web App (.env.local)
-```bash
-cd ../web
-```
+Arquivo: `apps/web/.env.local`
 
-**Criar `apps/web/.env.local`:**
 ```env
 # Next.js Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -135,125 +156,106 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 
 # NextAuth Configuration
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=sua-chave-nextauth-secreta-32-caracteres
+NEXTAUTH_SECRET=sua-chave-nextauth-secreta-32-caracteres-muito-longa
 
 # Stripe (Opcional)
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_demo
+
+# Features Flags
+NEXT_PUBLIC_ENABLE_STRIPE=true
+NEXT_PUBLIC_ENABLE_PIX=true
+NEXT_PUBLIC_ENABLE_MOBILE_APP=true
+NEXT_PUBLIC_ENABLE_ANALYTICS=true
+```
+
+### 3.3 Mobile App (.env)
+Arquivo: `apps/mobile/.env`
+
+```env
+# API Configuration
+EXPO_PUBLIC_API_URL=http://localhost:3001
+EXPO_PUBLIC_WEB_URL=http://localhost:3000
+
+# App Configuration
+EXPO_PUBLIC_APP_NAME=App Despesas
+EXPO_PUBLIC_APP_VERSION=1.0.0
 ```
 
 ---
 
-## **🗄️ Passo 4: Executar Migrações do Banco**
+## **🚀 PASSO 4: Executar e Testar**
 
-### 4.1 Criar Tabelas Básicas
-Execute no phpMyAdmin ou MySQL:
-
-```sql
--- Tabela de usuários
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  name VARCHAR(255),
-  password_hash VARCHAR(255) NOT NULL,
-  stripe_customer_id VARCHAR(255),
-  is_premium BOOLEAN DEFAULT FALSE,
-  is_admin BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Tabela de categorias
-CREATE TABLE categories (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  icon VARCHAR(100),
-  color VARCHAR(7),
-  is_income BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Tabela de transações
-CREATE TABLE transactions (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  category_id INT,
-  amount DECIMAL(10,2) NOT NULL,
-  description TEXT,
-  date DATE NOT NULL,
-  type ENUM('income', 'expense') NOT NULL,
-  tags JSON,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
-);
-
--- Inserir usuário de teste
-INSERT INTO users (email, name, password_hash, is_admin) VALUES 
-('admin@test.com', 'Admin User', '$2b$10$hash', TRUE),
-('user@test.com', 'Test User', '$2b$10$hash', FALSE);
-
--- Inserir categorias padrão
-INSERT INTO categories (user_id, name, icon, color, is_income) VALUES 
-(1, 'Alimentação', '🍽️', '#FF6B6B', FALSE),
-(1, 'Transporte', '🚗', '#4ECDC4', FALSE),
-(1, 'Salário', '💰', '#45B7D1', TRUE),
-(1, 'Freelance', '💻', '#96CEB4', TRUE);
-```
-
----
-
-## **🚀 Passo 5: Testar a Aplicação**
-
-### 5.1 Iniciar API Backend
+### 4.1 Iniciar API Backend
+**Terminal 1:**
 ```bash
-# Terminal 1 - API
 cd C:\wamp64\www\app-despesas\apps\api
 npm run dev
 ```
 
-Deve aparecer:
+**Deve aparecer:**
 ```
 🚀 API Server running on port 3001
 📊 Environment: development
 🔗 Health check: http://localhost:3001/api/health
 📚 API Documentation: http://localhost:3001/docs
+✅ Database connected successfully
 ```
 
-### 5.2 Testar API
+### 4.2 Testar API
 Abra no navegador: http://localhost:3001/api/health
 
-Deve retornar:
+**Deve retornar:**
 ```json
 {
   "status": "ok",
   "timestamp": "2024-01-XX...",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "database": "connected",
+  "environment": "development"
 }
 ```
 
-### 5.3 Iniciar Web App
+### 4.3 Iniciar Web App
+**Terminal 2:**
 ```bash
-# Terminal 2 - Web
 cd C:\wamp64\www\app-despesas\apps\web
 npm run dev
 ```
 
-Deve aparecer:
+**Deve aparecer:**
 ```
 ▲ Next.js 14.x.x
 - Local:        http://localhost:3000
 - ready in 2.1s
 ```
 
-### 5.4 Acessar Web App
-Abra no navegador: http://localhost:3000
+### 4.4 Acessar Web App
+Abra no navegador: **http://localhost:3000**
 
 ---
 
-## **📱 Passo 6: Testar Mobile App (Opcional)**
+## **🔐 PASSO 5: Fazer Login de Teste**
+
+### Credenciais de Teste (senha: `password`):
+
+**🔑 Admin Completo:**
+- Email: `admin@test.com`
+- Senha: `password`
+- Acesso: Dashboard Admin + Todas as features + Analytics
+
+**👤 Usuário Básico:**
+- Email: `user@test.com`
+- Senha: `password`
+- Acesso: Features básicas (limitadas)
+
+**⭐ Usuário Premium:**
+- Email: `premium@test.com`
+- Senha: `password`
+- Acesso: Todas as features premium
+
+---
+
+## **📱 PASSO 6: Testar Mobile App (Opcional)**
 
 ### 6.1 Instalar Expo CLI
 ```bash
@@ -261,76 +263,344 @@ npm install -g @expo/cli
 ```
 
 ### 6.2 Iniciar Mobile App
+**Terminal 3:**
 ```bash
-# Terminal 3 - Mobile
 cd C:\wamp64\www\app-despesas\apps\mobile
 npm start
 ```
 
 ### 6.3 Testar no Device
-- Instale **Expo Go** no seu celular
-- Escaneie o QR Code que aparece no terminal
+1. Instale **Expo Go** no seu celular
+2. Escaneie o QR Code que aparece no terminal
+
+---
+
+## **🎯 O QUE VOCÊ PODE TESTAR AGORA**
+
+### **🌐 Web App (http://localhost:3000)**
+✅ **Dashboard** com gráficos interativos e métricas  
+✅ **Transações** - Adicionar, editar, excluir com validações  
+✅ **Categorias** - Gerenciar categorias personalizadas com ícones  
+✅ **Relatórios** - Análises avançadas e exportação (Premium)  
+✅ **Analytics** - Insights detalhados e tendências (Premium)  
+✅ **Upgrade** - Sistema de assinatura premium integrado  
+✅ **Billing** - Gerenciar pagamentos e faturas  
+✅ **PIX** - Pagamentos instantâneos brasileiros  
+✅ **Admin** - Dashboard administrativo completo (Admin only)  
+✅ **Perfil** - Configurações de usuário e preferências  
+
+### **🔧 API (http://localhost:3001)**
+✅ **Health Check** - `/api/health`  
+✅ **Documentação** - `/docs` (Swagger UI interativa)  
+✅ **Autenticação** - Login/Register com JWT  
+✅ **Transações** - CRUD completo com filtros  
+✅ **Categorias** - Gerenciamento completo  
+✅ **Usuários** - Perfis e configurações  
+✅ **Pagamentos** - Stripe + PIX + Webhooks  
+✅ **Admin** - Endpoints administrativos  
+✅ **Analytics** - Métricas e relatórios  
+
+### **📱 Mobile App**
+✅ **Sincronização** - Cloud backup automático  
+✅ **Relatórios** - Exportação PDF/Excel  
+✅ **Offline** - Funciona sem internet  
+✅ **Push** - Notificações personalizadas  
+✅ **Biometria** - Login com digital/face  
+
+---
+
+## **💡 Funcionalidades por Plano**
+
+### **🆓 Plano Gratuito**
+- ✅ Até 50 transações/mês
+- ✅ 5 categorias personalizadas
+- ✅ Dashboard básico
+- ✅ Relatórios simples
+- ❌ Exportação limitada
+
+### **⭐ Plano Premium ($19.90/mês)**
+- ✅ Transações ilimitadas
+- ✅ Categorias ilimitadas
+- ✅ Dashboard avançado com gráficos
+- ✅ Relatórios detalhados
+- ✅ Exportação completa (PDF, Excel, CSV)
+- ✅ Analytics e insights
+- ✅ Backup automático
+- ✅ Suporte prioritário
+
+### **👑 Plano Admin**
+- ✅ Todas as features premium
+- ✅ Dashboard administrativo
+- ✅ Gerenciar usuários
+- ✅ Analytics da plataforma  
+- ✅ Relatórios de receita
+- ✅ Configurações globais
+
+---
+
+## **🔧 Sistema de Migrations**
+
+O projeto utiliza um sistema de migrations para gerenciar o banco de dados:
+
+### Comandos Disponíveis:
+```bash
+# Executar todas as migrations pendentes
+npm run migrate
+
+# Reverter última migration
+npm run migrate:rollback
+
+# Status das migrations
+npm run migrate:status
+
+# Criar nova migration
+npm run migrate:create nome_da_migration
+
+# Popular banco com dados de exemplo
+npm run seed
+```
+
+### Estrutura das Migrations:
+```
+apps/api/src/database/migrations/
+├── 001_create_users_table.sql
+├── 002_create_categories_table.sql
+├── 003_create_transactions_table.sql
+├── 004_create_budgets_table.sql
+├── 005_create_subscriptions_table.sql
+├── 006_create_payment_methods_table.sql
+├── 007_create_pix_charges_table.sql
+└── 008_create_refresh_tokens_table.sql
+```
+
+### Seeds (Dados de Exemplo):
+```
+apps/api/src/database/seeds/
+├── 001_default_users.sql
+├── 002_default_categories.sql
+└── 003_sample_transactions.sql
+```
 
 ---
 
 ## **🔧 Resolução de Problemas Comuns**
 
-### Erro de Banco de Dados
+### ❌ Erro de Banco de Dados
 ```bash
-# Verificar se MySQL está rodando
-# No WAMP, verificar ícone verde do MySQL
+# Verificar se MySQL está rodando no WAMP
+# Ícone deve estar verde
+# Testar conexão: http://localhost/phpmyadmin
+
+# Recriar banco de dados completamente
+npm run db:reset
+npm run migrate
+npm run seed
 ```
 
-### Erro de Porta em Uso
+### ❌ Erro de Migration
 ```bash
-# Matar processo na porta 3001
+# Ver status das migrations
+npm run migrate:status
+
+# Reverter e aplicar novamente
+npm run migrate:rollback
+npm run migrate
+
+# Resetar banco completamente
+npm run db:reset
+```
+
+### ❌ Erro de Porta em Uso
+```bash
+# Matar processo na porta 3001 (API)
 npx kill-port 3001
 
-# Matar processo na porta 3000  
+# Matar processo na porta 3000 (Web)
 npx kill-port 3000
+
+# Verificar portas em uso
+netstat -ano | findstr :3001
+netstat -ano | findstr :3000
 ```
 
-### Erro de Dependências
+### ❌ Erro de Dependências
 ```bash
-# Limpar cache e reinstalar
+# Limpar cache e reinstalar (cada projeto)
+cd apps/api
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
+
+cd ../web
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
+
+cd ../mobile
 npm cache clean --force
 rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Erro de TypeScript
+### ❌ Erro de Build/TypeScript
 ```bash
-# Ignorar erros TS durante desenvolvimento
-npm run dev -- --no-ts-check
+# Para desenvolvimento, pode ignorar erros TS temporariamente
+npm run dev -- --no-check
+
+# Ou corrigir erros TS executando
+npm run type-check
 ```
+
+### ❌ Erro de CORS
+```bash
+# Verificar CORS_ORIGIN no .env da API
+# Deve incluir: http://localhost:3000,http://localhost:5173
+
+# Limpar cache do navegador
+# Ctrl+Shift+R (Windows) ou Cmd+Shift+R (Mac)
+```
+
+### ❌ Erro de JWT/Autenticação
+```bash
+# Verificar JWT_SECRET no .env (mínimo 32 caracteres)
+# Verificar NEXTAUTH_SECRET no .env.local
+# Limpar cookies do navegador
+
+# Regenerar secrets se necessário
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+---
+
+## **📊 Status dos Serviços**
+
+Depois de configurado, você terá:
+
+| Serviço | URL | Status | Funcionalidade |
+|---------|-----|--------|----------------|
+| 🌐 **Web App** | http://localhost:3000 | ✅ | Interface principal |
+| 🔧 **API Health** | http://localhost:3001/api/health | ✅ | Status da API |
+| 📚 **API Docs** | http://localhost:3001/docs | ✅ | Swagger UI |
+| 🗄️ **Database** | http://localhost/phpmyadmin | ✅ | MySQL Admin |
+| 📱 **Mobile** | Expo Go App | ✅ | App móvel |
+| 👑 **Admin** | http://localhost:3000/admin | ✅ | Dashboard admin |
 
 ---
 
 ## **🎯 Próximos Passos Após Configuração**
 
-1. **✅ Configuração Básica** - Banco + API + Web funcionando
-2. **🔐 Autenticação** - Implementar login/registro
-3. **💳 Stripe** - Configurar pagamentos (opcional)
-4. **📱 PIX** - Configurar pagamentos brasileiros (opcional)
-5. **📧 Email** - Configurar SMTP (opcional)
-6. **🚀 Deploy** - Preparar para produção
+### **Imediatos (Teste tudo):**
+1. ✅ **Login** com as 3 contas diferentes
+2. ✅ **Criar transações** e testar categorias
+3. ✅ **Explorar dashboard** e gráficos
+4. ✅ **Testar sistema de upgrade** (user → premium)
+5. ✅ **Acessar admin panel** (apenas admin@test.com)
+
+### **Configurações de Produção (Opcional):**
+1. 💳 **Configurar Stripe** - Chaves reais para pagamentos
+2. 📱 **Configurar PIX** - Para mercado brasileiro  
+3. 📧 **Configurar SMTP** - Para emails transacionais
+4. 🔐 **Configurar SSL** - Certificados HTTPS
+5. 🚀 **Deploy** - Heroku, Vercel, DigitalOcean
+
+### **Personalização da Marca:**
+1. 🎨 **Customizar cores** - Tema da sua marca
+2. 🏢 **Logo e branding** - Identidade visual
+3. 📊 **Configurar analytics** - Google Analytics, Mixpanel
+4. 🔧 **Ajustar features** - Habilitar/desabilitar funcionalidades
+5. 💰 **Definir preços** - Valores dos planos premium
+
+### **Desenvolvimento:**
+1. 🔧 **Criar novas migrations** - Para mudanças no banco
+2. 📊 **Adicionar métricas** - Monitoramento customizado
+3. 🎨 **Customizar UI** - Interface personalizada
+4. 🧪 **Escrever testes** - Garantir qualidade
+5. 📱 **Otimizar mobile** - Performance e UX
 
 ---
 
-## **📞 Suporte**
+## **🎉 Parabéns! Sua Plataforma SaaS Está Pronta!**
 
-Se encontrar problemas:
-1. Verificar logs no terminal
-2. Verificar se todas as portas estão livres
-3. Verificar se MySQL está rodando
-4. Verificar arquivos .env
+**Você agora tem uma plataforma freemium completa:**
 
-**Status dos Serviços:**
-- ✅ API: http://localhost:3001/api/health
-- ✅ Web: http://localhost:3000
-- ✅ Docs: http://localhost:3001/docs
-- ✅ MySQL: http://localhost/phpmyadmin
+🚀 **Backend API** - Robusto, escalável e documentado  
+🌐 **Web App** - Interface moderna e responsiva  
+📱 **Mobile App** - App nativo para iOS/Android  
+💳 **Pagamentos** - Stripe + PIX integrados  
+📊 **Analytics** - Dashboard admin com métricas  
+🔐 **Autenticação** - JWT seguro e NextAuth  
+🗄️ **Migrations** - Sistema de banco versionado  
+🐳 **Docker** - Containerização completa  
+
+**Status da aplicação:**
+- ✅ **Desenvolvimento** - Pronta para desenvolver
+- ✅ **Testes** - Pronta para usuários beta  
+- ✅ **Produção** - Pronta para deploy
+- ✅ **Monetização** - Pronta para gerar receita
 
 ---
 
-🎉 **Parabéns! Sua aplicação freemium está configurada e pronta para uso!**
+## **📞 Suporte e Debugging**
+
+### **Logs Importantes:**
+```bash
+# API Logs
+tail -f apps/api/logs/app.log
+
+# Web App Logs (terminal)
+# Acompanhar no terminal onde rodou npm run dev
+
+# Database Logs (MySQL)
+# Ver no WAMP ou phpMyAdmin
+
+# Migration Logs
+npm run migrate:status
+```
+
+### **Comandos Úteis:**
+```bash
+# Verificar status dos serviços
+curl http://localhost:3001/api/health
+curl http://localhost:3000/api/auth/session
+
+# Restart completo
+npx kill-port 3000 3001
+npm run dev (em cada projeto)
+
+# Verificar banco de dados
+mysql -u root -p app_despesas
+SHOW TABLES;
+SELECT COUNT(*) FROM users;
+
+# Status das migrations
+npm run migrate:status
+```
+
+### **Arquivos de Configuração Importantes:**
+- `apps/api/.env` - Configurações da API
+- `apps/web/.env.local` - Configurações do Web App  
+- `apps/mobile/.env` - Configurações do Mobile
+- `apps/api/src/database/migrate.ts` - Sistema de migrations
+- `package.json` - Scripts e dependências
+- `docker-compose.yml` - Configuração Docker
+
+---
+
+## **🎯 Quick Start Checklist**
+
+- [ ] MySQL rodando no WAMP
+- [ ] Dependências instaladas (npm install em todos)
+- [ ] Arquivos .env configurados
+- [ ] Migrations executadas (npm run migrate)
+- [ ] Seeds inseridos (npm run seed)
+- [ ] API rodando na porta 3001
+- [ ] Web App rodando na porta 3000
+- [ ] Login funcionando com credenciais de teste
+- [ ] Dashboard carregando com dados
+- [ ] Mobile app rodando (opcional)
+
+**🎉 Se todos os itens estão ✅, sua plataforma está funcionando perfeitamente!**
+
+---
+
+**Dica Final:** Mantenha 2-3 terminais abertos para ver logs em tempo real e use o sistema de migrations para todas as mudanças no banco! 🚀

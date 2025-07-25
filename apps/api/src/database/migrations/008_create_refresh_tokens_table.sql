@@ -4,7 +4,7 @@
 CREATE TABLE refresh_tokens (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  token VARCHAR(255) UNIQUE NOT NULL,
+  token VARCHAR(191) UNIQUE NOT NULL,
   expires_at TIMESTAMP NOT NULL,
   is_revoked BOOLEAN DEFAULT FALSE,
   user_agent TEXT,

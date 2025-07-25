@@ -1,7 +1,5 @@
 {
-  "env": {
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "9999999999"
-  },
+  "env": {},
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
@@ -29,7 +27,8 @@
       "Bash(python:*)",
       "Bash(start scripts/icon-generator.html)",
       "Bash(git checkout:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }
