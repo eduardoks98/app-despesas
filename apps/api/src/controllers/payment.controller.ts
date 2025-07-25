@@ -1,421 +1,425 @@
-/**
- * Payment Controller
- * 
- * Handles payment-related API endpoints
- */
-
 import { Request, Response } from 'express';
-import { PaymentService } from '../services/PaymentService';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { StripeService } from '../services/stripe.service';
 import { logger } from '../utils/logger';
-import { env } from '../config/env';
+import Stripe from 'stripe';
 
 export class PaymentController {
-  private static instance: PaymentController;
-  private paymentService: PaymentService;
-
-  private constructor() {
-    this.paymentService = PaymentService.getInstance();
-  }
-
-  public static getInstance(): PaymentController {
-    if (!PaymentController.instance) {
-      PaymentController.instance = new PaymentController();
-    }
-    return PaymentController.instance;
-  }
-
   /**
-   * @swagger
-   * /api/payments/create-checkout:
-   *   post:
-   *     summary: Create checkout session for subscription
-   *     tags: [Payments]
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - priceId
-   *             properties:
-   *               priceId:
-   *                 type: string
-   *                 example: price_1234567890
-   *               trialDays:
-   *                 type: number
-   *                 example: 14
-   *     responses:
-   *       200:
-   *         description: Checkout session created
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 sessionId:
-   *                   type: string
-   *                 url:
-   *                   type: string
+   * Create a checkout session for subscription
    */
-  public createCheckout = async (req: AuthenticatedRequest, res: Response) => {
+  static async createCheckoutSession(req: Request, res: Response) {
     try {
-      const { priceId, trialDays } = req.body;
-      const userId = req.user!.id;
+      const { priceId, mode = 'subscription', trialDays } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
 
       if (!priceId) {
-        return res.status(400).json({ 
-          error: 'Price ID is required',
-          code: 'MISSING_PRICE_ID'
+        return res.status(400).json({ error: 'Price ID is required' });
+      }
+
+      // Get or create Stripe customer
+      let stripeCustomerId = req.user?.stripeCustomerId;
+      
+      if (!stripeCustomerId) {
+        const customer = await StripeService.createCustomer({
+          email: req.user?.email!,
+          name: req.user?.name || req.user?.email!,
+          metadata: {
+            userId: userId.toString(),
+          },
         });
+        
+        stripeCustomerId = customer.id;
+        
+        // Update user with Stripe customer ID
+        // await UserService.updateStripeCustomerId(userId, stripeCustomerId);
       }
 
-      // Construct URLs
-      const baseUrl = env.WEB_URL || 'http://localhost:3000';
-      const successUrl = `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${baseUrl}/subscription/canceled`;
-
-      const session = await this.paymentService.createCheckoutSession(userId, priceId, {
-        successUrl,
-        cancelUrl,
-        trialDays,
-        allowPromotionCodes: true,
+      const session = await StripeService.createCheckoutSession({
+        customerId: stripeCustomerId,
+        priceId,
+        mode: mode as 'subscription' | 'payment',
+        successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/upgrade?cancelled=true`,
+        metadata: {
+          userId: userId.toString(),
+        },
+        trialPeriodDays: trialDays,
       });
 
-      res.json({
-        sessionId: session.id,
-        url: session.url,
-      });
-    } catch (error: any) {
-      logger.error('Create checkout error:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to create checkout session',
-        code: 'CHECKOUT_CREATION_FAILED'
-      });
+      res.json({ sessionId: session.id, url: session.url });
+    } catch (error) {
+      logger.error('Failed to create checkout session', error);
+      res.status(500).json({ error: 'Failed to create checkout session' });
     }
-  };
+  }
 
   /**
-   * @swagger
-   * /api/payments/subscription:
-   *   get:
-   *     summary: Get current subscription info
-   *     tags: [Payments]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Subscription information
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 subscription:
-   *                   type: object
-   *                   properties:
-   *                     id:
-   *                       type: string
-   *                     status:
-   *                       type: string
-   *                     currentPeriodStart:
-   *                       type: string
-   *                       format: date-time
-   *                     currentPeriodEnd:
-   *                       type: string
-   *                       format: date-time
-   *                     cancelAtPeriodEnd:
-   *                       type: boolean
-   *                     amount:
-   *                       type: number
-   *                     currency:
-   *                       type: string
-   *                     interval:
-   *                       type: string
+   * Create billing portal session
    */
-  public getSubscription = async (req: AuthenticatedRequest, res: Response) => {
+  static async createBillingPortalSession(req: Request, res: Response) {
     try {
-      const userId = req.user!.id;
-      const subscription = await this.paymentService.getSubscriptionInfo(userId);
+      const userId = req.user?.id;
+      const stripeCustomerId = req.user?.stripeCustomerId;
 
-      res.json({ subscription });
-    } catch (error: any) {
-      logger.error('Get subscription error:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to get subscription info',
-        code: 'SUBSCRIPTION_FETCH_FAILED'
-      });
-    }
-  };
-
-  /**
-   * @swagger
-   * /api/payments/cancel-subscription:
-   *   post:
-   *     summary: Cancel subscription
-   *     tags: [Payments]
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: false
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               immediately:
-   *                 type: boolean
-   *                 default: false
-   *     responses:
-   *       200:
-   *         description: Subscription canceled
-   */
-  public cancelSubscription = async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const { immediately = false } = req.body;
-      const userId = req.user!.id;
-
-      await this.paymentService.cancelSubscription(userId, immediately);
-
-      res.json({ 
-        message: immediately 
-          ? 'Subscription canceled immediately' 
-          : 'Subscription will be canceled at the end of the current period',
-        immediately 
-      });
-    } catch (error: any) {
-      logger.error('Cancel subscription error:', error);
-      
-      if (error.message === 'No active subscription found') {
-        return res.status(404).json({ 
-          error: 'No active subscription found',
-          code: 'NO_SUBSCRIPTION'
-        });
-      }
-      
-      res.status(500).json({ 
-        error: error.message || 'Failed to cancel subscription',
-        code: 'CANCELLATION_FAILED'
-      });
-    }
-  };
-
-  /**
-   * @swagger
-   * /api/payments/reactivate-subscription:
-   *   post:
-   *     summary: Reactivate canceled subscription
-   *     tags: [Payments]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Subscription reactivated
-   */
-  public reactivateSubscription = async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const userId = req.user!.id;
-      await this.paymentService.reactivateSubscription(userId);
-
-      res.json({ message: 'Subscription reactivated successfully' });
-    } catch (error: any) {
-      logger.error('Reactivate subscription error:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to reactivate subscription',
-        code: 'REACTIVATION_FAILED'
-      });
-    }
-  };
-
-  /**
-   * @swagger
-   * /api/payments/billing-portal:
-   *   post:
-   *     summary: Create billing portal session
-   *     tags: [Payments]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Billing portal session created
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 url:
-   *                   type: string
-   */
-  public createBillingPortal = async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const userId = req.user!.id;
-      const returnUrl = env.WEB_URL || 'http://localhost:3000';
-
-      const session = await this.paymentService.createBillingPortalSession(userId, returnUrl);
-
-      res.json({ url: session.url });
-    } catch (error: any) {
-      logger.error('Create billing portal error:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to create billing portal session',
-        code: 'BILLING_PORTAL_FAILED'
-      });
-    }
-  };
-
-  /**
-   * @swagger
-   * /api/payments/prices:
-   *   get:
-   *     summary: Get available subscription prices
-   *     tags: [Payments]
-   *     responses:
-   *       200:
-   *         description: Available prices
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 prices:
-   *                   type: array
-   *                   items:
-   *                     type: object
-   */
-  public getPrices = async (req: Request, res: Response) => {
-    try {
-      const prices = await this.paymentService.getPrices();
-      
-      // Filter and format prices for frontend
-      const formattedPrices = prices
-        .filter(price => price.active && price.type === 'recurring')
-        .map(price => ({
-          id: price.id,
-          amount: price.unit_amount,
-          currency: price.currency,
-          interval: price.recurring?.interval,
-          intervalCount: price.recurring?.interval_count,
-          product: price.product,
-        }));
-
-      res.json({ prices: formattedPrices });
-    } catch (error: any) {
-      logger.error('Get prices error:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to get prices',
-        code: 'PRICES_FETCH_FAILED'
-      });
-    }
-  };
-
-  /**
-   * @swagger
-   * /api/payments/webhook:
-   *   post:
-   *     summary: Stripe webhook endpoint
-   *     tags: [Payments]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *     responses:
-   *       200:
-   *         description: Webhook processed successfully
-   *       400:
-   *         description: Invalid webhook signature
-   */
-  public handleWebhook = async (req: Request, res: Response) => {
-    try {
-      const signature = req.headers['stripe-signature'] as string;
-      
-      if (!signature) {
-        return res.status(400).json({ error: 'Missing stripe-signature header' });
+      if (!userId || !stripeCustomerId) {
+        return res.status(400).json({ error: 'User or customer not found' });
       }
 
-      // Verify webhook signature and construct event
-      const event = this.paymentService.verifyWebhookSignature(
-        req.body,
-        signature
+      const session = await StripeService.createBillingPortalSession(
+        stripeCustomerId,
+        `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`
       );
 
-      // Process the event
-      await this.paymentService.handleWebhook(event);
-
-      res.json({ received: true });
-    } catch (error: any) {
-      logger.error('Webhook error:', error);
-      
-      if (error.message?.includes('signature')) {
-        return res.status(400).json({ 
-          error: 'Invalid signature',
-          code: 'INVALID_SIGNATURE'
-        });
-      }
-      
-      res.status(500).json({ 
-        error: 'Webhook processing failed',
-        code: 'WEBHOOK_FAILED'
-      });
+      res.json({ url: session.url });
+    } catch (error) {
+      logger.error('Failed to create billing portal session', error);
+      res.status(500).json({ error: 'Failed to create billing portal session' });
     }
-  };
+  }
 
   /**
-   * @swagger
-   * /api/payments/usage:
-   *   get:
-   *     summary: Get usage statistics for current billing period
-   *     tags: [Payments]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Usage statistics
+   * Get customer subscriptions
    */
-  public getUsage = async (req: AuthenticatedRequest, res: Response) => {
+  static async getSubscriptions(req: Request, res: Response) {
     try {
-      const userId = req.user!.id;
-      
-      // Get current billing period
-      const subscription = await this.paymentService.getSubscriptionInfo(userId);
-      
-      if (!subscription) {
-        return res.json({ 
-          usage: null,
-          message: 'No active subscription' 
-        });
+      const stripeCustomerId = req.user?.stripeCustomerId;
+
+      if (!stripeCustomerId) {
+        return res.json({ subscriptions: [] });
       }
 
-      // Calculate usage (example metrics)
-      const startDate = subscription.currentPeriodStart.toISOString().slice(0, 19).replace('T', ' ');
-      const endDate = subscription.currentPeriodEnd.toISOString().slice(0, 19).replace('T', ' ');
+      const subscriptions = await StripeService.getCustomerSubscriptions(stripeCustomerId);
 
-      // Get usage data from database
-      const usage = await this.paymentService['db'].query(`
-        SELECT 
-          COUNT(*) as totalRequests,
-          COUNT(DISTINCT DATE(created_at)) as activeDays
-        FROM usage_analytics 
-        WHERE user_id = ? AND created_at BETWEEN ? AND ?
-      `, [userId, startDate, endDate]);
+      // Transform subscription data for frontend
+      const transformedSubscriptions = subscriptions.map(sub => ({
+        id: sub.id,
+        status: sub.status,
+        currentPeriodStart: sub.current_period_start,
+        currentPeriodEnd: sub.current_period_end,
+        cancelAtPeriodEnd: sub.cancel_at_period_end,
+        canceledAt: sub.canceled_at,
+        trialStart: sub.trial_start,
+        trialEnd: sub.trial_end,
+        items: sub.items.data.map(item => ({
+          id: item.id,
+          priceId: item.price.id,
+          productId: item.price.product,
+          amount: item.price.unit_amount,
+          currency: item.price.currency,
+          interval: item.price.recurring?.interval,
+          intervalCount: item.price.recurring?.interval_count,
+        })),
+      }));
+
+      res.json({ subscriptions: transformedSubscriptions });
+    } catch (error) {
+      logger.error('Failed to get subscriptions', error);
+      res.status(500).json({ error: 'Failed to get subscriptions' });
+    }
+  }
+
+  /**
+   * Get customer payment methods
+   */
+  static async getPaymentMethods(req: Request, res: Response) {
+    try {
+      const stripeCustomerId = req.user?.stripeCustomerId;
+
+      if (!stripeCustomerId) {
+        return res.json({ paymentMethods: [] });
+      }
+
+      const paymentMethods = await StripeService.getCustomerPaymentMethods(stripeCustomerId);
+
+      // Transform payment method data
+      const transformedPaymentMethods = paymentMethods.map(pm => ({
+        id: pm.id,
+        type: pm.type,
+        card: pm.card ? {
+          brand: pm.card.brand,
+          last4: pm.card.last4,
+          expMonth: pm.card.exp_month,
+          expYear: pm.card.exp_year,
+        } : null,
+        created: pm.created,
+      }));
+
+      res.json({ paymentMethods: transformedPaymentMethods });
+    } catch (error) {
+      logger.error('Failed to get payment methods', error);
+      res.status(500).json({ error: 'Failed to get payment methods' });
+    }
+  }
+
+  /**
+   * Get customer invoices
+   */
+  static async getInvoices(req: Request, res: Response) {
+    try {
+      const stripeCustomerId = req.user?.stripeCustomerId;
+
+      if (!stripeCustomerId) {
+        return res.json({ invoices: [] });
+      }
+
+      const invoices = await StripeService.getCustomerInvoices(stripeCustomerId);
+
+      // Transform invoice data
+      const transformedInvoices = invoices.map(invoice => ({
+        id: invoice.id,
+        number: invoice.number,
+        status: invoice.status,
+        amountPaid: invoice.amount_paid,
+        amountDue: invoice.amount_due,
+        currency: invoice.currency,
+        created: invoice.created,
+        dueDate: invoice.due_date,
+        paidAt: invoice.status_transitions?.paid_at,
+        hostedInvoiceUrl: invoice.hosted_invoice_url,
+        invoicePdf: invoice.invoice_pdf,
+        subscriptionId: invoice.subscription,
+      }));
+
+      res.json({ invoices: transformedInvoices });
+    } catch (error) {
+      logger.error('Failed to get invoices', error);
+      res.status(500).json({ error: 'Failed to get invoices' });
+    }
+  }
+
+  /**
+   * Get available prices/plans
+   */
+  static async getPrices(req: Request, res: Response) {
+    try {
+      const prices = await StripeService.getPrices();
+
+      // Transform price data for frontend
+      const transformedPrices = prices.map(price => ({
+        id: price.id,
+        productId: price.product,
+        amount: price.unit_amount,
+        currency: price.currency,
+        interval: price.recurring?.interval,
+        intervalCount: price.recurring?.interval_count,
+        trialPeriodDays: price.recurring?.trial_period_days,
+        active: price.active,
+        nickname: price.nickname,
+        product: typeof price.product === 'object' ? {
+          id: price.product.id,
+          name: price.product.name,
+          description: price.product.description,
+          features: price.product.metadata?.features ? 
+            JSON.parse(price.product.metadata.features) : [],
+        } : null,
+      }));
+
+      res.json({ prices: transformedPrices });
+    } catch (error) {
+      logger.error('Failed to get prices', error);
+      res.status(500).json({ error: 'Failed to get prices' });
+    }
+  }
+
+  /**
+   * Cancel subscription
+   */
+  static async cancelSubscription(req: Request, res: Response) {
+    try {
+      const { subscriptionId } = req.params;
+      const { immediately = false } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      // Verify the subscription belongs to the user
+      const subscription = await StripeService.getSubscription(subscriptionId);
+      
+      if (!subscription) {
+        return res.status(404).json({ error: 'Subscription not found' });
+      }
+
+      // Additional security check - verify customer matches
+      if (subscription.customer !== req.user?.stripeCustomerId) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      const cancelledSubscription = await StripeService.cancelSubscription(
+        subscriptionId,
+        immediately
+      );
 
       res.json({
-        usage: usage[0] || { totalRequests: 0, activeDays: 0 },
-        billingPeriod: {
-          start: subscription.currentPeriodStart,
-          end: subscription.currentPeriodEnd,
+        id: cancelledSubscription.id,
+        status: cancelledSubscription.status,
+        cancelAtPeriodEnd: cancelledSubscription.cancel_at_period_end,
+        canceledAt: cancelledSubscription.canceled_at,
+        currentPeriodEnd: cancelledSubscription.current_period_end,
+      });
+    } catch (error) {
+      logger.error('Failed to cancel subscription', error);
+      res.status(500).json({ error: 'Failed to cancel subscription' });
+    }
+  }
+
+  /**
+   * Create payment intent for one-time payments
+   */
+  static async createPaymentIntent(req: Request, res: Response) {
+    try {
+      const { amount, currency = 'brl', description } = req.body;
+      const userId = req.user?.id;
+      const stripeCustomerId = req.user?.stripeCustomerId;
+
+      if (!userId || !stripeCustomerId) {
+        return res.status(400).json({ error: 'User or customer not found' });
+      }
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: 'Invalid amount' });
+      }
+
+      const paymentIntent = await StripeService.createPaymentIntent({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency,
+        customerId: stripeCustomerId,
+        description,
+        metadata: {
+          userId: userId.toString(),
         },
       });
-    } catch (error: any) {
-      logger.error('Get usage error:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to get usage data',
-        code: 'USAGE_FETCH_FAILED'
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
       });
+    } catch (error) {
+      logger.error('Failed to create payment intent', error);
+      res.status(500).json({ error: 'Failed to create payment intent' });
     }
-  };
+  }
+
+  /**
+   * Handle Stripe webhooks
+   */
+  static async handleWebhook(req: Request, res: Response) {
+    try {
+      const signature = req.headers['stripe-signature'] as string;
+      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+      if (!signature || !endpointSecret) {
+        return res.status(400).json({ error: 'Missing webhook signature or secret' });
+      }
+
+      const event = await StripeService.processWebhookEvent(
+        req.body,
+        signature,
+        endpointSecret
+      );
+
+      // Handle different event types
+      await PaymentController.processWebhookEvent(event);
+
+      res.json({ received: true });
+    } catch (error) {
+      logger.error('Webhook processing failed', error);
+      res.status(400).json({ error: 'Webhook processing failed' });
+    }
+  }
+
+  /**
+   * Process webhook events
+   */
+  private static async processWebhookEvent(event: Stripe.Event) {
+    logger.info('Processing webhook event', { 
+      eventType: event.type,
+      eventId: event.id 
+    });
+
+    switch (event.type) {
+      case 'customer.subscription.created':
+        await PaymentController.handleSubscriptionCreated(event.data.object as Stripe.Subscription);
+        break;
+
+      case 'customer.subscription.updated':
+        await PaymentController.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+        break;
+
+      case 'customer.subscription.deleted':
+        await PaymentController.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        break;
+
+      case 'invoice.payment_succeeded':
+        await PaymentController.handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+        break;
+
+      case 'invoice.payment_failed':
+        await PaymentController.handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+        break;
+
+      case 'customer.subscription.trial_will_end':
+        await PaymentController.handleTrialWillEnd(event.data.object as Stripe.Subscription);
+        break;
+
+      case 'payment_intent.succeeded':
+        await PaymentController.handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
+        break;
+
+      case 'payment_intent.payment_failed':
+        await PaymentController.handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+        break;
+
+      default:
+        logger.info('Unhandled webhook event type', { eventType: event.type });
+    }
+  }
+
+  private static async handleSubscriptionCreated(subscription: Stripe.Subscription) {
+    logger.info('Subscription created', { subscriptionId: subscription.id });
+    // Update user subscription status in database
+    // await UserService.activateSubscription(userId, subscription);
+  }
+
+  private static async handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+    logger.info('Subscription updated', { subscriptionId: subscription.id });
+    // Update subscription status in database
+    // await UserService.updateSubscriptionStatus(userId, subscription);
+  }
+
+  private static async handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+    logger.info('Subscription deleted', { subscriptionId: subscription.id });
+    // Deactivate user subscription
+    // await UserService.deactivateSubscription(userId);
+  }
+
+  private static async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+    logger.info('Invoice payment succeeded', { invoiceId: invoice.id });
+    // Update payment status, extend subscription, etc.
+  }
+
+  private static async handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+    logger.info('Invoice payment failed', { invoiceId: invoice.id });
+    // Handle failed payment, notify user, etc.
+  }
+
+  private static async handleTrialWillEnd(subscription: Stripe.Subscription) {
+    logger.info('Trial will end', { subscriptionId: subscription.id });
+    // Notify user about trial ending
+  }
+
+  private static async handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+    logger.info('Payment succeeded', { paymentIntentId: paymentIntent.id });
+    // Handle successful one-time payment
+  }
+
+  private static async handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
+    logger.info('Payment failed', { paymentIntentId: paymentIntent.id });
+    // Handle failed payment
+  }
 }

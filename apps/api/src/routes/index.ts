@@ -5,6 +5,9 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
 import transactionRoutes from './transaction.routes';
+import { paymentRoutes } from './payment.routes';
+import { webhookRoutes } from './webhook.routes';
+import { pixRoutes } from './pix.routes';
 import { authenticateToken, requirePremium } from '../middleware/auth';
 
 const router = Router();
@@ -20,9 +23,12 @@ router.get('/health', (req, res) => {
 
 // Public routes
 router.use('/auth', authRoutes);
+router.use('/webhooks', webhookRoutes);
 
 // Protected routes
 router.use('/transactions', authenticateToken, transactionRoutes);
+router.use('/payment', paymentRoutes);
+router.use('/pix', pixRoutes);
 
 // Premium routes example
 router.get('/premium/reports', authenticateToken, requirePremium, (req, res) => {

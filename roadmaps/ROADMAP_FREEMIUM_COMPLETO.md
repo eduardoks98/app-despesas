@@ -64,10 +64,10 @@ Transformar o app de despesas em um modelo freemium sustentável:
 
 ### ✅ **2.2 - UI/UX Premium Features** (Semana 6)
 - [x] Tela de login/registro
-- [ ] Página de upgrade para premium
-- [ ] Indicadores visuais de plan type
-- [ ] Limites visuais para usuários free
-- [ ] Paywall para recursos premium
+- [x] Página de upgrade para premium
+- [x] Indicadores visuais de plan type
+- [x] Limites visuais para usuários free
+- [x] Paywall para recursos premium
 
 ### 📊 **2.3 - Recursos Premium Mobile** (Semana 7)
 - [ ] Backup automático na nuvem

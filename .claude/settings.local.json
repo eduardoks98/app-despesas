@@ -28,7 +28,8 @@
       "Bash(touch:*)",
       "Bash(python:*)",
       "Bash(start scripts/icon-generator.html)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }

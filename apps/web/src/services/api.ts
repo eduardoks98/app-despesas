@@ -1,117 +1,229 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { getSession, signOut } from 'next-auth/react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+class ApiService {
+  private api: AxiosInstance;
 
-// Configuração do axios
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Interceptor para adicionar token automaticamente
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Interceptor para tratar respostas de erro
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expirado ou inválido
-      localStorage.removeItem('auth_token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-// Interfaces
-interface LoginResponse {
-  token: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    plan: 'free' | 'premium';
-  };
-}
-
-interface Transaction {
-  id: string;
-  type: 'income' | 'expense';
-  amount: number;
-  description: string;
-  category: string;
-  date: string;
-  installmentId?: string;
-  subscriptionId?: string;
-}
-
-// Serviços da API
-export const apiService = {
-  // Autenticação
-  async login(email: string, password: string): Promise<LoginResponse> {
-    const response: AxiosResponse<LoginResponse> = await api.post('/auth/login', {
-      email,
-      password,
+  constructor() {
+    this.api = axios.create({
+      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
-    return response.data;
-  },
 
-  async register(email: string, password: string, name: string): Promise<LoginResponse> {
-    const response: AxiosResponse<LoginResponse> = await api.post('/auth/register', {
-      email,
-      password,
-      name,
-    });
-    return response.data;
-  },
+    this.setupInterceptors();
+  }
 
+  private setupInterceptors() {
+    // Request interceptor to add auth token
+    this.api.interceptors.request.use(
+      async (config) => {
+        const session = await getSession();
+        
+        if (session?.accessToken) {
+          config.headers.Authorization = `Bearer ${session.accessToken}`;
+        }
+
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor to handle errors
+    this.api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          // Try to refresh token
+          const session = await getSession();
+          
+          if (session?.error === 'RefreshAccessTokenError') {
+            // Refresh token is invalid, sign out
+            signOut({ callbackUrl: '/auth/login' });
+            return Promise.reject(error);
+          }
+
+          // If we have a valid session, retry the request
+          if (session?.accessToken) {
+            originalRequest.headers.Authorization = `Bearer ${session.accessToken}`;
+            return this.api(originalRequest);
+          }
+        }
+
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  // Generic request methods
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.api.get(url, config);
+    return response.data;
+  }
+
+  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.api.post(url, data, config);
+    return response.data;
+  }
+
+  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.api.put(url, data, config);
+    return response.data;
+  }
+
+  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.api.patch(url, data, config);
+    return response.data;
+  }
+
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.api.delete(url, config);
+    return response.data;
+  }
+
+  // Auth endpoints
+  async login(credentials: { email: string; password: string }) {
+    return this.post('/auth/login', credentials);
+  }
+
+  async register(userData: { name: string; email: string; password: string }) {
+    return this.post('/auth/register', userData);
+  }
+
+  async refreshToken(refreshToken: string) {
+    return this.post('/auth/refresh', { refreshToken });
+  }
+
+  async logout(refreshToken: string) {
+    return this.post('/auth/logout', { refreshToken });
+  }
+
+  // User endpoints
   async getProfile() {
-    const response = await api.get('/auth/me');
-    return response.data;
-  },
+    return this.get('/users/profile');
+  }
 
-  // Transações
-  async getTransactions(params?: {
-    page?: number;
-    limit?: number;
-    type?: 'income' | 'expense';
-    startDate?: string;
-    endDate?: string;
-  }): Promise<{
-    transactions: Transaction[];
-    total: number;
-    totalPages: number;
-  }> {
-    const response = await api.get('/transactions', { params });
-    return response.data;
-  },
+  async updateProfile(data: any) {
+    return this.patch('/users/profile', data);
+  }
 
-  async createTransaction(transaction: Omit<Transaction, 'id'>): Promise<Transaction> {
-    const response = await api.post('/transactions', transaction);
-    return response.data;
-  },
+  // Transactions endpoints
+  async getTransactions(params?: any) {
+    return this.get('/transactions', { params });
+  }
 
-  async updateTransaction(id: string, transaction: Partial<Transaction>): Promise<Transaction> {
-    const response = await api.put(`/transactions/${id}`, transaction);
-    return response.data;
-  },
+  async getTransaction(id: string) {
+    return this.get(`/transactions/${id}`);
+  }
 
-  async deleteTransaction(id: string): Promise<void> {
-    await api.delete(`/transactions/${id}`);
-  },
+  async createTransaction(data: any) {
+    return this.post('/transactions', data);
+  }
 
-  // Health check
-  async healthCheck() {
-    const response = await api.get('/health');
-    return response.data;
-  },
-};
+  async updateTransaction(id: string, data: any) {
+    return this.put(`/transactions/${id}`, data);
+  }
+
+  async deleteTransaction(id: string) {
+    return this.delete(`/transactions/${id}`);
+  }
+
+  // Categories endpoints
+  async getCategories() {
+    return this.get('/categories');
+  }
+
+  async createCategory(data: any) {
+    return this.post('/categories', data);
+  }
+
+  async updateCategory(id: string, data: any) {
+    return this.put(`/categories/${id}`, data);
+  }
+
+  async deleteCategory(id: string) {
+    return this.delete(`/categories/${id}`);
+  }
+
+  // Reports endpoints (Premium)
+  async getAdvancedReport(filters: any) {
+    return this.post('/reports/advanced', filters);
+  }
+
+  async getCategoryReport(filters: any) {
+    return this.post('/reports/categories', filters);
+  }
+
+  async getSpendingPatterns(filters: any) {
+    return this.post('/reports/patterns', filters);
+  }
+
+  async getForecast(filters: any) {
+    return this.post('/reports/forecast', filters);
+  }
+
+  // Export endpoints (Premium)
+  async exportData(options: any) {
+    return this.post('/export', options, {
+      responseType: 'blob',
+    });
+  }
+
+  // Backup endpoints (Premium)
+  async createBackup() {
+    return this.post('/backups');
+  }
+
+  async getBackups() {
+    return this.get('/backups');
+  }
+
+  async restoreBackup(backupId: string) {
+    return this.post(`/backups/${backupId}/restore`);
+  }
+
+  async deleteBackup(backupId: string) {
+    return this.delete(`/backups/${backupId}`);
+  }
+
+  // Subscription endpoints
+  async getSubscription() {
+    return this.get('/subscriptions/current');
+  }
+
+  async createSubscription(priceId: string) {
+    return this.post('/subscriptions', { priceId });
+  }
+
+  async cancelSubscription() {
+    return this.post('/subscriptions/cancel');
+  }
+
+  async reactivateSubscription() {
+    return this.post('/subscriptions/reactivate');
+  }
+
+  async changePlan(priceId: string) {
+    return this.post('/subscriptions/change-plan', { priceId });
+  }
+
+  // Sync endpoints
+  async syncData(data: any) {
+    return this.post('/sync', data);
+  }
+
+  async getLastSync() {
+    return this.get('/sync/status');
+  }
+}
+
+export const apiService = new ApiService();
+export default apiService;
