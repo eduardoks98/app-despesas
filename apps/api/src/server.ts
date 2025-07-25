@@ -11,6 +11,11 @@ import { authenticateToken, requirePremium } from './middleware/auth';
 import { validate, schemas } from './middleware/validation';
 import { errorHandler, notFoundHandler, asyncHandler } from './middleware/errorHandler';
 import { swaggerSpec } from './config/swagger';
+import { paymentRoutes } from './routes/payment.routes';
+import { webhookRoutes } from './routes/webhook.routes';
+import { trialRoutes } from './routes/trial.routes';
+import { startPremiumStatusScheduler } from './middleware/premium';
+import { TrialService } from './services/TrialService';
 
 // Load environment variables
 dotenv.config();
@@ -28,6 +33,11 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:19006'],
   credentials: true
 }));
+
+// Webhook routes need raw body for signature verification
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+
+// Regular JSON parsing for other routes
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -157,6 +167,12 @@ app.delete('/api/transactions/:id',
   asyncHandler(transactionController.deleteTransaction)
 );
 
+// Payment routes
+app.use('/api/payments', paymentRoutes);
+
+// Trial routes
+app.use('/api/trial', trialRoutes);
+
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
@@ -171,11 +187,18 @@ const startServer = async () => {
     await db.query('SELECT 1');
     console.log('✅ Database connected successfully');
 
+    // Start background services
+    startPremiumStatusScheduler();
+    const trialService = TrialService.getInstance();
+    trialService.startTrialScheduler();
+
     app.listen(port, () => {
       console.log(`🚀 API Server running on port ${port}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${port}/api/health`);
       console.log(`📚 API Documentation: http://localhost:${port}/api-docs`);
+      console.log(`💰 Premium status scheduler started`);
+      console.log(`🎯 Trial scheduler started`);
     });
     
   } catch (error) {

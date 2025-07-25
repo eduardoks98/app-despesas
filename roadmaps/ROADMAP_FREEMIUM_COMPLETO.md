@@ -44,12 +44,12 @@ Transformar o app de despesas em um modelo freemium sustentável:
 - [ ] Gestão de sessões JWT
 - [ ] Rate limiting para auth
 
-### 💳 **1.5 - Integração Stripe** (Semana 4)
-- [ ] Setup Stripe para pagamentos
-- [ ] Criar webhook para eventos de pagamento
-- [ ] Implementar upgrade/downgrade automático
-- [ ] Sistema de trials gratuitos
-- [ ] Gestão de cancelamentos
+### ✅ **1.5 - Integração Stripe** (Semana 4)
+- [x] Setup Stripe para pagamentos
+- [x] Criar webhook para eventos de pagamento
+- [x] Implementar upgrade/downgrade automático
+- [x] Sistema de trials gratuitos
+- [x] Gestão de cancelamentos
 
 ---
 
