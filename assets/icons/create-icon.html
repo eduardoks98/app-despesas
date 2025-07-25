@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create App Icon</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5;
+        }
+        .container { 
+            text-align: center; 
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        canvas { 
+            border: 2px solid #ddd; 
+            border-radius: 10px;
+            margin: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        button { 
+            background: #8B5CF6; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            box-shadow: 0 2px 10px rgba(139, 92, 246, 0.3);
+            transition: all 0.2s ease;
+        }
+        button:hover { 
+            background: #7C3AED; 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+        }
+        .info {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #8B5CF6;
+        }
+        .sizes {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .size-btn {
+            background: #6B7280;
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+        .size-btn.active {
+            background: #8B5CF6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 App Despesas - Gerador de Ícone</h1>
+        
+        <div class="info">
+            <p><strong>Instruções:</strong></p>
+            <ol style="text-align: left; max-width: 400px; margin: 0 auto;">
+                <li>Escolha o tamanho desejado</li>
+                <li>Clique em "Gerar Ícone"</li>
+                <li>Clique em "Download PNG"</li>
+                <li>Salve o arquivo na pasta apropriada</li>
+            </ol>
+        </div>
+
+        <div class="sizes">
+            <button class="size-btn active" onclick="setSize(512)">512px</button>
+            <button class="size-btn" onclick="setSize(256)">256px</button>
+            <button class="size-btn" onclick="setSize(128)">128px</button>
+            <button class="size-btn" onclick="setSize(64)">64px</button>
+            <button class="size-btn" onclick="setSize(32)">32px</button>
+        </div>
+
+        <canvas id="iconCanvas" width="512" height="512"></canvas>
+        
+        <div>
+            <button onclick="generateIcon()">🎨 Gerar Ícone</button>
+            <button onclick="downloadIcon()">💾 Download PNG</button>
+        </div>
+
+        <div class="info">
+            <p><strong>Sugestões de nomes:</strong></p>
+            <p>512px: <code>app-icon.png</code> | 256px: <code>icon-256.png</code> | 128px: <code>icon-128.png</code> | 64px: <code>icon-64.png</code> | 32px: <code>favicon.png</code></p>
+        </div>
+    </div>
+
+    <script>
+        let currentSize = 512;
+        const canvas = document.getElementById('iconCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function setSize(size) {
+            currentSize = size;
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Update active button
+            document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            generateIcon();
+        }
+
+        function generateIcon() {
+            const size = currentSize;
+            ctx.clearRect(0, 0, size, size);
+
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#8B5CF6');
+            gradient.addColorStop(0.5, '#7C3AED');
+            gradient.addColorStop(1, '#6D28D9');
+
+            // Background with rounded corners
+            const cornerRadius = size * 0.15;
+            drawRoundedRect(0, 0, size, size, cornerRadius, gradient);
+
+            // Wallet
+            const walletWidth = size * 0.7;
+            const walletHeight = size * 0.5;
+            const walletX = (size - walletWidth) / 2;
+            const walletY = (size - walletHeight) / 2;
+
+            // Wallet body
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            drawRoundedRect(walletX, walletY, walletWidth, walletHeight, size * 0.03, ctx.fillStyle);
+
+            // Wallet fold
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            drawRoundedRect(walletX, walletY, walletWidth, walletHeight * 0.3, size * 0.03, ctx.fillStyle);
+
+            // Cards
+            const cardWidth = walletWidth * 0.8;
+            const cardHeight = walletHeight * 0.6;
+            const cardX = walletX + (walletWidth - cardWidth) / 2;
+            const cardY = walletY + walletHeight * 0.25;
+
+            // Draw 3 cards with offset
+            const cardColors = ['rgba(139, 92, 246, 0.8)', 'rgba(139, 92, 246, 0.9)', '#8B5CF6'];
+            for (let i = 2; i >= 0; i--) {
+                const offsetX = i * (size * 0.02);
+                const offsetY = i * (size * 0.015);
+                ctx.fillStyle = cardColors[i];
+                drawRoundedRect(cardX - offsetX, cardY - offsetY, cardWidth, cardHeight, size * 0.02, ctx.fillStyle);
+                
+                // Card chip on front card
+                if (i === 0) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    const chipX = cardX + cardWidth * 0.7;
+                    const chipY = cardY + cardHeight * 0.6;
+                    drawRoundedRect(chipX, chipY, size * 0.08, size * 0.05, size * 0.01, ctx.fillStyle);
+                }
+            }
+
+            // Money symbol
+            const moneySize = size * 0.2;
+            const moneyX = size * 0.75;
+            const moneyY = size * 0.75;
+
+            ctx.fillStyle = '#10B981';
+            ctx.beginPath();
+            ctx.arc(moneyX, moneyY, moneySize / 2, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Dollar sign
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.12}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$', moneyX, moneyY);
+        }
+
+        function drawRoundedRect(x, y, width, height, radius, fillStyle) {
+            ctx.fillStyle = fillStyle;
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function downloadIcon() {
+            const link = document.createElement('a');
+            link.download = `app-icon-${currentSize}x${currentSize}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        // Generate initial icon
+        generateIcon();
+    </script>
+</body>
+</html>

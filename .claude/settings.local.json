@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "9999999999"
+  },
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
@@ -22,7 +25,10 @@
       "Bash(move:*)",
       "Bash(cp:*)",
       "Bash(./move_screens.bat)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(python:*)",
+      "Bash(start scripts/icon-generator.html)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/api';
-import { Card, Button } from '../components/shared';
+import { Card, Button, SyncStatusIndicator } from '../components/shared';
 import styles from './HomePage.module.css';
 
 export const HomePage: React.FC = () => {
@@ -21,6 +21,8 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <SyncStatusIndicator />
+      
       <div className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
         <p className={styles.subtitle}>

@@ -18,8 +18,12 @@
     "clean": "rm -rf node_modules && rm -rf dist",
     "migrate": "tsx src/database/migrate.ts",
     "migrate:test": "NODE_ENV=test tsx src/database/migrate.ts",
+    "migrate:status": "tsx -e \"import('./src/database/migrate.js').then(m => m.MigrationManager).then(M => new M().getStatus()).then(console.log)\"",
     "seed": "tsx src/database/seed.ts",
-    "seed:test": "NODE_ENV=test tsx src/database/seed.ts"
+    "seed:test": "NODE_ENV=test tsx src/database/seed.ts",
+    "seed:clean": "NODE_ENV=development tsx -e \"import('./src/database/seed.js').then(s => new s.DatabaseSeeder().clean())\"",
+    "db:setup": "npm run migrate && npm run seed",
+    "db:reset": "npm run seed:clean && npm run migrate && npm run seed"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -36,7 +40,14 @@
     "dotenv": "^16.3.1",
     "date-fns": "^2.30.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.0"
+    "swagger-ui-express": "^5.0.0",
+    "express-validator": "^7.0.1",
+    "express-mongo-sanitize": "^2.2.0",
+    "hpp": "^0.2.3",
+    "compression": "^1.7.4",
+    "express-session": "^1.17.3",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

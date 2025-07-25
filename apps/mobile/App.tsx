@@ -11,6 +11,12 @@ import * as NavigationBar from 'expo-navigation-bar';
 // Services
 import { StorageService, SyncService } from './src/services/core';
 
+// Config
+import { getFullSyncConfig } from './src/config/sync';
+
+// Components
+import { SyncStatusIndicator } from './src/components/common/SyncStatusIndicator';
+
 // Screens - Nova estrutura plana otimizada
 import {
   HomeScreen,
@@ -186,6 +192,7 @@ function AppNavigator() {
     <SafeAreaProvider>
       <NavigationContainer>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
+        <SyncStatusIndicator showText={false} showSyncButton={false} />
         <Stack.Navigator initialRouteName="Splash">
         <Stack.Screen 
           name="Splash" 
@@ -327,6 +334,29 @@ function AppNavigator() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Inicializa serviços na inicialização do app
+    const initializeServices = async () => {
+      try {
+        console.log('🚀 Inicializando serviços...');
+        
+        // Inicializa StorageService
+        await StorageService.initialize();
+        console.log('✅ StorageService inicializado');
+        
+        // Inicializa SyncService com configuração baseada no ambiente
+        const syncConfig = await getFullSyncConfig();
+        await SyncService.initialize(syncConfig);
+        console.log('✅ SyncService inicializado');
+        
+      } catch (error) {
+        console.error('❌ Erro ao inicializar serviços:', error);
+      }
+    };
+
+    initializeServices();
+  }, []);
+
   return (
     <ThemeProvider>
       <AppNavigator />

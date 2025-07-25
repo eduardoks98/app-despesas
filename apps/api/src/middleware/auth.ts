@@ -1,15 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { AuthService, JWTPayload } from '../services/AuthService';
 import { Database } from '../config/database';
-import { syncPremiumStatus } from './premium';
+import { logger } from '../utils/logger';
+import { env } from '../config/env';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     email: string;
     isPremium: boolean;
-    subscriptionStatus?: string;
-    subscriptionExpiresAt?: Date | null;
+    subscriptionStatus?: 'active' | 'trialing' | 'canceled' | 'expired';
   };
 }
 
@@ -22,22 +22,48 @@ export const authenticateToken = async (
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+    return res.status(401).json({ 
+      error: 'Access token required',
+      code: 'NO_TOKEN'
+    });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const authService = AuthService.getInstance();
+    const decoded = authService.verifyAccessToken(token);
     
-    // Get user from database
+    // Get fresh user data from database to check current status
     const db = Database.getInstance();
     const user = await db.queryOne(`
       SELECT id, email, isPremium, subscriptionStatus, subscriptionExpiresAt
       FROM users 
-      WHERE id = ?
+      WHERE id = ? AND deletedAt IS NULL
     `, [decoded.userId]);
 
     if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+      logger.warn('Token valid but user not found', { userId: decoded.userId });
+      return res.status(401).json({ 
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    // Check if premium subscription is expired
+    if (user.isPremium && user.subscriptionExpiresAt) {
+      const now = new Date();
+      const expiresAt = new Date(user.subscriptionExpiresAt);
+      
+      if (now > expiresAt && user.subscriptionStatus === 'active') {
+        // Mark subscription as expired (Stripe webhook should handle this)
+        await db.query(`
+          UPDATE users 
+          SET subscriptionStatus = 'expired', updatedAt = NOW()
+          WHERE id = ?
+        `, [user.id]);
+        
+        user.subscriptionStatus = 'expired';
+        logger.info('Subscription expired', { userId: user.id });
+      }
     }
 
     req.user = {
@@ -45,12 +71,23 @@ export const authenticateToken = async (
       email: user.email,
       isPremium: user.isPremium,
       subscriptionStatus: user.subscriptionStatus,
-      subscriptionExpiresAt: user.subscriptionExpiresAt,
     };
 
     next();
-  } catch (error) {
-    return res.status(403).json({ error: 'Invalid or expired token' });
+  } catch (error: any) {
+    logger.error('Authentication failed', error);
+    
+    if (error.message === 'Token expired') {
+      return res.status(401).json({ 
+        error: 'Token expired',
+        code: 'TOKEN_EXPIRED'
+      });
+    }
+    
+    return res.status(403).json({ 
+      error: 'Invalid token',
+      code: 'INVALID_TOKEN'
+    });
   }
 };
 
@@ -62,7 +99,8 @@ export const requirePremium = (
   if (!req.user?.isPremium) {
     return res.status(403).json({ 
       error: 'Premium subscription required',
-      upgradeUrl: `${process.env.APP_URL}/upgrade`
+      code: 'PREMIUM_REQUIRED',
+      upgradeUrl: `${env.WEB_URL}/upgrade`
     });
   }
   next();
@@ -77,19 +115,70 @@ export const requireActivePremium = (
       !['active', 'trialing'].includes(req.user?.subscriptionStatus || '')) {
     return res.status(403).json({ 
       error: 'Active premium subscription required',
-      upgradeUrl: `${process.env.APP_URL}/upgrade`
+      code: 'ACTIVE_PREMIUM_REQUIRED',
+      upgradeUrl: `${env.WEB_URL}/upgrade`,
+      currentStatus: req.user?.subscriptionStatus
     });
   }
   next();
 };
 
-// Middleware that automatically syncs premium status before checking
-export const auth = async (
+/**
+ * Optional authentication - sets user if token is provided
+ */
+export const optionalAuth = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
-  await authenticateToken(req, res, async () => {
-    await syncPremiumStatus(req, res, next);
-  });
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    // No token provided, continue without user
+    return next();
+  }
+
+  try {
+    const authService = AuthService.getInstance();
+    const decoded = authService.verifyAccessToken(token);
+    
+    const db = Database.getInstance();
+    const user = await db.queryOne(`
+      SELECT id, email, isPremium, subscriptionStatus
+      FROM users 
+      WHERE id = ? AND deletedAt IS NULL
+    `, [decoded.userId]);
+
+    if (user) {
+      req.user = {
+        id: user.id,
+        email: user.email,
+        isPremium: user.isPremium,
+        subscriptionStatus: user.subscriptionStatus,
+      };
+    }
+  } catch (error) {
+    // Invalid token, continue without user
+    logger.debug('Optional auth: invalid token provided');
+  }
+
+  next();
+};
+
+/**
+ * Rate limiting based on user type
+ */
+export const getUserRateLimit = (req: AuthenticatedRequest) => {
+  if (req.user?.isPremium) {
+    return {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 1000 // Premium users get 1000 requests per window
+    };
+  }
+  
+  return {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // Free users get 100 requests per window
+  };
 };

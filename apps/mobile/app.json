@@ -5,14 +5,14 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/icon.png",
+    "icon": "../../assets/icons/app-icon.png",
     "license": "AGPL-3.0",
     "githubUrl": "https://github.com/eduardoks98/app-despesas",
     "privacy": "public",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6B46C1"
+      "backgroundColor": "#8B5CF6"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,14 +20,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.appdespesas.app",
-      "icon": "./assets/icon.png"
+      "icon": "../../assets/icons/app-icon.png"
     },
     "android": {
       "package": "com.appdespesas.app",
       "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6B46C1"
+        "foregroundImage": "../../assets/icons/app-icon.png",
+        "backgroundColor": "#8B5CF6"
       },
       "permissions": [
         "WRITE_EXTERNAL_STORAGE",
@@ -39,12 +39,12 @@
         "barStyle": "light-content"
       },
       "statusBar": {
-        "backgroundColor": "#6B46C1",
+        "backgroundColor": "#8B5CF6",
         "barStyle": "light-content"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png",
+      "favicon": "../../assets/icons/web/favicon.png",
       "bundler": "metro"
     },
     "extra": {

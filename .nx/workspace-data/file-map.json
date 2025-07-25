@@ -1,0 +1,1194 @@
+{
+  "version": "6.0",
+  "nxVersion": "21.3.5",
+  "pathMappings": {
+    "@app-despesas/core": [
+      "packages/core/src/index.ts"
+    ],
+    "@app-despesas/core/*": [
+      "packages/core/src/*"
+    ],
+    "@app-despesas/shared": [
+      "packages/shared/src/index.ts"
+    ],
+    "@app-despesas/shared/*": [
+      "packages/shared/src/*"
+    ]
+  },
+  "nxJsonPlugins": [],
+  "fileMap": {
+    "projectFileMap": {
+      "@app-despesas/mobile": [
+        {
+          "file": "apps/mobile/App.tsx",
+          "hash": "457232036941537383"
+        },
+        {
+          "file": "apps/mobile/app.json",
+          "hash": "18419385899421914147"
+        },
+        {
+          "file": "apps/mobile/assets/adaptive-icon.png",
+          "hash": "6165570456017765940"
+        },
+        {
+          "file": "apps/mobile/assets/favicon.png",
+          "hash": "6165570456017765940"
+        },
+        {
+          "file": "apps/mobile/assets/icon.png",
+          "hash": "6165570456017765940"
+        },
+        {
+          "file": "apps/mobile/assets/splash.png",
+          "hash": "6165570456017765940"
+        },
+        {
+          "file": "apps/mobile/babel.config.js",
+          "hash": "840510953463351192"
+        },
+        {
+          "file": "apps/mobile/jest.config.js",
+          "hash": "14093593669689097268"
+        },
+        {
+          "file": "apps/mobile/package.json",
+          "hash": "4964655152640607153",
+          "deps": [
+            "npm:@babel/core",
+            "npm:@types/react",
+            "npm:@types/react-native",
+            "npm:typescript",
+            "npm:@expo/metro-runtime",
+            "npm:@expo/vector-icons",
+            "npm:@react-native-async-storage/async-storage",
+            "npm:@react-native-community/datetimepicker",
+            "npm:@react-navigation/bottom-tabs",
+            "npm:@react-navigation/native",
+            "npm:@react-navigation/stack",
+            "npm:date-fns",
+            "npm:expo",
+            "npm:expo-analytics",
+            "npm:expo-dev-client",
+            "npm:expo-file-system",
+            "npm:expo-haptics",
+            "npm:expo-linear-gradient",
+            "npm:expo-navigation-bar",
+            "npm:expo-notifications",
+            "npm:expo-print",
+            "npm:expo-sharing",
+            "npm:expo-sqlite",
+            "npm:expo-status-bar",
+            "npm:expo-system-ui",
+            "npm:react",
+            "npm:react-dom",
+            "npm:react-native",
+            "npm:react-native-chart-kit",
+            "npm:react-native-gesture-handler",
+            "npm:react-native-paper",
+            "npm:react-native-reanimated",
+            "npm:react-native-safe-area-context",
+            "npm:react-native-screens",
+            "npm:react-native-svg",
+            "npm:react-native-vector-icons",
+            "npm:react-native-web",
+            "@app-despesas/core",
+            "@app-despesas/shared"
+          ]
+        },
+        {
+          "file": "apps/mobile/src/components/common/AppIcon.tsx",
+          "hash": "9069147371214134359"
+        },
+        {
+          "file": "apps/mobile/src/components/common/Button.tsx",
+          "hash": "7579557144674342254"
+        },
+        {
+          "file": "apps/mobile/src/components/common/Card.tsx",
+          "hash": "17886471617215165370"
+        },
+        {
+          "file": "apps/mobile/src/components/common/CardHeader.tsx",
+          "hash": "9993230899500372959"
+        },
+        {
+          "file": "apps/mobile/src/components/common/Container.tsx",
+          "hash": "17607936244931801260"
+        },
+        {
+          "file": "apps/mobile/src/components/common/DatePicker.tsx",
+          "hash": "1552524545641660272"
+        },
+        {
+          "file": "apps/mobile/src/components/common/FAB.tsx",
+          "hash": "15678596169784110727"
+        },
+        {
+          "file": "apps/mobile/src/components/common/LoadingWrapper.tsx",
+          "hash": "15346861994908736586"
+        },
+        {
+          "file": "apps/mobile/src/components/common/MoneyText.tsx",
+          "hash": "5817550096623105315"
+        },
+        {
+          "file": "apps/mobile/src/components/common/PlatformAlert.tsx",
+          "hash": "8795360940409622384"
+        },
+        {
+          "file": "apps/mobile/src/components/common/PlatformModal.tsx",
+          "hash": "18038311203965127643"
+        },
+        {
+          "file": "apps/mobile/src/components/common/ProgressBar.tsx",
+          "hash": "7293310154464978606"
+        },
+        {
+          "file": "apps/mobile/src/components/common/Skeleton.tsx",
+          "hash": "9528592592854100417"
+        },
+        {
+          "file": "apps/mobile/src/components/common/SyncStatusIndicator.tsx",
+          "hash": "9750624292405231268"
+        },
+        {
+          "file": "apps/mobile/src/components/common/TabSelector.tsx",
+          "hash": "5828778320802685732"
+        },
+        {
+          "file": "apps/mobile/src/components/installments/InstallmentCard.tsx",
+          "hash": "4602660830663460307"
+        },
+        {
+          "file": "apps/mobile/src/components/onboarding/QuickTour.tsx",
+          "hash": "11737150994767841249"
+        },
+        {
+          "file": "apps/mobile/src/components/subscriptions/SubscriptionCard.tsx",
+          "hash": "3860806710621204810"
+        },
+        {
+          "file": "apps/mobile/src/components/transactions/TransactionItem.tsx",
+          "hash": "9736811020471258409"
+        },
+        {
+          "file": "apps/mobile/src/components/transactions/TransactionList.tsx",
+          "hash": "1204388529840805546"
+        },
+        {
+          "file": "apps/mobile/src/config/sync.ts",
+          "hash": "9195557416625749383"
+        },
+        {
+          "file": "apps/mobile/src/contexts/FinanceContext.tsx",
+          "hash": "13748007598763074738"
+        },
+        {
+          "file": "apps/mobile/src/contexts/SettingsContext.tsx",
+          "hash": "14289336578605746590"
+        },
+        {
+          "file": "apps/mobile/src/contexts/ThemeContext.tsx",
+          "hash": "12705131795795479826"
+        },
+        {
+          "file": "apps/mobile/src/contexts/index.ts",
+          "hash": "10512261672431135013"
+        },
+        {
+          "file": "apps/mobile/src/hooks/useCategories.ts",
+          "hash": "17641890012619406065"
+        },
+        {
+          "file": "apps/mobile/src/hooks/useColors.ts",
+          "hash": "417656168622111921"
+        },
+        {
+          "file": "apps/mobile/src/hooks/useRefresh.ts",
+          "hash": "10313648714682385836"
+        },
+        {
+          "file": "apps/mobile/src/hooks/useSync.ts",
+          "hash": "10557566633008625173"
+        },
+        {
+          "file": "apps/mobile/src/hooks/useTransactions.ts",
+          "hash": "15934234352231680224"
+        },
+        {
+          "file": "apps/mobile/src/screens/categories/CategoriesScreen.tsx",
+          "hash": "10527500384600262593"
+        },
+        {
+          "file": "apps/mobile/src/screens/categories/index.ts",
+          "hash": "13813241668432010022"
+        },
+        {
+          "file": "apps/mobile/src/screens/index.ts",
+          "hash": "4175861578001855878"
+        },
+        {
+          "file": "apps/mobile/src/screens/installments/AddInstallmentScreen.tsx",
+          "hash": "421244163205887088"
+        },
+        {
+          "file": "apps/mobile/src/screens/installments/EditInstallmentScreen.tsx",
+          "hash": "9209882434907533966"
+        },
+        {
+          "file": "apps/mobile/src/screens/installments/InstallmentDetailScreen.tsx",
+          "hash": "1913961052259205584"
+        },
+        {
+          "file": "apps/mobile/src/screens/installments/InstallmentsScreen.tsx",
+          "hash": "15048961839504869288"
+        },
+        {
+          "file": "apps/mobile/src/screens/installments/index.ts",
+          "hash": "18024025339001458592"
+        },
+        {
+          "file": "apps/mobile/src/screens/main/HomeScreen.tsx",
+          "hash": "3241151685211318453"
+        },
+        {
+          "file": "apps/mobile/src/screens/main/OnboardingScreen.tsx",
+          "hash": "17918065719079003558"
+        },
+        {
+          "file": "apps/mobile/src/screens/main/SplashScreen.tsx",
+          "hash": "937393061315857029"
+        },
+        {
+          "file": "apps/mobile/src/screens/main/index.ts",
+          "hash": "11141782099206387085"
+        },
+        {
+          "file": "apps/mobile/src/screens/profile/AboutScreen.tsx",
+          "hash": "1283240214829191119"
+        },
+        {
+          "file": "apps/mobile/src/screens/profile/NotificationsScreen.tsx",
+          "hash": "9109938629052475525"
+        },
+        {
+          "file": "apps/mobile/src/screens/profile/ProfileScreen.tsx",
+          "hash": "17561095173111426105"
+        },
+        {
+          "file": "apps/mobile/src/screens/profile/index.ts",
+          "hash": "4996262037593068945"
+        },
+        {
+          "file": "apps/mobile/src/screens/reports/ExportScreen.tsx",
+          "hash": "14151054155115975696"
+        },
+        {
+          "file": "apps/mobile/src/screens/reports/RecordsScreen.tsx",
+          "hash": "14666746998631764271"
+        },
+        {
+          "file": "apps/mobile/src/screens/reports/ReportsScreen.tsx",
+          "hash": "9875241583645206772"
+        },
+        {
+          "file": "apps/mobile/src/screens/reports/index.ts",
+          "hash": "8913670582486360099"
+        },
+        {
+          "file": "apps/mobile/src/screens/subscriptions/AddSubscriptionScreen.tsx",
+          "hash": "13658781375678925966"
+        },
+        {
+          "file": "apps/mobile/src/screens/subscriptions/EditSubscriptionScreen.tsx",
+          "hash": "5561837772957685602"
+        },
+        {
+          "file": "apps/mobile/src/screens/subscriptions/SubscriptionDetailScreen.tsx",
+          "hash": "7500708852340031534"
+        },
+        {
+          "file": "apps/mobile/src/screens/subscriptions/SubscriptionsScreen.tsx",
+          "hash": "18088418444103096015"
+        },
+        {
+          "file": "apps/mobile/src/screens/subscriptions/index.ts",
+          "hash": "13798116736960906906"
+        },
+        {
+          "file": "apps/mobile/src/screens/transactions/AddTransactionScreen.tsx",
+          "hash": "6409541889944977338"
+        },
+        {
+          "file": "apps/mobile/src/screens/transactions/CategoryTransactionsScreen.tsx",
+          "hash": "2243519013300164996"
+        },
+        {
+          "file": "apps/mobile/src/screens/transactions/EditTransactionScreen.tsx",
+          "hash": "5362633563244497585"
+        },
+        {
+          "file": "apps/mobile/src/screens/transactions/SelectTransactionTypeScreen.tsx",
+          "hash": "11722271805891158281"
+        },
+        {
+          "file": "apps/mobile/src/screens/transactions/TransactionListScreen.tsx",
+          "hash": "4422573872812797951"
+        },
+        {
+          "file": "apps/mobile/src/screens/transactions/TransactionsScreen.tsx",
+          "hash": "8969519073931506638"
+        },
+        {
+          "file": "apps/mobile/src/screens/transactions/index.ts",
+          "hash": "10926472268363039012"
+        },
+        {
+          "file": "apps/mobile/src/services/business/InstallmentCalculations.ts",
+          "hash": "10356834446324471373"
+        },
+        {
+          "file": "apps/mobile/src/services/business/SubscriptionService.ts",
+          "hash": "6194723194100444437"
+        },
+        {
+          "file": "apps/mobile/src/services/business/index.ts",
+          "hash": "11817686496620513327"
+        },
+        {
+          "file": "apps/mobile/src/services/core/AppContainer.ts",
+          "hash": "10771747207606505557"
+        },
+        {
+          "file": "apps/mobile/src/services/core/DatabaseService.ts",
+          "hash": "7854813268088938949"
+        },
+        {
+          "file": "apps/mobile/src/services/core/StorageService.ts",
+          "hash": "9464765385461260180"
+        },
+        {
+          "file": "apps/mobile/src/services/core/SyncService.ts",
+          "hash": "8406190842268976900"
+        },
+        {
+          "file": "apps/mobile/src/services/core/index.ts",
+          "hash": "14653427049776279044"
+        },
+        {
+          "file": "apps/mobile/src/services/core/repositories/CategoryRepository.ts",
+          "hash": "5200773010597055975"
+        },
+        {
+          "file": "apps/mobile/src/services/core/repositories/TransactionRepository.ts",
+          "hash": "12269927263581834150"
+        },
+        {
+          "file": "apps/mobile/src/services/core/repositories/index.ts",
+          "hash": "3286965076923418113"
+        },
+        {
+          "file": "apps/mobile/src/services/index.ts",
+          "hash": "2943219617031844069"
+        },
+        {
+          "file": "apps/mobile/src/services/platform/AnalyticsService.ts",
+          "hash": "13585995563716962290"
+        },
+        {
+          "file": "apps/mobile/src/services/platform/HapticService.ts",
+          "hash": "3612578334530829728"
+        },
+        {
+          "file": "apps/mobile/src/services/platform/NotificationService.ts",
+          "hash": "1593808759028718291"
+        },
+        {
+          "file": "apps/mobile/src/services/platform/index.ts",
+          "hash": "16998949931622926552"
+        },
+        {
+          "file": "apps/mobile/src/services/utils/BackupService.ts",
+          "hash": "5756999756143946979"
+        },
+        {
+          "file": "apps/mobile/src/services/utils/ErrorHandler.ts",
+          "hash": "15035587810822647602"
+        },
+        {
+          "file": "apps/mobile/src/services/utils/ExportService.ts",
+          "hash": "9101023255086708796"
+        },
+        {
+          "file": "apps/mobile/src/services/utils/ValidationService.ts",
+          "hash": "10232583739507834009"
+        },
+        {
+          "file": "apps/mobile/src/services/utils/index.ts",
+          "hash": "9436502943867779950"
+        },
+        {
+          "file": "apps/mobile/src/styles/colors.ts",
+          "hash": "6328765873048403313"
+        },
+        {
+          "file": "apps/mobile/src/styles/index.ts",
+          "hash": "4143540260880853700"
+        },
+        {
+          "file": "apps/mobile/src/styles/responsive.ts",
+          "hash": "10004233460145710478"
+        },
+        {
+          "file": "apps/mobile/src/styles/shadows.ts",
+          "hash": "10067014884675646759"
+        },
+        {
+          "file": "apps/mobile/src/tests/DatabaseService.test.ts",
+          "hash": "16973879966777772208"
+        },
+        {
+          "file": "apps/mobile/src/tests/StorageService.test.ts",
+          "hash": "4168450021757429218"
+        },
+        {
+          "file": "apps/mobile/src/tests/setup.ts",
+          "hash": "5423936648321446194"
+        },
+        {
+          "file": "apps/mobile/src/types/index.ts",
+          "hash": "8218229374978754026"
+        },
+        {
+          "file": "apps/mobile/src/utils/dateUtils.ts",
+          "hash": "14983794115252567465"
+        },
+        {
+          "file": "apps/mobile/src/utils/formatters.ts",
+          "hash": "15668345033246119427"
+        },
+        {
+          "file": "apps/mobile/src/utils/sampleData.ts",
+          "hash": "10228625118117637893"
+        },
+        {
+          "file": "apps/mobile/tsconfig.json",
+          "hash": "17092394765870323726"
+        }
+      ],
+      "@app-despesas/web": [
+        {
+          "file": "apps/web/index.html",
+          "hash": "12369510250484171921"
+        },
+        {
+          "file": "apps/web/jest.config.js",
+          "hash": "3435034460249006370"
+        },
+        {
+          "file": "apps/web/package.json",
+          "hash": "6108928608113825232",
+          "deps": [
+            "npm:@types/react",
+            "npm:typescript",
+            "npm:react",
+            "npm:react-dom",
+            "@app-despesas/shared",
+            "npm:date-fns",
+            "npm:axios"
+          ]
+        },
+        {
+          "file": "apps/web/public/favicon.ico",
+          "hash": "8316571762897606593"
+        },
+        {
+          "file": "apps/web/src/App.tsx",
+          "hash": "16606509694445070142"
+        },
+        {
+          "file": "apps/web/src/components/Layout/Header.module.css",
+          "hash": "1253343915538786148"
+        },
+        {
+          "file": "apps/web/src/components/Layout/Header.tsx",
+          "hash": "7113776627286405457"
+        },
+        {
+          "file": "apps/web/src/components/Layout/Layout.module.css",
+          "hash": "5851704460596721673"
+        },
+        {
+          "file": "apps/web/src/components/Layout/Layout.tsx",
+          "hash": "13277117113176753284"
+        },
+        {
+          "file": "apps/web/src/components/Layout/Sidebar.module.css",
+          "hash": "4660482547958730718"
+        },
+        {
+          "file": "apps/web/src/components/Layout/Sidebar.tsx",
+          "hash": "10514964379068262045"
+        },
+        {
+          "file": "apps/web/src/components/shared/Button.module.css",
+          "hash": "9397299584900783771"
+        },
+        {
+          "file": "apps/web/src/components/shared/Button.tsx",
+          "hash": "15062429630178344014"
+        },
+        {
+          "file": "apps/web/src/components/shared/Card.module.css",
+          "hash": "4780259032099441530"
+        },
+        {
+          "file": "apps/web/src/components/shared/Card.tsx",
+          "hash": "11402829374640713534"
+        },
+        {
+          "file": "apps/web/src/components/shared/Input.module.css",
+          "hash": "2552252533375143330"
+        },
+        {
+          "file": "apps/web/src/components/shared/Input.tsx",
+          "hash": "12088414198753431959"
+        },
+        {
+          "file": "apps/web/src/components/shared/SyncStatusIndicator.module.css",
+          "hash": "11008897400699995167"
+        },
+        {
+          "file": "apps/web/src/components/shared/SyncStatusIndicator.tsx",
+          "hash": "13276617164006232408"
+        },
+        {
+          "file": "apps/web/src/components/shared/index.ts",
+          "hash": "8319478676839847904"
+        },
+        {
+          "file": "apps/web/src/contexts/AuthContext.tsx",
+          "hash": "10055606298076469594"
+        },
+        {
+          "file": "apps/web/src/contexts/ThemeContext.tsx",
+          "hash": "2480626003968041087"
+        },
+        {
+          "file": "apps/web/src/main.tsx",
+          "hash": "4050315019783903492"
+        },
+        {
+          "file": "apps/web/src/pages/HomePage.module.css",
+          "hash": "10902222288327194386"
+        },
+        {
+          "file": "apps/web/src/pages/HomePage.tsx",
+          "hash": "904275010043483491"
+        },
+        {
+          "file": "apps/web/src/pages/LoginPage.module.css",
+          "hash": "6978336515094126620"
+        },
+        {
+          "file": "apps/web/src/pages/LoginPage.tsx",
+          "hash": "17758080603483928585"
+        },
+        {
+          "file": "apps/web/src/pages/ProfilePage.module.css",
+          "hash": "13054381673643793423"
+        },
+        {
+          "file": "apps/web/src/pages/ProfilePage.tsx",
+          "hash": "3690711693763454143"
+        },
+        {
+          "file": "apps/web/src/pages/ReportsPage.module.css",
+          "hash": "10684364620905208602"
+        },
+        {
+          "file": "apps/web/src/pages/ReportsPage.tsx",
+          "hash": "8954173555237249486"
+        },
+        {
+          "file": "apps/web/src/pages/TransactionsPage.module.css",
+          "hash": "3836216274657524642"
+        },
+        {
+          "file": "apps/web/src/pages/TransactionsPage.tsx",
+          "hash": "11321921911964346173"
+        },
+        {
+          "file": "apps/web/src/services/api.ts",
+          "hash": "15442905143064744732"
+        },
+        {
+          "file": "apps/web/src/styles/globals.css",
+          "hash": "13164039861856121389"
+        },
+        {
+          "file": "apps/web/src/tests/HomePage.test.tsx",
+          "hash": "11978534507138155944"
+        },
+        {
+          "file": "apps/web/src/tests/setup.ts",
+          "hash": "12567885506948487618"
+        },
+        {
+          "file": "apps/web/tsconfig.json",
+          "hash": "2333159418270034917"
+        },
+        {
+          "file": "apps/web/tsconfig.node.json",
+          "hash": "1755818888904706881"
+        },
+        {
+          "file": "apps/web/vite.config.ts",
+          "hash": "3269276936830152618"
+        }
+      ],
+      "@app-despesas/core": [
+        {
+          "file": "packages/core/package.json",
+          "hash": "12200562839839570076",
+          "deps": [
+            "npm:@types/uuid",
+            "npm:typescript",
+            "npm:jest",
+            "npm:@types/jest",
+            "npm:date-fns",
+            "npm:uuid@9.0.1"
+          ]
+        },
+        {
+          "file": "packages/core/src/application/use-cases/category/GetCategoriesUseCase.ts",
+          "hash": "13091140220600869236"
+        },
+        {
+          "file": "packages/core/src/application/use-cases/reports/GenerateMonthlyReportUseCase.ts",
+          "hash": "4675130625074368876"
+        },
+        {
+          "file": "packages/core/src/application/use-cases/transaction/AddTransactionUseCase.ts",
+          "hash": "10679650421782026806"
+        },
+        {
+          "file": "packages/core/src/application/use-cases/transaction/GetTransactionsUseCase.ts",
+          "hash": "4616743174553415169"
+        },
+        {
+          "file": "packages/core/src/application/use-cases/transaction/UpdateTransactionUseCase.ts",
+          "hash": "816889125109430462"
+        },
+        {
+          "file": "packages/core/src/domain/entities/Category.ts",
+          "hash": "7109362834502792644"
+        },
+        {
+          "file": "packages/core/src/domain/entities/Installment.ts",
+          "hash": "2453587481532708503"
+        },
+        {
+          "file": "packages/core/src/domain/entities/Subscription.ts",
+          "hash": "6047058446767241842"
+        },
+        {
+          "file": "packages/core/src/domain/entities/Transaction.ts",
+          "hash": "18057152178645870442"
+        },
+        {
+          "file": "packages/core/src/domain/repositories/ICategoryRepository.ts",
+          "hash": "14891769617222517059"
+        },
+        {
+          "file": "packages/core/src/domain/repositories/IInstallmentRepository.ts",
+          "hash": "17081696363141369197"
+        },
+        {
+          "file": "packages/core/src/domain/repositories/ISubscriptionRepository.ts",
+          "hash": "12263652420110364178"
+        },
+        {
+          "file": "packages/core/src/domain/repositories/ITransactionRepository.ts",
+          "hash": "11879727348599991057"
+        },
+        {
+          "file": "packages/core/src/domain/value-objects/DateRange.ts",
+          "hash": "929356264629771073"
+        },
+        {
+          "file": "packages/core/src/domain/value-objects/Money.ts",
+          "hash": "11051211043292770274"
+        },
+        {
+          "file": "packages/core/src/index.ts",
+          "hash": "17010424167155296634"
+        },
+        {
+          "file": "packages/core/src/infrastructure/database/api/ApiClient.ts",
+          "hash": "2918194684278149681"
+        },
+        {
+          "file": "packages/core/src/infrastructure/database/api/ApiTransactionRepository.ts",
+          "hash": "16837383666653076400"
+        },
+        {
+          "file": "packages/core/src/infrastructure/database/hybrid/HybridTransactionRepository.ts",
+          "hash": "7655560162235614610"
+        },
+        {
+          "file": "packages/core/src/infrastructure/database/sqlite/SQLiteCategoryRepository.ts",
+          "hash": "1474539415498503593"
+        },
+        {
+          "file": "packages/core/src/infrastructure/database/sqlite/SQLiteTransactionRepository.ts",
+          "hash": "13452284150927267235"
+        },
+        {
+          "file": "packages/core/src/infrastructure/di/Container.ts",
+          "hash": "1678797876532907346"
+        },
+        {
+          "file": "packages/core/src/infrastructure/di/ServiceRegistry.ts",
+          "hash": "1057484882186973020"
+        },
+        {
+          "file": "packages/core/src/tests/AddTransactionUseCase.test.ts",
+          "hash": "11131782045287836702"
+        },
+        {
+          "file": "packages/core/tsconfig.json",
+          "hash": "16586125000646722124"
+        },
+        {
+          "file": "packages/core/tsconfig.tsbuildinfo",
+          "hash": "3540566672208256376"
+        }
+      ],
+      "@app-despesas/shared": [
+        {
+          "file": "packages/shared/package.json",
+          "hash": "14019249135536684155",
+          "deps": [
+            "npm:react",
+            "npm:react-native",
+            "npm:@types/react",
+            "npm:@types/react-native",
+            "npm:@types/jest",
+            "npm:typescript",
+            "npm:jest",
+            "npm:date-fns"
+          ]
+        },
+        {
+          "file": "packages/shared/src/components/Button/Button.tsx",
+          "hash": "10670645386279954372"
+        },
+        {
+          "file": "packages/shared/src/components/Button/index.ts",
+          "hash": "11832502787359571191"
+        },
+        {
+          "file": "packages/shared/src/components/Card/Card.tsx",
+          "hash": "12691745043967891533"
+        },
+        {
+          "file": "packages/shared/src/components/Card/index.ts",
+          "hash": "9899577563753015470"
+        },
+        {
+          "file": "packages/shared/src/components/Input/Input.tsx",
+          "hash": "13724503506727662952"
+        },
+        {
+          "file": "packages/shared/src/components/Input/index.ts",
+          "hash": "18038058031785805907"
+        },
+        {
+          "file": "packages/shared/src/components/Text/Text.tsx",
+          "hash": "8187291594530106474"
+        },
+        {
+          "file": "packages/shared/src/components/Text/index.ts",
+          "hash": "14422737551862916029"
+        },
+        {
+          "file": "packages/shared/src/components/TransactionCard/TransactionCard.tsx",
+          "hash": "8573762122267384815"
+        },
+        {
+          "file": "packages/shared/src/components/TransactionCard/index.ts",
+          "hash": "15557085899590792112"
+        },
+        {
+          "file": "packages/shared/src/components/index.ts",
+          "hash": "10485295292279079767"
+        },
+        {
+          "file": "packages/shared/src/index.ts",
+          "hash": "3190968793546239353"
+        },
+        {
+          "file": "packages/shared/src/tokens/animations.ts",
+          "hash": "9139380502824338197"
+        },
+        {
+          "file": "packages/shared/src/tokens/borders.ts",
+          "hash": "17586210494743570740"
+        },
+        {
+          "file": "packages/shared/src/tokens/colors.ts",
+          "hash": "579189526611991763"
+        },
+        {
+          "file": "packages/shared/src/tokens/index.ts",
+          "hash": "2316172693830115239"
+        },
+        {
+          "file": "packages/shared/src/tokens/shadows.ts",
+          "hash": "273151124047672012"
+        },
+        {
+          "file": "packages/shared/src/tokens/spacing.ts",
+          "hash": "12712532035842358863"
+        },
+        {
+          "file": "packages/shared/src/tokens/typography.ts",
+          "hash": "6996017414848578278"
+        },
+        {
+          "file": "packages/shared/tsconfig.json",
+          "hash": "11564367191149159295"
+        }
+      ],
+      "@app-despesas/api": [
+        {
+          "file": "apps/api/.env.example",
+          "hash": "12529215003925609135"
+        },
+        {
+          "file": "apps/api/jest.config.js",
+          "hash": "11870355649170720668"
+        },
+        {
+          "file": "apps/api/package.json",
+          "hash": "12774460464595391835",
+          "deps": [
+            "npm:@types/node",
+            "npm:@types/uuid",
+            "npm:@types/jest",
+            "npm:typescript",
+            "npm:jest",
+            "npm:uuid@9.0.1",
+            "npm:dotenv",
+            "npm:date-fns",
+            "npm:compression"
+          ]
+        },
+        {
+          "file": "apps/api/src/config/database.ts",
+          "hash": "1986042300247710722"
+        },
+        {
+          "file": "apps/api/src/config/env.ts",
+          "hash": "17631081567389569418"
+        },
+        {
+          "file": "apps/api/src/config/swagger.ts",
+          "hash": "9971163160197582232"
+        },
+        {
+          "file": "apps/api/src/controllers/auth.controller.ts",
+          "hash": "9590516926655173426"
+        },
+        {
+          "file": "apps/api/src/controllers/payment.controller.ts",
+          "hash": "12859070820401663408"
+        },
+        {
+          "file": "apps/api/src/controllers/transaction.controller.ts",
+          "hash": "5165136239985978848"
+        },
+        {
+          "file": "apps/api/src/database/migrate.ts",
+          "hash": "1247178465144190285"
+        },
+        {
+          "file": "apps/api/src/database/migrations/20250125_001_add_user_preferences.sql",
+          "hash": "7602689881147892163"
+        },
+        {
+          "file": "apps/api/src/database/schema.sql",
+          "hash": "7449261265849881815"
+        },
+        {
+          "file": "apps/api/src/database/seed.ts",
+          "hash": "365798476819060724"
+        },
+        {
+          "file": "apps/api/src/middleware/auth.ts",
+          "hash": "16766516706917443639"
+        },
+        {
+          "file": "apps/api/src/middleware/errorHandler.ts",
+          "hash": "12936622289489293067"
+        },
+        {
+          "file": "apps/api/src/middleware/rateLimiter.ts",
+          "hash": "5903941939751849718"
+        },
+        {
+          "file": "apps/api/src/middleware/security.ts",
+          "hash": "9350121811411597931"
+        },
+        {
+          "file": "apps/api/src/middleware/validation.ts",
+          "hash": "2179975541678116884"
+        },
+        {
+          "file": "apps/api/src/routes/auth.routes.ts",
+          "hash": "713850582534696783"
+        },
+        {
+          "file": "apps/api/src/routes/index.ts",
+          "hash": "2691403906064564939"
+        },
+        {
+          "file": "apps/api/src/routes/transaction.routes.ts",
+          "hash": "9598437874434106301"
+        },
+        {
+          "file": "apps/api/src/server.ts",
+          "hash": "11358165149260538800"
+        },
+        {
+          "file": "apps/api/src/services/AuthService.ts",
+          "hash": "2559514853825586263"
+        },
+        {
+          "file": "apps/api/src/services/PaymentService.ts",
+          "hash": "14174949713207637120"
+        },
+        {
+          "file": "apps/api/src/tests/auth.controller.test.ts",
+          "hash": "16562796993534984306"
+        },
+        {
+          "file": "apps/api/src/tests/globalSetup.ts",
+          "hash": "912508306660634586"
+        },
+        {
+          "file": "apps/api/src/tests/globalTeardown.ts",
+          "hash": "14720227424816765178"
+        },
+        {
+          "file": "apps/api/src/tests/setup.ts",
+          "hash": "6735016342350980254"
+        },
+        {
+          "file": "apps/api/src/utils/logger.ts",
+          "hash": "1898325206818884141"
+        },
+        {
+          "file": "apps/api/src/utils/validation.ts",
+          "hash": "14308144291147711515"
+        },
+        {
+          "file": "apps/api/tsconfig.json",
+          "hash": "17746702480516638585"
+        }
+      ]
+    },
+    "nonProjectFiles": [
+      {
+        "file": ".claude/settings.local.json",
+        "hash": "6959127100537318114"
+      },
+      {
+        "file": ".eslintrc.js",
+        "hash": "4426648253583426865"
+      },
+      {
+        "file": ".github/FUNDING.yml",
+        "hash": "4739261721728125612"
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "hash": "2981559399320306052"
+      },
+      {
+        "file": ".gitignore",
+        "hash": "8453018393508094847"
+      },
+      {
+        "file": ".husky/commit-msg",
+        "hash": "9401229880793700431"
+      },
+      {
+        "file": ".husky/pre-commit",
+        "hash": "10503247313574315623"
+      },
+      {
+        "file": ".lintstagedrc.js",
+        "hash": "12478559990741599563"
+      },
+      {
+        "file": ".prettierignore",
+        "hash": "18207226192956952136"
+      },
+      {
+        "file": ".prettierrc.js",
+        "hash": "12261198639278862918"
+      },
+      {
+        "file": "LICENSE",
+        "hash": "10556328717194449467"
+      },
+      {
+        "file": "NOTICE.md",
+        "hash": "16426377718055943392"
+      },
+      {
+        "file": "README.md",
+        "hash": "12203878511149730227"
+      },
+      {
+        "file": "apache-mysys-shop.conf",
+        "hash": "14608705662605317085"
+      },
+      {
+        "file": "assets/icons/README.md",
+        "hash": "16725165179712959603"
+      },
+      {
+        "file": "assets/icons/app-icon.svg",
+        "hash": "3872500846277885051"
+      },
+      {
+        "file": "assets/icons/create-icon.html",
+        "hash": "31098325460961602"
+      },
+      {
+        "file": "deploy-apache-mysys.sh",
+        "hash": "1264520239837929631"
+      },
+      {
+        "file": "deploy-mysys-shop.sh",
+        "hash": "6814686716686328144"
+      },
+      {
+        "file": "docs/API_DOCUMENTACAO_SWAGGER.md",
+        "hash": "15063015898540220018"
+      },
+      {
+        "file": "docs/ARQUITETURA_HOSPEDAGEM_COMPLETA.md",
+        "hash": "2804270470847368336"
+      },
+      {
+        "file": "docs/BUILD_GUIDE.md",
+        "hash": "700720466315716836"
+      },
+      {
+        "file": "docs/FINANCIAMENTOS.md",
+        "hash": "5797773467366983160"
+      },
+      {
+        "file": "docs/GERAR_APK.md",
+        "hash": "10444377787781529809"
+      },
+      {
+        "file": "docs/MONETIZACAO_PAGAMENTOS_COMPLETO.md",
+        "hash": "3995728986417817931"
+      },
+      {
+        "file": "docs/PIX_INFO.md",
+        "hash": "9946685522598746016"
+      },
+      {
+        "file": "docs/README.md",
+        "hash": "3658648562731872441"
+      },
+      {
+        "file": "docs/SEGURANCA_CRIPTOGRAFIA_COMPLETA.md",
+        "hash": "15697845602932632993"
+      },
+      {
+        "file": "docs/SINCRONIZACAO.md",
+        "hash": "13787041102331348857"
+      },
+      {
+        "file": "docs/SOLUCAO_PROBLEMAS.md",
+        "hash": "784637075036808074"
+      },
+      {
+        "file": "docs/UNIFICACAO_TELAS_REGISTROS.md",
+        "hash": "14011428467812348317"
+      },
+      {
+        "file": "eas.json",
+        "hash": "3967504425573850853"
+      },
+      {
+        "file": "gerar-apk.bat",
+        "hash": "15304424322593518173"
+      },
+      {
+        "file": "jest.config.js",
+        "hash": "6277991613653466368"
+      },
+      {
+        "file": "nginx-mysys-shop.conf",
+        "hash": "884426065125956696"
+      },
+      {
+        "file": "nx.json",
+        "hash": "10128217617288461030"
+      },
+      {
+        "file": "package-lock.json",
+        "hash": "7956948798154113988"
+      },
+      {
+        "file": "package.json",
+        "hash": "2272473030969980937"
+      },
+      {
+        "file": "roadmaps/NOVA_ARQUITETURA.md",
+        "hash": "6317579380227349425"
+      },
+      {
+        "file": "roadmaps/README.md",
+        "hash": "15459945936022825337"
+      },
+      {
+        "file": "roadmaps/ROADMAP_FREEMIUM_COMPLETO.md",
+        "hash": "15536868870931907363"
+      },
+      {
+        "file": "scripts/backup.js",
+        "hash": "9358455377569365997"
+      },
+      {
+        "file": "scripts/generate-icons.py",
+        "hash": "14566933270344660535"
+      },
+      {
+        "file": "scripts/icon-generator.html",
+        "hash": "45140407569270156"
+      },
+      {
+        "file": "tsconfig.base.json",
+        "hash": "15857907718026803237"
+      },
+      {
+        "file": "tsconfig.json",
+        "hash": "4687852125724278210"
+      },
+      {
+        "file": "workspace.json",
+        "hash": "3720134676315438439"
+      }
+    ]
+  }
+}

@@ -1,22 +1,29 @@
 -- App Despesas Premium - MySQL Schema
 -- Tabelas para versão premium com MySQL + API
 
--- Users table
+-- Users table - Enhanced for full freemium support
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    plan_type ENUM('free', 'premium') DEFAULT 'free',
-    subscription_id VARCHAR(255) NULL,
-    subscription_status ENUM('active', 'canceled', 'expired') NULL,
-    subscription_expires_at DATETIME NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    isPremium BOOLEAN DEFAULT FALSE,
+    subscriptionStatus ENUM('active', 'trialing', 'canceled', 'expired') NULL,
+    subscriptionExpiresAt DATETIME NULL,
+    stripeCustomerId VARCHAR(255) NULL,
+    stripeSubscriptionId VARCHAR(255) NULL,
+    emailVerifiedAt DATETIME NULL,
+    lastLoginAt DATETIME NULL,
+    deletedAt DATETIME NULL, -- Soft delete
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     INDEX idx_email (email),
-    INDEX idx_plan_type (plan_type),
-    INDEX idx_subscription_status (subscription_status)
+    INDEX idx_isPremium (isPremium),
+    INDEX idx_subscriptionStatus (subscriptionStatus),
+    INDEX idx_stripeCustomerId (stripeCustomerId),
+    INDEX idx_deletedAt (deletedAt),
+    INDEX idx_createdAt (createdAt)
 );
 
 -- Categories table
@@ -160,6 +167,146 @@ CREATE TABLE IF NOT EXISTS usage_analytics (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_action (user_id, action),
     INDEX idx_created_at (created_at)
+);
+
+-- Refresh tokens table for JWT security
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    token VARCHAR(512) NOT NULL UNIQUE,
+    expiresAt DATETIME NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_userId (userId),
+    INDEX idx_token (token),
+    INDEX idx_expiresAt (expiresAt)
+);
+
+-- Email verification tokens
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    token VARCHAR(64) NOT NULL UNIQUE,
+    expiresAt DATETIME NOT NULL,
+    usedAt DATETIME NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_userId (userId),
+    INDEX idx_token (token),
+    INDEX idx_expiresAt (expiresAt)
+);
+
+-- Password reset tokens
+CREATE TABLE IF NOT EXISTS password_resets (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    token VARCHAR(64) NOT NULL UNIQUE,
+    expiresAt DATETIME NOT NULL,
+    usedAt DATETIME NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_userId (userId),
+    INDEX idx_token (token),
+    INDEX idx_expiresAt (expiresAt)
+);
+
+-- Shared budgets/accounts (future feature)
+CREATE TABLE IF NOT EXISTS shared_accounts (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    ownerUserId VARCHAR(36) NOT NULL,
+    inviteCode VARCHAR(8) UNIQUE NOT NULL,
+    isActive BOOLEAN DEFAULT TRUE,
+    settings JSON NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (ownerUserId) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_ownerUserId (ownerUserId),
+    INDEX idx_inviteCode (inviteCode),
+    INDEX idx_isActive (isActive)
+);
+
+-- Members of shared accounts
+CREATE TABLE IF NOT EXISTS shared_account_members (
+    id VARCHAR(36) PRIMARY KEY,
+    sharedAccountId VARCHAR(36) NOT NULL,
+    userId VARCHAR(36) NOT NULL,
+    role ENUM('owner', 'admin', 'member', 'viewer') NOT NULL,
+    permissions JSON NULL,
+    joinedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (sharedAccountId) REFERENCES shared_accounts(id) ON DELETE CASCADE,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_member (sharedAccountId, userId),
+    INDEX idx_sharedAccountId (sharedAccountId),
+    INDEX idx_userId (userId),
+    INDEX idx_role (role)
+);
+
+-- Budgets and financial goals (premium feature)
+CREATE TABLE IF NOT EXISTS budgets (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    sharedAccountId VARCHAR(36) NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    period ENUM('weekly', 'monthly', 'quarterly', 'yearly') NOT NULL,
+    categoryIds JSON NULL, -- Array of category IDs
+    startDate DATE NOT NULL,
+    endDate DATE NULL,
+    isActive BOOLEAN DEFAULT TRUE,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (sharedAccountId) REFERENCES shared_accounts(id) ON DELETE CASCADE,
+    INDEX idx_userId (userId),
+    INDEX idx_sharedAccountId (sharedAccountId),
+    INDEX idx_period (period),
+    INDEX idx_isActive (isActive)
+);
+
+-- Notifications and alerts
+CREATE TABLE IF NOT EXISTS notifications (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    type ENUM('budget_exceeded', 'subscription_due', 'goal_achieved', 'payment_failed', 'sync_error') NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    data JSON NULL,
+    isRead BOOLEAN DEFAULT FALSE,
+    readAt DATETIME NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_userId (userId),
+    INDEX idx_type (type),
+    INDEX idx_isRead (isRead),
+    INDEX idx_createdAt (createdAt)
+);
+
+-- API Keys for external integrations (future)
+CREATE TABLE IF NOT EXISTS api_keys (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    keyHash VARCHAR(255) NOT NULL,
+    permissions JSON NULL,
+    lastUsedAt DATETIME NULL,
+    expiresAt DATETIME NULL,
+    isActive BOOLEAN DEFAULT TRUE,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_userId (userId),
+    INDEX idx_keyHash (keyHash),
+    INDEX idx_isActive (isActive)
 );
 
 -- Insert default system categories

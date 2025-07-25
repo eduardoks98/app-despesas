@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Despesas - Icon Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        
+        .icon-container {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        
+        .icon {
+            position: relative;
+            border-radius: 15%;
+            background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 50%, #6D28D9 100%);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .icon-512 { width: 512px; height: 512px; }
+        .icon-256 { width: 256px; height: 256px; }
+        .icon-128 { width: 128px; height: 128px; }
+        .icon-64 { width: 64px; height: 64px; }
+        .icon-32 { width: 32px; height: 32px; }
+        
+        .wallet {
+            position: relative;
+            width: 70%;
+            height: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .wallet::before {
+            content: '';
+            position: absolute;
+            top: -10%;
+            left: 0;
+            right: 0;
+            height: 20%;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8% 8% 0 0;
+        }
+        
+        .cards {
+            position: relative;
+            width: 80%;
+            height: 60%;
+            margin-top: 10%;
+        }
+        
+        .card {
+            position: absolute;
+            width: 100%;
+            height: 70%;
+            background: #8B5CF6;
+            border-radius: 6%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card:nth-child(1) { 
+            z-index: 3; 
+            transform: translateY(0%);
+            opacity: 1;
+        }
+        
+        .card:nth-child(2) { 
+            z-index: 2; 
+            transform: translateY(-15%) translateX(-5%);
+            opacity: 0.9;
+        }
+        
+        .card:nth-child(3) { 
+            z-index: 1; 
+            transform: translateY(-30%) translateX(-10%);
+            opacity: 0.8;
+        }
+        
+        .card::after {
+            content: '';
+            position: absolute;
+            bottom: 15%;
+            right: 15%;
+            width: 25%;
+            height: 15%;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10%;
+        }
+        
+        .money-symbol {
+            position: absolute;
+            bottom: 15%;
+            right: 10%;
+            width: 20%;
+            height: 20%;
+            background: #10B981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        
+        .icon-32 .money-symbol { font-size: 8px; }
+        .icon-64 .money-symbol { font-size: 12px; }
+        .icon-128 .money-symbol { font-size: 18px; }
+        .icon-256 .money-symbol { font-size: 32px; }
+        .icon-512 .money-symbol { font-size: 48px; }
+        
+        .label {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .instructions {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .instructions h2 {
+            color: #8B5CF6;
+            margin-bottom: 15px;
+        }
+        
+        .instructions p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .instructions code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <h2>🎨 Gerador de Ícones - App Despesas</h2>
+        <p>Para salvar os ícones como PNG:</p>
+        <ol>
+            <li>Clique com botão direito em cada ícone</li>
+            <li>Selecione "Salvar imagem como..." ou "Copiar imagem"</li>
+            <li>Salve com o nome apropriado na pasta <code>assets/icons/</code></li>
+        </ol>
+        <p><strong>Nomes sugeridos:</strong></p>
+        <ul>
+            <li>512x512: <code>icon-512.png</code> (para stores)</li>
+            <li>256x256: <code>icon-256.png</code> (para desktop)</li>
+            <li>128x128: <code>icon-128.png</code> (para web)</li>
+            <li>64x64: <code>icon-64.png</code> (para web)</li>
+            <li>32x32: <code>icon-32.png</code> (para favicon)</li>
+        </ul>
+    </div>
+
+    <div style="text-align: center;">
+        <div class="icon-container">
+            <div class="icon icon-512">
+                <div class="wallet">
+                    <div class="cards">
+                        <div class="card"></div>
+                        <div class="card"></div>
+                        <div class="card"></div>
+                    </div>
+                </div>
+                <div class="money-symbol">$</div>
+            </div>
+            <div class="label">512x512px</div>
+        </div>
+
+        <div class="icon-container">
+            <div class="icon icon-256">
+                <div class="wallet">
+                    <div class="cards">
+                        <div class="card"></div>
+                        <div class="card"></div>
+                        <div class="card"></div>
+                    </div>
+                </div>
+                <div class="money-symbol">$</div>
+            </div>
+            <div class="label">256x256px</div>
+        </div>
+
+        <div class="icon-container">
+            <div class="icon icon-128">
+                <div class="wallet">
+                    <div class="cards">
+                        <div class="card"></div>
+                        <div class="card"></div>
+                        <div class="card"></div>
+                    </div>
+                </div>
+                <div class="money-symbol">$</div>
+            </div>
+            <div class="label">128x128px</div>
+        </div>
+
+        <div class="icon-container">
+            <div class="icon icon-64">
+                <div class="wallet">
+                    <div class="cards">
+                        <div class="card"></div>
+                        <div class="card"></div>
+                        <div class="card"></div>
+                    </div>
+                </div>
+                <div class="money-symbol">$</div>
+            </div>
+            <div class="label">64x64px</div>
+        </div>
+
+        <div class="icon-container">
+            <div class="icon icon-32">
+                <div class="wallet">
+                    <div class="cards">
+                        <div class="card"></div>
+                        <div class="card"></div>
+                        <div class="card"></div>
+                    </div>
+                </div>
+                <div class="money-symbol">$</div>
+            </div>
+            <div class="label">32x32px</div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h2>📱 Configuração do Ícone no App</h2>
+        <p>Após salvar os ícones, configure-os no app:</p>
+        
+        <h3>Expo (React Native)</h3>
+        <p>Edite o arquivo <code>app.json</code>:</p>
+        <pre><code>{
+  "expo": {
+    "icon": "./assets/icons/icon-512.png",
+    "splash": {
+      "image": "./assets/icons/icon-512.png"
+    }
+  }
+}</code></pre>
+
+        <h3>Web</h3>
+        <p>Adicione ao <code>public/index.html</code>:</p>
+        <pre><code>&lt;link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/icon-32.png"&gt;
+&lt;link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/icon-16.png"&gt;
+&lt;link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png"&gt;</code></pre>
+    </div>
+</body>
+</html>

@@ -129,10 +129,18 @@
         "root": "packages/core",
         "name": "@app-despesas/core",
         "projectType": "library",
-        "tags": ["npm:private"],
+        "tags": [
+          "npm:private"
+        ],
         "metadata": {
           "targetGroups": {
-            "NPM Scripts": ["build", "dev", "test", "lint", "type-check"]
+            "NPM Scripts": [
+              "build",
+              "dev",
+              "test",
+              "lint",
+              "type-check"
+            ]
           },
           "js": {
             "packageName": "@app-despesas/core",
@@ -212,7 +220,9 @@
         "root": "apps/mobile",
         "name": "@app-despesas/mobile",
         "projectType": "application",
-        "tags": ["npm:private"],
+        "tags": [
+          "npm:private"
+        ],
         "metadata": {
           "targetGroups": {
             "NPM Scripts": [
@@ -444,7 +454,9 @@
         "root": "apps/api",
         "name": "@app-despesas/api",
         "projectType": "application",
-        "tags": ["npm:private"],
+        "tags": [
+          "npm:private"
+        ],
         "metadata": {
           "targetGroups": {
             "NPM Scripts": [
@@ -729,7 +741,9 @@
         "root": "apps/web",
         "name": "@app-despesas/web",
         "projectType": "application",
-        "tags": ["npm:private"],
+        "tags": [
+          "npm:private"
+        ],
         "metadata": {
           "targetGroups": {
             "NPM Scripts": [
