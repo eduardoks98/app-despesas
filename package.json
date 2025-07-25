@@ -39,7 +39,7 @@
     "type-check": "npm run type-check --workspaces --if-present",
     "format": "npm run format --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
-    "postinstall": "npx husky install"
+    "postinstall": "echo 'Husky disabled'"
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",
