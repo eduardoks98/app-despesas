@@ -58,6 +58,8 @@ export class Database {
       poolConfig.ssl = {
         rejectUnauthorized: true
       };
+    } else {
+      poolConfig.ssl = false;
     }
 
     this.pool = mysql.createPool(poolConfig);
@@ -139,7 +141,7 @@ export class Database {
     }, 30000);
 
     // Handle pool errors
-    this.pool.on('error', (err) => {
+    this.pool.on('error', (err: any) => {
       logger.error('Database pool error:', err);
       this.isHealthy = false;
     });

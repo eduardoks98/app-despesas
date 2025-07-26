@@ -28,7 +28,8 @@
       "Bash(start scripts/icon-generator.html)",
       "Bash(git checkout:*)",
       "Bash(chmod:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git stash:*)"
     ],
     "deny": []
   }

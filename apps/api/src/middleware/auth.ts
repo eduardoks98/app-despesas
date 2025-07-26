@@ -3,14 +3,10 @@ import { AuthService, JWTPayload } from '../services/AuthService';
 import { Database } from '../config/database';
 import { logger } from '../utils/logger';
 import { env } from '../config/env';
+import { User } from '../types/user';
 
 export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    isPremium: boolean;
-    subscriptionStatus?: 'active' | 'trialing' | 'canceled' | 'expired';
-  };
+  user?: User;
 }
 
 export const authenticateToken = async (

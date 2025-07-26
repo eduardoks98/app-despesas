@@ -12,7 +12,7 @@ import { Database } from '../config/database';
 import { logger } from '../utils/logger';
 
 export interface JWTPayload {
-  userId: string;
+  userId: number;
   email: string;
   isPremium: boolean;
   subscriptionStatus?: 'active' | 'trialing' | 'canceled' | 'expired';
@@ -22,18 +22,6 @@ export interface TokenPair {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  password?: string;
-  name: string;
-  isPremium: boolean;
-  subscriptionStatus?: string;
-  stripeCustomerId?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export class AuthService {
