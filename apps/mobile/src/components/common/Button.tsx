@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, StyleSheet, Pressable, ViewStyle, TextStyle } from 'react-native';
 import { useColors } from '../../hooks/useColors';
-import { HapticService } from '../services/platform';
+import { HapticService } from '../../services/platform';
 
 interface ButtonProps {
   title: string;

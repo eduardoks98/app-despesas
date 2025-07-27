@@ -16,13 +16,13 @@ import { Card } from '../../components/common/Card';
 import { TabSelector } from '../../components/common/TabSelector';
 import { MoneyText } from '../../components/common/MoneyText';
 import { DatePicker } from '../../components/common/DatePicker';
-import { StorageService } from '../services/core';
-import { ValidationService } from '../services/utils';
-import { ErrorHandler } from '../services/utils';
+import { StorageService } from '../../services/core';
+import { ValidationService } from '../../services/utils';
+import { ErrorHandler } from '../../services/utils';
 import { Transaction, Category } from '../../types';
 import { colors } from '../../styles/colors';
 import { SPACING, FONT_SIZES } from '../../styles/responsive';
-import { HapticService } from '../services/platform';
+import { HapticService } from '../../services/platform';
 import { safeParseDate } from '../../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 

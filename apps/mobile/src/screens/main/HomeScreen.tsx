@@ -6,7 +6,7 @@ import { Card } from '../../components/common/Card';
 import { CardHeader } from '../../components/common/CardHeader';
 import { MoneyText } from '../../components/common/MoneyText';
 import { FAB } from '../../components/common/FAB';
-import { StorageService } from '../services/core';
+import { StorageService } from '../../services/core';
 import { Installment, Transaction, Subscription } from '../../types';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';

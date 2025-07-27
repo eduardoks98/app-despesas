@@ -14,13 +14,13 @@ import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { DatePicker } from '../../components/common/DatePicker';
-import { StorageService } from '../services/core';
-import { ValidationService } from '../services/utils';
-import { ErrorHandler } from '../services/utils';
+import { StorageService } from '../../services/core';
+import { ValidationService } from '../../services/utils';
+import { ErrorHandler } from '../../services/utils';
 import { Installment, Category } from '../../types';
 import { colors } from '../../styles/colors';
 import { SPACING, FONT_SIZES } from '../../styles/responsive';
-import { HapticService } from '../services/platform';
+import { HapticService } from '../../services/platform';
 import { safeParseDate } from '../../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 

@@ -29,7 +29,9 @@
       "Bash(git checkout:*)",
       "Bash(chmod:*)",
       "Bash(ls:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(npx expo start:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": []
   }

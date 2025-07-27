@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Button } from '../../components/common/Button';
-import { StorageService } from '../services/core';
-import { NotificationService } from '../services/platform';
-import { ErrorHandler } from '../services/utils';
+import { StorageService } from '../../services/core';
+import { NotificationService } from '../../services/platform';
+import { ErrorHandler } from '../../services/utils';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 

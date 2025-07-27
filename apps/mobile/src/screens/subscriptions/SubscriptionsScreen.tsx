@@ -13,7 +13,7 @@ import { Card } from '../../components/common/Card';
 import { MoneyText } from '../../components/common/MoneyText';
 import { SubscriptionCard } from '../../components/subscriptions/SubscriptionCard';
 import { FAB } from '../../components/common/FAB';
-import { StorageService } from '../services/core';
+import { StorageService } from '../../services/core';
 import { Subscription } from '../../types';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';

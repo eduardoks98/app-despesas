@@ -14,11 +14,30 @@ export class DatabaseService {
 
     try {
       this.db = await SQLite.openDatabaseAsync(this.DB_NAME);
+      await this.resetDatabase();
       await this.createTables();
       await this.seedDefaultCategories();
     } catch (error) {
       console.error('Erro ao inicializar banco de dados:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Reset database - drop all tables to handle schema changes
+   */
+  private static async resetDatabase(): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    try {
+      await this.db.execAsync('DROP TABLE IF EXISTS transactions;');
+      await this.db.execAsync('DROP TABLE IF EXISTS installments;');
+      await this.db.execAsync('DROP TABLE IF EXISTS subscriptions;');
+      await this.db.execAsync('DROP TABLE IF EXISTS categories;');
+      await this.db.execAsync('DROP TABLE IF EXISTS settings;');
+      console.log('✅ Database reset completed');
+    } catch (error) {
+      console.error('Erro ao resetar banco de dados:', error);
     }
   }
 
@@ -56,7 +75,7 @@ export class DatabaseService {
         date TEXT NOT NULL,
         createdAt TEXT NOT NULL DEFAULT (datetime('now')),
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-        FOREIGN KEY (category) REFERENCES categories(name)
+        FOREIGN KEY (category) REFERENCES categories(id)
       );
     `);
 
@@ -75,7 +94,7 @@ export class DatabaseService {
         isActive INTEGER NOT NULL DEFAULT 1,
         createdAt TEXT NOT NULL DEFAULT (datetime('now')),
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-        FOREIGN KEY (category) REFERENCES categories(name)
+        FOREIGN KEY (category) REFERENCES categories(id)
       );
     `);
 
@@ -92,7 +111,7 @@ export class DatabaseService {
         isActive INTEGER NOT NULL DEFAULT 1,
         createdAt TEXT NOT NULL DEFAULT (datetime('now')),
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-        FOREIGN KEY (category) REFERENCES categories(name)
+        FOREIGN KEY (category) REFERENCES categories(id)
       );
     `);
 

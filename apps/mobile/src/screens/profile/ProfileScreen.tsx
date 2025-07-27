@@ -15,12 +15,12 @@ import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
 import { CardHeader } from '../../components/common/CardHeader';
 import { Button } from '../../components/common/Button';
-import { StorageService } from '../services/core';
-import { InstallmentCalculations } from '../services/business';
-import { ErrorHandler } from '../services/utils';
-import { HapticService } from '../services/platform';
+import { StorageService } from '../../services/core';
+import { InstallmentCalculations } from '../../services/business';
+import { ErrorHandler } from '../../services/utils';
+import { HapticService } from '../../services/platform';
 import { useColors } from '../../hooks/useColors';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
 interface ProfileScreenProps {
@@ -175,7 +175,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         type: 'income' as const,
         amount: 3500,
         description: 'Salário',
-        category: 'Salário',
+        category: '8',
         date: currentDate.toISOString(),
         paymentMethod: 'pix' as const,
       },
@@ -184,7 +184,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         type: 'expense' as const,
         amount: 450,
         description: 'Supermercado',
-        category: 'Alimentação',
+        category: '1',
         date: new Date(currentDate.getTime() - 86400000).toISOString(), // 1 dia atrás
         paymentMethod: 'debit' as const,
       },
@@ -193,7 +193,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         type: 'expense' as const,
         amount: 120,
         description: 'Combustível',
-        category: 'Transporte',
+        category: '2',
         date: new Date(currentDate.getTime() - 172800000).toISOString(), // 2 dias atrás
         paymentMethod: 'credit' as const,
       },
@@ -202,7 +202,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         type: 'expense' as const,
         amount: 89.90,
         description: 'Farmácia',
-        category: 'Saúde',
+        category: '4',
         date: new Date(currentDate.getTime() - 259200000).toISOString(), // 3 dias atrás
         paymentMethod: 'cash' as const,
       },
@@ -224,7 +224,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       installmentValue: 200,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
-      category: 'Compras',
+      category: '7',
       store: 'Samsung Store',
       status: 'active' as const,
       paidInstallments: [1], // Primeira parcela já paga
@@ -244,7 +244,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       type: 'expense',
       amount: 200,
       description: 'Smartphone Samsung Galaxy (1/12)',
-      category: 'Compras',
+      category: '7',
       date: startDate.toISOString(),
       installmentId: sampleInstallment.id,
       installmentNumber: 1,

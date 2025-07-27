@@ -7,7 +7,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSync } from '../../hooks/useSync';
-import { colors, tokens } from '../../styles';
+import { colors } from '../../styles';
+import { SPACING, FONT_SIZES } from '../../styles/responsive';
 
 interface SyncStatusIndicatorProps {
   /** Se deve mostrar o texto do status */
@@ -47,7 +48,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
 
   const getStatusIcon = () => {
     if (isSyncing) {
-      return <ActivityIndicator size="small" color={colors.brand.primary} />;
+      return <ActivityIndicator size="small" color={colors.primary} />;
     }
     
     if (!isOnline) {
@@ -102,18 +103,18 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
 
   const getStatusColor = () => {
     if (isSyncing) {
-      return colors.brand.primary;
+      return colors.primary;
     }
     
     if (!isOnline || lastError) {
-      return colors.semantic.error;
+      return colors.danger;
     }
     
     if (hasPendingItems) {
-      return colors.semantic.warning;
+      return colors.warning;
     }
     
-    return colors.semantic.success;
+    return colors.success;
   };
 
   return (
@@ -156,12 +157,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: tokens.space.md,
-    paddingVertical: tokens.space.sm,
-    backgroundColor: colors.light.background.secondary,
-    borderRadius: tokens.space.sm,
-    marginHorizontal: tokens.space.md,
-    marginVertical: tokens.space.xs,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: colors.surface,
+    borderRadius: SPACING.sm,
+    marginHorizontal: SPACING.md,
+    marginVertical: SPACING.xs,
   },
   
   statusContainer: {
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   },
   
   iconContainer: {
-    marginRight: tokens.space.sm,
+    marginRight: SPACING.sm,
     width: 20,
     alignItems: 'center',
   },
@@ -185,22 +186,22 @@ const styles = StyleSheet.create({
   },
   
   statusText: {
-    fontSize: tokens.text.sm.fontSize,
+    fontSize: FONT_SIZES.sm,
     fontWeight: '500',
     marginBottom: 2,
   },
   
   errorText: {
-    fontSize: tokens.text.xs.fontSize,
-    color: colors.semantic.error,
+    fontSize: FONT_SIZES.xs,
+    color: colors.danger,
     opacity: 0.8,
   },
   
   syncButton: {
-    padding: tokens.space.xs,
-    borderRadius: tokens.space.xs,
-    backgroundColor: colors.brand.primary,
-    marginLeft: tokens.space.sm,
+    padding: SPACING.xs,
+    borderRadius: SPACING.xs,
+    backgroundColor: colors.primary,
+    marginLeft: SPACING.sm,
   },
   
   syncButtonText: {

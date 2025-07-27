@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
-import { HapticService } from '../services/platform';
+import { HapticService } from '../../services/platform';
 import { colors } from '../../styles/colors';
 import { SPACING, FONT_SIZES } from '../../styles/responsive';
 import { Ionicons } from '@expo/vector-icons';

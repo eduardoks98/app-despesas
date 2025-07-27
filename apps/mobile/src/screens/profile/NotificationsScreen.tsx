@@ -12,8 +12,8 @@ import {
 import { Container } from '../../components/common/Container';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
-import { NotificationService, NotificationSettings } from '../services/platform';
-import { ErrorHandler } from '../services/utils';
+import { NotificationService, NotificationSettings } from '../../services/platform';
+import { ErrorHandler } from '../../services/utils';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 

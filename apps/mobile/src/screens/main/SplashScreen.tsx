@@ -6,10 +6,10 @@ import {
   ActivityIndicator,
   Animated
 } from 'react-native';
-import { StorageService } from '../services/core';
-import { NotificationService } from '../services/platform';
-import { ErrorHandler } from '../services/utils';
-import { HapticService } from '../services/platform';
+import { StorageService } from '../../services/core';
+import { NotificationService } from '../../services/platform';
+import { ErrorHandler } from '../../services/utils';
+import { HapticService } from '../../services/platform';
 import { AppIcon } from '../../components/common/AppIcon';
 import { useColors } from '../../hooks/useColors';
 import { Ionicons } from '@expo/vector-icons';
